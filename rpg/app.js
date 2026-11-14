@@ -1,9 +1,9 @@
-import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=17';
-import {installPullToRefreshGuard} from './scroll-guard.js?v=17';
-import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=17';
-import {gardenScene,weatherAt} from './garden.js?v=17';
-import {DEV_TOOLS} from './config.js?v=17';
-import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=17';
+import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=18';
+import {installPullToRefreshGuard} from './scroll-guard.js?v=18';
+import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=18';
+import {gardenScene,weatherAt} from './garden.js?v=18';
+import {DEV_TOOLS} from './config.js?v=18';
+import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=18';
 installPullToRefreshGuard();
 let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
