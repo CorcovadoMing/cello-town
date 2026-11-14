@@ -40,3 +40,15 @@
 .practice-timer{display:flex;align-items:center;gap:10px;padding:10px 17px;background:#f5f3e7;border-bottom:1px solid #d6dfcf;color:#3d6450}.practice-timer svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.practice-timer #practice-time{font:600 17px/1.2 ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:1px}.practice-timer #timer-status{font-size:10px;color:#7b8b72}.practice-timer button{margin-left:auto;width:34px;height:34px;display:grid;place-items:center;border:1px solid #b8c9af;border-radius:50%;background:#faf9ef;color:#386047}.practice-timer button:disabled{opacity:.4;cursor:default}.practice-timer button[aria-pressed=true]{background:#e5ead7}@media(max-width:550px){.practice-timer{padding:8px 11px}.practice-timer button{width:38px;height:38px}}
 
 .dev-tools[hidden]{display:none}dialog .collection{margin:0;padding:0;border:0}dialog .flower-card svg{height:100px}dialog .collection h2{margin:8px 0 15px}
+
+
+/* A quiet, vector botanical vignette. No progress or weather service side effects. */
+.garden-scene{margin:18px 0 24px;border:1px solid #c4cdb5;border-radius:19px;overflow:hidden;background:#f1f3e6;box-shadow:0 8px 24px #53684a12}
+.garden-scene-label{display:flex;justify-content:space-between;gap:12px;padding:14px 18px 0;align-items:baseline;color:#4c654f}.garden-scene-label>span{font-size:15px;letter-spacing:.1em}.garden-scene-label small{font-size:11px;color:#7a8773}
+.garden-scene svg{width:100%;height:auto;display:block;overflow:hidden}.garden-scene p{margin:0!important;padding:10px 18px 15px;font-size:12px!important;line-height:1.8;color:#71806c}
+.garden-stem{transform-origin:0 0;animation:garden-sway var(--wind) ease-in-out infinite alternate;animation-delay:var(--delay)}
+.garden-scene.breeze .garden-stem{animation-name:garden-breeze}.garden-rain{display:none}.rain .garden-rain{display:block;animation:garden-rain 2s linear infinite}.rain .garden-sun{opacity:.2}.rain svg{background:#dbe6e0}.rain #garden-sky stop:first-child{stop-color:#c9d9da}
+@keyframes garden-sway{from{transform:rotate(-1.5deg)}to{transform:rotate(2deg)}}@keyframes garden-breeze{from{transform:rotate(-3deg)}to{transform:rotate(5deg)}}@keyframes garden-rain{from{transform:translate(3px,-12px)}to{transform:translate(-4px,12px)}}
+@media(max-width:480px){.garden-scene-label{padding:12px 12px 0;gap:6px;flex-wrap:wrap}.garden-scene-label small{font-size:10px}.garden-scene p{padding:6px 12px 12px;font-size:11px!important}}
+@media(prefers-reduced-motion:reduce){.garden-stem,.garden-rain{animation:none!important}}
+#dialog .practice-timer{margin:15px 0;border:1px solid #ccd6bc;border-radius:12px;padding:10px 12px;justify-content:flex-start}#dialog .practice-timer button{margin-left:auto}
