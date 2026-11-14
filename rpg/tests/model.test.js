@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {fresh,normalize,accept,complete,turnIn,again} from '../model.js';
+import test from 'node:test';import assert from 'node:assert/strict';import {fresh,normalize,accept,complete,turnIn,again,questView} from '../model.js';
 test('must accept before recording practice',()=>assert.deepEqual(complete(fresh(),'listen'),fresh()));
 test('three practices require returning to NPC before reward',()=>{let s=accept(fresh());for(const step of ['listen','rhythm','memory'])s=complete(s,step);assert.equal(s.phase,'ready');assert.equal(s.history.length,0);s=turnIn(s,'2026-11-14T00:00:00Z');assert.equal(s.phase,'done');assert.equal(s.history.length,1);assert.equal(turnIn(s).history.length,1);});
 test('incomplete turn-in cannot reward',()=>assert.equal(turnIn(complete(accept(fresh()),'listen')).history.length,0));
@@ -7,3 +7,22 @@ test('replay preserves history and note',()=>{let s=accept(fresh());s.note='練 
 test('normalization clamps controls and removes invalid progress',()=>{const s=normalize({version:1,phase:'ready',steps:['listen','listen','evil'],bpm:900,volume:-1});assert.equal(s.phase,'active');assert.equal(s.bpm,120);assert.equal(s.volume,0);assert.deepEqual(s.steps,['listen']);});
 test('saved accepted progress roundtrip',()=>{let s=complete(accept(fresh()),'listen');assert.deepEqual(normalize(JSON.parse(JSON.stringify(s))),s);});
 test('old or malformed state starts clean',()=>{assert.deepEqual(normalize({version:99}),fresh());assert.deepEqual(normalize(null),fresh());});
+
+test('quest marker changes from gold available to gray active to gold ready and disappears after turn-in',()=>{
+ let s=fresh();assert.equal(questView(s).marker,'!');
+ s=accept(s);assert.equal(questView(s).marker,'?');assert.equal(questView(s).markerTone,'gray');
+ for(const step of ['listen','rhythm','memory'])s=complete(s,step);
+ assert.equal(questView(s).marker,'?');assert.equal(questView(s).markerTone,'gold');assert.equal(s.history.length,0);
+ const restored=normalize(JSON.parse(JSON.stringify(s)));assert.equal(questView(restored).marker,'?');assert.equal(restored.history.length,0);
+ s=turnIn(restored);assert.equal(questView(s).marker,null);assert.equal(questView(s).visible,false);assert.equal(s.history.length,1);
+ assert.equal(turnIn(s).history.length,1);
+});
+test('tracker highlights only the next unfinished step and then return',()=>{
+ let s=accept(fresh());assert.equal(questView(s).next,'listen');
+ s=complete(s,'listen');assert.equal(questView(s).next,'rhythm');
+ s=complete(s,'rhythm');assert.equal(questView(s).next,'memory');
+ s=complete(s,'memory');assert.equal(questView(s).next,null);assert.equal(questView(s).ready,true);assert.equal(questView(s).count,3);
+});
+test('presentation is pure and cannot award flowers',()=>{let s=accept(fresh());for(const step of ['listen','rhythm','memory'])s=complete(s,step);const before=JSON.stringify(s);for(let i=0;i<100;i++)questView(s);assert.equal(JSON.stringify(s),before);assert.equal(s.history.length,0);});
+
+test('all incomplete counts show gray question without reward',()=>{let s=accept(fresh());for(let n=0;n<3;n++){const q=questView(s);assert.equal(q.count,n);assert.equal(q.marker,'?');assert.equal(q.markerTone,'gray');assert.equal(q.ready,false);assert.equal(s.history.length,0);s=complete(s,['listen','rhythm','memory'][n]);}});

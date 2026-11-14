@@ -17,3 +17,18 @@
 #quest-status{font-size:10px;color:#f2d894;min-height:0;margin:4px 0 0}
 .map-stage #toast{top:auto;bottom:9px}
 @media(max-width:620px){.quest-hud{position:relative;top:auto;left:auto;width:auto;margin:0;border-radius:0;border-width:0 0 1px;box-shadow:none}.quest-hud ol{display:flex;flex-wrap:wrap;column-gap:10px}.quest-hud li{margin:1px 0}}
+
+/* v4: a quiet objective tracker, with one next step and a distinct turn-in state. */
+.quest-hud{width:min(210px,26%);border-left:3px solid #d9b263;background:linear-gradient(100deg,#203d30f5,#203d30df);padding-left:11px}
+.quest-hud li{padding:2px 4px 2px 0;border-radius:3px}
+.quest-hud li.current{color:#ffe4a2;background:#cfaa4c18}
+.quest-hud li.current b{color:#ffda75;font-size:20px;font-weight:700}
+.quest-hud .done span{color:#aeb89f;text-decoration-color:#aeb89f80}
+.quest-hud .done b{color:#aeb89f}
+.quest-hud.ready{border-left-color:#ffdb78}
+.quest-hud.ready #quest-count{color:#ffdf85}
+.quest-hud .quest-return{display:flex;gap:9px;align-items:center;border-top:1px solid #dcc27944;padding-top:7px;margin:7px 0 0;font-size:12px;line-height:1.4;color:#ffe4a2}
+.quest-hud .quest-return[hidden]{display:none}
+.quest-return b{font:bold 25px/1 system-ui;color:#ffda75;text-shadow:1px 2px #57451d}
+.quest-return small{display:block;font-size:9px;color:#c3c9b0;margin-top:2px}
+@media(max-width:620px){.quest-hud{width:auto;border-left:3px solid #d9b263}.quest-hud .quest-return{margin-top:5px;padding-top:5px}.quest-return small{display:inline;margin-left:8px}.quest-hud .quest-return{font-size:11px}}

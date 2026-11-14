@@ -5,3 +5,10 @@ export function accept(s){return s.phase==='available'?{...s,phase:'active'}:s;}
 export function complete(s,step){if(!['active','ready'].includes(s.phase)||!['listen','rhythm','memory'].includes(step))return s;const steps=[...new Set([...s.steps,step])];return {...s,steps,phase:steps.length===3?'ready':'active'};}
 export function turnIn(s,at=new Date().toISOString()){return s.phase==='ready'&&s.steps.length===3?{...s,phase:'done',history:[...s.history,{at,bpm:s.bpm,note:s.note}].slice(-50)}:s;}
 export function again(s){return s.phase==='done'?{...s,phase:'available',steps:[]}:s;}
+
+// Presentation derives from saved quest state; it never completes or rewards a quest.
+export function questView(s){
+ const active=s.phase==='active'||s.phase==='ready';
+ const ready=s.phase==='ready'&&s.steps.length===3;
+ return {visible:active,ready,count:s.steps.length,next:active&&!ready?['listen','rhythm','memory'].find(step=>!s.steps.includes(step))||null:null,marker:s.phase==='available'?'!':active?'?':null,markerTone:s.phase==='available'||ready?'gold':active?'gray':null};
+}

@@ -1,17 +1,23 @@
-import {fresh,normalize,accept,complete,turnIn,again,NOTES} from './model.js';
+import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView} from './model.js?v=4';
 const $=id=>document.getElementById(id), canvas=$('world'),g=canvas.getContext('2d'),dlg=$('dialog'),KEY='cello-town-rpg-v1';
 let state=fresh(),storeOK=true;try{const raw=localStorage.getItem(KEY);if(raw)state=normalize(JSON.parse(raw));}catch{storeOK=false;}
 const player={x:460,y:425,dir:1,walking:false};const npc={x:303,y:290},stand={x:655,y:310};let keys=new Set(),target=null,last=0,near=null,task='listen',revealed=false,demoDone=false,practiced=false,context,timer,mode=null,voices=new Set(),step=0,next=0,generation=0;
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));storeOK=true;}catch{storeOK=false;}render();}
 function render(){
-  const active=state.phase==='active'||state.phase==='ready';
-  $('quest-hud').hidden=!active;
-  $('quest-count').textContent=state.steps.length+'/3';
-  $('quest-status').textContent=state.phase==='ready'?'三項都完成了，回老師身旁交任務。':'到戶外譜架開始練習。';
+  const quest=questView(state);
+  $('quest-hud').hidden=!quest.visible;
+  $('quest-hud').classList.toggle('ready',quest.ready);
+  $('quest-count').textContent=quest.count+'/3';
+  $('quest-count').setAttribute('aria-label','三項練習已完成 '+quest.count+' 項');
+  $('quest-status').textContent=quest.ready?'三項練習已完成，尚未交付。':'到戶外譜架開始練習。';
+  $('quest-return').hidden=!quest.ready;
   document.querySelectorAll('[data-step]').forEach(li=>{
     const done=state.steps.includes(li.dataset.step);
     li.classList.toggle('done',done);
-    li.querySelector('b').textContent=done?'✓':'○';
+    const current=li.dataset.step===quest.next;
+    li.classList.toggle('current',current);
+    if(current)li.setAttribute('aria-current','step');else li.removeAttribute('aria-current');
+    li.querySelector('b').textContent=done?'✓':current?'›':'○';
     li.setAttribute('aria-label',li.querySelector('span').textContent+(done?'，已完成':'，待完成'));
   });
   $('flower-count').textContent=state.history.length;
@@ -58,6 +64,20 @@ function person(x,y,t,{teacher=false,walking=false,dir=1}={}){
   pixel(eyes-9,-30,4,2,'#e88d87'); pixel(eyes+5,-30,4,2,'#e88d87'); pixel(eyes-1,-28,3,1,'#945b59');
 }
 function label(text,x,y,color='#fff7df'){g.font='bold 13px system-ui';g.textAlign='center';g.fillStyle='#294c35dd';const w=g.measureText(text).width+20;g.fillRect(x-w/2,y-15,w,24);g.fillStyle=color;g.fillText(text,x,y+2);}
+function drawQuestMarker(t){
+  const quest=questView(state),mark=quest.marker;
+  if(!mark)return;
+  const y=npc.y-65+(reducedMotion.matches?0:Math.sin(t/420)*2);
+  g.save();
+  // A large golden glyph stays over the teacher until explicit turn-in.
+  g.font='900 40px system-ui';g.textAlign='center';g.textBaseline='alphabetic';
+  g.lineJoin='round';g.lineWidth=6;g.strokeStyle=quest.markerTone==='gold'?'#56451d':'#3f4943';
+  g.strokeText(mark,npc.x,y);g.fillStyle=quest.markerTone==='gold'?'#ffd66d':'#b9bfb7';g.fillText(mark,npc.x,y);
+  if(mark==='?'&&quest.ready){
+    rect(npc.x+20,y-29,3,9,'#fff0b0');rect(npc.x+17,y-26,9,3,'#fff0b0');
+  }
+  g.restore();
+}
 function draw(t){rect(0,0,960,560,'#98b878');for(let y=0;y<560;y+=30)for(let x=0;x<960;x+=30){if((x/30*17+y/30*31)%7<2){rect(x+8,y+9,3,5,'#86a96a');rect(x+12,y+7,2,7,'#86a96a');}}// walkways
 rect(170,298,620,72,'#d0c298');rect(428,300,72,260,'#d0c298');rect(263,235,78,85,'#d0c298');rect(620,220,75,110,'#d0c298');for(let i=0;i<20;i++){const x=190+i*29;rect(x,326+(i%3)*9,12,3,'#beae83');}for(let i=0;i<7;i++)rect(449+(i%2)*18,390+i*22,14,3,'#beae83');
 // water
@@ -73,7 +93,7 @@ for(let x=20;x<960;x+=28){rect(x,32,6,29,'#b5aa7a');rect(x-2,38,29,5,'#c7bd8e');
 [[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1.6],[870,103,1.8],[930,178,1.4],[65,250,1.8],[139,279,1.2],[848,281,1.4],[919,356,1.2],[340,476,1.2],[585,495,1.3],[690,500,1]].forEach(a=>tree(...a));for(let i=0;i<18;i++)flower(370+(i*71)%400,395+(i*37)%110,i%2?'#ecdb8f':'#e1a6a4');
 // stand
 rect(650,284,7,28,'#665d43');rect(638,309,30,4,'#665d43');rect(637,269,34,22,'#705d42');rect(641,269,26,17,'#fff3cd');rect(653,269,2,16,'#d8c79d');rect(644,275,6,2,'#81906a');rect(657,278,7,2,'#81906a');
-let entities=[{y:npc.y,draw:()=>person(npc.x,npc.y,t,{teacher:true})},{y:player.y,draw:()=>person(player.x,player.y,t,player)}];entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());label('老師',npc.x,npc.y+24);if(state.phase==='available'||state.phase==='ready'){const yy=npc.y-70+(reducedMotion.matches?0:Math.sin(t/350)*3);rect(npc.x-10,yy-18,20,24,'#f0ca6d');g.fillStyle='#614e28';g.font='bold 20px monospace';g.textAlign='center';g.fillText(state.phase==='ready'?'?':'!',npc.x,yy+2);}if(state.phase==='active'){label('來這裡練習',stand.x,stand.y-65,'#f4db91');}if(near){g.strokeStyle='#fff2c3';g.lineWidth=2;g.beginPath();g.ellipse(near==='npc'?npc.x:stand.x,near==='npc'?npc.y:stand.y,24,10,0,0,Math.PI*2);g.stroke();}}
+let entities=[{y:npc.y,draw:()=>person(npc.x,npc.y,t,{teacher:true})},{y:player.y,draw:()=>person(player.x,player.y,t,player)}];entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());label('老師',npc.x,npc.y+24);drawQuestMarker(t);if(state.phase==='active'){label('來這裡練習',stand.x,stand.y-65,'#f4db91');}if(near){g.strokeStyle='#fff2c3';g.lineWidth=2;g.beginPath();g.ellipse(near==='npc'?npc.x:stand.x,near==='npc'?npc.y:stand.y,24,10,0,0,Math.PI*2);g.stroke();}}
 function blocked(x,y){return x<30||x>930||y<130||y>542||(x<275&&y>380)||(x>730&&x<910&&y>395)||(x>174&&x<330&&y>170&&y<240);}
 function update(dt){if(dlg.open){player.walking=false;return;}let dx=(keys.has('right')?1:0)-(keys.has('left')?1:0),dy=(keys.has('down')?1:0)-(keys.has('up')?1:0);if(!dx&&!dy&&target){const d=Math.hypot(target.x-player.x,target.y-player.y);if(d<5){target=null;}else{dx=(target.x-player.x)/d;dy=(target.y-player.y)/d;}}if(dx&&dy&&!target){dx/=Math.SQRT2;dy/=Math.SQRT2;}const speed=150*dt;let moved=false;if(!blocked(player.x+dx*speed,player.y)){player.x+=dx*speed;moved||=!!dx;}if(!blocked(player.x,player.y+dy*speed)){player.y+=dy*speed;moved||=!!dy;}player.walking=moved;if(dx)player.dir=dx>0?1:-1;near=Math.hypot(player.x-npc.x,player.y-npc.y)<65?'npc':Math.hypot(player.x-stand.x,player.y-stand.y)<65?'stand':null;$('interact').disabled=!near;$('interact').innerHTML=(near==='stand'?'練習':'交談')+' <span>E</span>';$('location').textContent=near==='npc'?'老師身旁':near==='stand'?'戶外譜架前':'晨光小徑';}
 function interact(){if(dlg.open)return;if(near==='npc')talk();else if(near==='stand')practice();else toast('再靠近老師或戶外譜架一點。');}
