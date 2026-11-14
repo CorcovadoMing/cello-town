@@ -1,8 +1,8 @@
-import {installPullToRefreshGuard} from './scroll-guard.js?v=11';
-import {fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=11';
-import {gardenScene,weatherAt} from './garden.js?v=11';
-import {DEV_TOOLS} from './config.js?v=11';
-import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=11';
+import {installPullToRefreshGuard} from './scroll-guard.js?v=12';
+import {fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=12';
+import {gardenScene,weatherAt} from './garden.js?v=12';
+import {DEV_TOOLS} from './config.js?v=12';
+import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=12';
 installPullToRefreshGuard();
 let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
@@ -84,6 +84,8 @@ function gardenBloom(x,y,f){
 }
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 function teacherPerson(x,y,t){
+ // Same foot anchor/hitbox; height matches player while the silhouette stays slim.
+ g.save();g.translate(x,y);g.scale(1.18,1.10);x=0;y=0;
  const bob=reducedMotion.matches?0:Math.round((1+Math.sin((t+1750)/540))*.7), yy=y-bob;
  const p=(a,b,w,h,c)=>rect(x+a,yy+b,w,h,c);
  const hair='#694b43',edge='#493e43',dress='#b7809e',shade='#936681',skin='#f5cfa7';
@@ -98,6 +100,7 @@ function teacherPerson(x,y,t){
  p(-7,-48,14,3,edge);p(-10,-45,20,17,hair);p(-11,-40,4,18,hair);p(7,-40,4,18,hair);
  p(-8,-40,16,12,skin);p(-6,-28,12,3,skin);p(-8,-44,16,6,hair);p(-8,-39,5,3,hair);p(-4,-41,5,3,hair);
  p(5,-43,3,2,'#f5d486');p(-6,-35,2,3,edge);p(4,-35,2,3,edge);p(-7,-30,3,2,'#e9a29a');p(5,-30,3,2,'#e9a29a');p(-1,-29,3,1,'#ac7770');
+ g.restore();
 }
 function person(x,y,t,{teacher=false,walking=false,dir=1}={}){
   if(teacher){teacherPerson(x,y,t);return;}
@@ -144,6 +147,8 @@ function drawQuestMarker(t){
 }
 function draw(t){rect(0,0,960,560,'#98b878');for(let y=0;y<560;y+=30)for(let x=0;x<960;x+=30){if((x/30*17+y/30*31)%7<2){rect(x+8,y+9,3,5,'#86a96a');rect(x+12,y+7,2,7,'#86a96a');}}// walkways
 rect(170,298,620,72,'#d0c298');rect(428,300,72,260,'#d0c298');rect(263,235,78,85,'#d0c298');rect(620,220,75,110,'#d0c298');for(let i=0;i<20;i++){const x=190+i*29;rect(x,326+(i%3)*9,12,3,'#beae83');}for(let i=0;i<7;i++)rect(449+(i%2)*18,390+i*22,14,3,'#beae83');
+// Surface detail follows existing path shapes, never modifies walkability.
+for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[263,235,78,63],[620,220,75,78]]){rect(px,py,pw,3,'#dfd3ae');rect(px,py+ph-3,pw,3,'#b5a77f');for(let i=0;i<Math.floor(pw*ph/750);i++){const gx=px+8+(i*47)%(pw-16),gy=py+8+(i*31)%(ph-16);rect(gx,gy,2+i%2,1,i%2?'#e3d5ae':'#b4a57c');}}
 // water
 rect(20,392,255,146,'#719fa1');rect(40,375,205,160,'#719fa1');rect(48,388,187,135,'#85b6ad');for(let i=0;i<7;i++){rect(55+(i*53)%160,408+i*15,26,3,'#b0cfc0');}rect(19,535,259,8,'#6f9c75');
 drawPondLife(g,t,reducedMotion.matches,townFish);
@@ -155,8 +160,8 @@ rect(180,176,145,9,'#a78c62');rect(180,192,145,9,'#a78c62');rect(187,174,6,47,'#
 rect(735,404,172,111,'#b7a379');rect(744,412,154,93,'#8c835c');for(let i=0;i<9;i++){const x=767+i%3*50,y=435+Math.floor(i/3)*28;rect(x-8,y+5,19,5,'#6f704b');if(i<bloomCount(state))gardenBloom(x,y,FLOWERS[i%FLOWERS.length]);else{rect(x,y,2,8,'#759651');rect(x-3,y+2,4,3,'#96af6b');}}label('你的花園',820,391);
 // fences and foliage
 for(let x=20;x<960;x+=28){rect(x,32,6,29,'#b5aa7a');rect(x-2,38,29,5,'#c7bd8e');}
-[[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1.6],[870,103,1.8],[930,178,1.4],[65,250,1.8],[139,279,1.2],[848,281,1.4],[919,356,1.2],[340,476,1.2],[585,495,1.3],[690,500,1]].forEach(a=>tree(...a));for(let i=0;i<18;i++)flower(370+(i*71)%400,395+(i*37)%110,i%2?'#ecdb8f':'#e1a6a4');
-drawBenchLife(g,t,reducedMotion.matches);
+for(let i=0;i<18;i++)flower(370+(i*71)%400,395+(i*37)%110,i%2?'#ecdb8f':'#e1a6a4');
+[[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1.6],[870,103,1.8],[930,178,1.4],[65,250,1.8],[139,279,1.2],[848,281,1.4],[919,356,1.2],[340,476,1.2],[585,495,1.3],[690,500,1]].forEach(a=>tree(...a));drawBenchLife(g,t,reducedMotion.matches);
 // stand
 rect(650,284,7,28,'#665d43');rect(638,309,30,4,'#665d43');rect(637,269,34,22,'#705d42');rect(641,269,26,17,'#fff3cd');rect(653,269,2,16,'#d8c79d');rect(644,275,6,2,'#81906a');rect(657,278,7,2,'#81906a');
 drawGardenLife(g,t,reducedMotion.matches);

@@ -48,7 +48,7 @@
 .garden-scene svg{width:100%;height:auto;display:block;overflow:hidden}.garden-scene p{margin:0!important;padding:10px 18px 15px;font-size:12px!important;line-height:1.8;color:#71806c}
 .garden-stem{transform-origin:0 0;animation:garden-sway var(--wind) ease-in-out infinite alternate;animation-delay:var(--delay)}
 .garden-scene.weather-breeze .garden-stem{animation-name:garden-breeze}.garden-rain{display:none}.garden-scene.weather-rain .garden-rain{display:block;animation:garden-rain 2s linear infinite}.garden-scene.weather-rain .garden-sun{opacity:.2}.garden-scene.weather-rain svg{background:#dbe6e0}.garden-scene.weather-rain #garden-sky stop:first-child{stop-color:#c9d9da}
-@keyframes garden-sway{from{transform:rotate(-1.5deg)}to{transform:rotate(2deg)}}@keyframes garden-breeze{from{transform:rotate(-3deg)}to{transform:rotate(5deg)}}@keyframes garden-rain{from{transform:translate(3px,-12px)}to{transform:translate(-4px,12px)}}
+@keyframes garden-sway{from{transform:rotate(-1.5deg)}to{transform:rotate(2deg)}}@keyframes garden-breeze{from{transform:rotate(-3deg)}to{transform:rotate(5deg)}}@keyframes garden-rain{from{transform:translate(-3px,-12px)}to{transform:translate(4px,12px)}}
 @media(max-width:480px){.garden-scene-label{padding:12px 12px 0;gap:6px;flex-wrap:wrap}.garden-scene-label small{font-size:10px}.garden-scene p{padding:6px 12px 12px;font-size:11px!important}}
 @media(prefers-reduced-motion:reduce){.garden-stem,.garden-rain{animation:none!important}}
 #dialog .practice-timer{margin:15px 0;border:1px solid #ccd6bc;border-radius:12px;padding:10px 12px;justify-content:flex-start}#dialog .practice-timer button{margin-left:auto}
