@@ -1,58 +1,33 @@
 # 弓弦小鎮 · Cello Town
 
-A small, single-player practice room for cello learners. The first playable version focuses on one octave of **D major: D3 E3 F♯3 G3 A3 B3 C♯4 D4**. Warm illustrated room, direct touch-friendly hotspots, and a persistent little flower garden. No avatar navigation, login, leaderboard, microphone access, or recording.
+把一輪大提琴練習，種成一朵花。這是獨立的單人練習遊戲，和 [弓弦的每日音階練習](https://corcovadoming.github.io/daily-key-practice/) 不共用紀錄。
 
-## Run
+- [2D 小鎮](https://corcovadoming.github.io/cello-town/)：目前正式入口。
+- [3D 日光更衣室](https://corcovadoming.github.io/cello-town/3D/)：獨立測試版，程式在 [experimental/3d](https://github.com/CorcovadoMing/cello-town/tree/experimental/3d/3D)；不是整座小鎮的 3D 版。
 
-Requires any static HTTP server. For example:
+## 2D：從練習到花園
+
+走到老師旁接任務，再到戶外譜架練習 D 大調一個八度：聽連奏參考音、跟著節拍練習、收起提示再試。可用方向鍵、WASD、畫面方向鈕或點地圖移動。靠近互動點後按 E 或畫面按鈕。三項練習完成、向老師交付後種一朵花；這是自行確認練習，不是音準評分。
+
+練習面板開啟時自動計時，離開面板或切到背景會暫停；交付時把時間寫進手札。花圃最多同時顯示六種花、各一朵，收藏數量另計。天氣、魚群和小動物是遊戲場景，不是即時氣象或定位資料。參考音和節拍器優先用 AudioWorklet，無法啟動時使用相容音訊路徑。
+
+紀錄只保存在此瀏覽器的 `cello-town-rpg-v1`，不登入、不錄音、不上傳。開發模式的「清空所有紀錄」確認後不可復原，會清除花朵、手札、筆記、任務進度和計時，保留音量與速度。
+
+## 3D：試造型和試走
+
+固定斜視角的房間，提供臉型／神情、髮型、膚色、衣服和配件預設。可用鍵盤或觸控移動，造型儲存在獨立的 `cello-town-3d-avatar-v1`。預設使用 WebGL；無法啟用時使用同一場景的簡化 SVG 顯示。沒有完整小鎮、自由捏臉滑桿或跨裝置同步。
+
+## 本機開發
+
+2D 原始碼在 `rpg/`。從 repo 根目錄執行：
 
 ```sh
 python3 -m http.server 8080
+node --test rpg/tests/*.test.js
 ```
 
-Open `http://localhost:8080`. ES modules require HTTP rather than opening `index.html` as a local file. No install, build, CDN, external fonts, analytics, or runtime dependencies are needed. Deploy the directory unchanged to any static hosting service.
+開啟 `http://localhost:8080/rpg/`。根目錄保留早期原型；GitHub Pages 發布時使用 `rpg/` 作為首頁。3D 的相依版本、建置與測試方法見 [3D 分支說明](https://github.com/CorcovadoMing/cello-town/tree/experimental/3d/3D)。Pages 只在 `main` 發布：首頁與 `/rpg/` 使用相同 2D 來源，`/3D/` 則使用已審查且鎖定的分支提交。
 
-## Three real interactions
+## 著作權
 
-1. **Listen:** Play a synthesized D-major example, tuned to A4 = 440 Hz. The confirmation unlocks when all eight notes finish. These are reference tones, not cello recordings.
-2. **Follow a beat:** Adjustable 40–160 BPM metronome with a four-beat visual pulse and accented first beat. User confirms they actually practiced.
-3. **Try without cues:** Note names are hidden, can be revealed whenever helpful, and the metronome remains available. User confirms the attempt; the app does not claim pitch accuracy or mastery.
-
-Completing all three distinct tasks plants one flower and snapshots the current date, BPM, and practice note. Repeated confirmation cannot generate duplicate flowers. Replay resets only the current checklist, preserving all completed history, flowers, settings, and the current note. Partial checklist reset asks for confirmation. There is no destructive history-delete control. The history panel displays the latest ten sessions; older sessions remain stored.
-
-## Persistence and privacy
-
-State is versioned in `localStorage` under `cello-town-v1`. Notes are plain text, capped at 2,000 characters. Progress is local to this browser and origin; there is no cross-device sync or backend. Clearing browser/site data removes progress. Storage failures produce a visible warning. Unknown data versions fall back to a fresh state. Audio starts only after an explicit tap/click and stops when the page is hidden. This repository is a standalone MVP, not a live integration with the existing daily-key-practice website. Scale reference and metronome functionality are implemented locally; no existing user records are copied.
-
-## Accessibility and layout
-
-Semantic buttons/labels, keyboard activation, clear focus rings, live status messages, large touch controls, reduced-motion support, responsive single-column phone/tablet layout, and descriptive room illustration. Room actions are duplicated as conventional mission buttons, so the illustration is not required to navigate. Hidden cue text is also hidden from screen readers.
-
-## Tests
-
-```sh
-npm test
-node --check app.js
-```
-
-Uses Node's built-in test runner, no packages. Tests cover D-major notes, distinct mission completion, duplicate flower prevention, non-destructive replay, note snapshot, storage normalization, immutability, and serialization. Mock-DOM integration tests also verify separate selection/completion controls, gesture-triggered audio, demo completion unlock, background audio stop, and storage-failure fallback. These tests do **not** establish real-device audio compatibility or musical assessment accuracy.
-
-### Manual acceptance checks
-
-- On a phone/iPad, tap each room hotspot and each mission button; keyboard Tab/Enter reaches equivalent controls.
-- Play the demo to the end. Confirm that all eight pitches highlight in turn and the completion button unlocks. Interrupt early: it should not unlock on the first attempt.
-- Start/stop metronome, adjust BPM and volume. Switch missions or background the page: sound stops, no duplicate scheduler continues.
-- Complete three tasks: exactly one flower. Reload: settings, note, checklist, flower and history remain.
-- Replay: completed history and flower remain. Finish another full session: exactly one additional flower.
-- Hide/reveal memory cues. Confirm this is self-reported practice, not an automated performance grade.
-- Check narrow portrait layout, reduced motion, keyboard focus, and browser storage-disabled warning.
-
-## Scope and next steps
-
-This first stop intentionally contains only D major. It demonstrates the practice → reflection → garden loop. Future scope may include 24 keys, shared progress with the existing practice site, teacher-created exercises, and opt-in class challenges. These are **not implemented**. No ranking based on microphone-open time, tempo, or pitch detector output is included.
-
-## GitHub Pages (when ready to publish)
-
-A workflow is included at `.github/workflows/pages.yml`. After creating a repository and uploading these files to `main`, choose **Settings → Pages → Source: GitHub Actions**. Pushing to `main` or manually running the workflow runs tests, packages only `index.html`, `styles.css`, `app.js`, and `model.js`, then publishes them. The workflow does not publish tests or notes. No GitHub repository, Pages settings, or publication was performed as part of preparing this source. Be aware that the configured workflow publishes on subsequent main-branch pushes once Pages is enabled.
-
-A separately supplied `cello-town-offline.html` bundles the same application into one file without module imports. Open it directly for an offline preview. Browser handling of local-file storage varies; a visible warning appears if saving fails. HTTP hosting is recommended for durable origin-scoped progress. Offline and hosted copies do not share progress.
+© 2026 CorcovadoMing。對本專案中權利人持有著作權的原創內容保留所有權利。公開原始碼供閱覽，不另授予使用、修改、散布或商用的權利。法律和 GitHub 平台條款既有的權利不受影響。第三方元件各依其原授權；3D 頁面的 Three.js 依 MIT 授權，部署包附其授權文字。
