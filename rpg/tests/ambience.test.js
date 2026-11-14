@@ -14,6 +14,9 @@ test('cat visibly enters bed, chases then pounces and returns without contact',(
 
 test('idle cat visibly prowls and blends continuously across every phase boundary',()=>{assert.notEqual(gardenLife(1000).cat.x,gardenLife(3000).cat.x);assert.notEqual(gardenLife(28000).cat.stride,0);for(const t of [4000,8000,14000,15500,19500,30000,34000,60000]){const a=gardenLife(t-.01).cat,b=gardenLife(t+.01).cat;assert.ok(Math.hypot(a.x-b.x,a.y-b.y)<.01);}assert.deepEqual(gardenLife(0,true),gardenLife(80000,true));assert.equal(gardenLife(80000,true).cat.stride,0);});
 
-test('cat rests in distinct seated/lying poses and reaches a paw without contact',()=>{assert.equal(gardenLife(22000).cat.sit,1);assert.equal(gardenLife(25000).cat.lie,1);assert.ok(gardenLife(25000).cat.poseScale<gardenLife(22000).cat.poseScale);assert.ok(gardenLife(14750).cat.paw>9);assert.equal(gardenLife(0,true).cat.paw,0);});
+test('cat rests in distinct seated/lying poses and reaches a paw without contact',()=>{assert.equal(gardenLife(22000).cat.sit,1);assert.equal(gardenLife(25000).cat.lie,1);assert.equal(gardenLife(25000).cat.sit,0);assert.ok(gardenLife(14750).cat.paw>9);assert.equal(gardenLife(0,true).cat.paw,0);});
 
 test('rain and drifting leaves share rightward wind',()=>{for(const kind of ['rain','breeze']){const a=townWeather(0,kind)[0],b=townWeather(100,kind)[0];assert.ok(b.x>a.x);}const a=townWeather(0,'rain')[0],b=townWeather(100,'rain')[0];assert.ok(b.y>a.y);});
+
+import {foliageWind} from '../ambience.js';
+test('wind affects selected plants with stagger, fixed roots and reduced motion',()=>{assert.equal(foliageWind(1000,1),0);assert.equal(foliageWind(1000,3,'rain',true),0);assert.notEqual(foliageWind(1000,3),foliageWind(1000,6));for(let t=0;t<300000;t+=113)for(const w of ['sun','breeze','rain']){const a=foliageWind(t,3,w);assert.ok(a>=0&&a<=1);assert.ok(Math.abs(a-foliageWind(t+1,3,w))<.001);}});

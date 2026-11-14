@@ -1,8 +1,8 @@
-import {installPullToRefreshGuard} from './scroll-guard.js?v=12';
-import {fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=12';
-import {gardenScene,weatherAt} from './garden.js?v=12';
-import {DEV_TOOLS} from './config.js?v=12';
-import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=12';
+import {installPullToRefreshGuard} from './scroll-guard.js?v=14';
+import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=14';
+import {gardenScene,weatherAt} from './garden.js?v=14';
+import {DEV_TOOLS} from './config.js?v=14';
+import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=14';
 installPullToRefreshGuard();
 let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
@@ -74,7 +74,10 @@ const freq=[146.8324,164.8138,184.9972,195.9977,220,246.9417,277.1826,293.6648];
 function tone(f,t,len,click){if(state.volume===0)return;const o=context.createOscillator(),a=context.createGain();o.type=click?'sine':'triangle';o.frequency.value=f;a.gain.setValueAtTime(0,t);a.gain.linearRampToValueAtTime(state.volume*(click?.42:.3),t+.008);a.gain.exponentialRampToValueAtTime(.0001,t+len);o.connect(a);a.connect(context.destination);voices.add(o);o.onended=()=>{voices.delete(o);o.disconnect();a.disconnect();};o.start(t);o.stop(t+len+.02);}
 async function startAudio(){if(mode){stop();return;}const gen=++generation;try{const A=window.AudioContext||window.webkitAudioContext;if(!A)throw Error();context??=new A();await context.resume();if(gen!==generation||!dlg.open)return;if(context.state!=='running')throw Error();mode=task==='listen'?'demo':'metro';step=0;next=context.currentTime+.08;$('audio').textContent='停止聲音';$('audio-status').textContent='播放中';timer=setInterval(tick,25);tick();}catch{stop();if($('audio-status'))$('audio-status').textContent='聲音未啟動，請再按播放並確認裝置音量。';}}
 function tick(){if(!mode)return;while(next<context.currentTime+.12){if(mode==='demo'&&step>=8){if(context.currentTime>=next){demoDone=true;stop();if($('audio-status'))$('audio-status').textContent='示範播放完畢。';if($('finish'))$('finish').disabled=state.steps.includes('listen');}return;}let i=step,token=generation;const m=mode;tone(m==='demo'?freq[i]:i%4===0?1000:750,next,m==='demo'?60/state.bpm*.85:.065,m!=='demo');setTimeout(()=>{if(token!==generation||!$('beat'))return;$('beat').textContent=Array.from({length:4},(_,n)=>n===i%4?'●':'○').join(' ');document.querySelectorAll('.notes span').forEach((s,n)=>s.classList.toggle('active',m==='demo'&&n===i));},Math.max(0,(next-context.currentTime)*1000));step++;next+=60/state.bpm;}}
-function rect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),w,h);}function tree(x,y,s=1){rect(x-4*s,y+18*s,9*s,28*s,'#836642');rect(x-19*s,y+5*s,38*s,27*s,'#527248');rect(x-25*s,y-10*s,50*s,29*s,'#3c6947');rect(x-18*s,y-24*s,36*s,28*s,'#54824b');rect(x-11*s,y-31*s,22*s,16*s,'#6e9355');rect(x-17*s,y-13*s,10*s,13*s,'#7b9c59');}
+function rect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),w,h);}function tree(x,y,s=1,t=0,seed=0){rect(x-4*s,y+18*s,9*s,28*s,'#836642');g.save();g.translate(x,y+24*s);g.rotate(-foliageWind(t,seed,gameWeather.key,reducedMotion.matches)*.025);if(seed%3===1)g.scale(.76,1.12);g.translate(-x,-y-24*s);
+if(seed%3===2){g.fillStyle='#3c6947';g.beginPath();g.ellipse(x,y,26*s,29*s,0,0,Math.PI*2);g.fill();g.fillStyle='#54824b';g.beginPath();g.ellipse(x-3*s,y-9*s,22*s,22*s,0,0,Math.PI*2);g.fill();g.fillStyle='#6e9355';g.beginPath();g.ellipse(x-7*s,y-19*s,11*s,9*s,-.2,0,Math.PI*2);g.fill();g.restore();return;}
+if(seed%3===0){rect(x-29*s,y-7*s,19*s,22*s,'#527248');rect(x+12*s,y-17*s,18*s,23*s,'#3c6947');}
+rect(x-19*s,y+5*s,38*s,27*s,'#527248');rect(x-25*s,y-10*s,50*s,29*s,'#3c6947');rect(x-18*s,y-24*s,36*s,28*s,'#54824b');rect(x-11*s,y-31*s,22*s,16*s,'#6e9355');rect(x-17*s,y-13*s,10*s,13*s,'#7b9c59');g.restore();}
 function flower(x,y,color='#e6bf62'){rect(x,y,2,8,'#4a7c45');rect(x-3,y-3,8,6,color);rect(x,y-4,2,8,color);rect(x,y,2,2,'#faf0ba');}
 function gardenBloom(x,y,f){
  rect(x-10,y+9,23,4,'#454e3640');rect(x,y-1,3,13,'#426747');rect(x-6,y+4,6,3,'#a4bd7c');rect(x+3,y+1,5,3,'#89a66d');
@@ -85,7 +88,7 @@ function gardenBloom(x,y,f){
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 function teacherPerson(x,y,t){
  // Same foot anchor/hitbox; height matches player while the silhouette stays slim.
- g.save();g.translate(x,y);g.scale(1.18,1.10);x=0;y=0;
+ g.save();g.translate(x,y);g.scale(1.25,1.10);x=0;y=0;
  const bob=reducedMotion.matches?0:Math.round((1+Math.sin((t+1750)/540))*.7), yy=y-bob;
  const p=(a,b,w,h,c)=>rect(x+a,yy+b,w,h,c);
  const hair='#694b43',edge='#493e43',dress='#b7809e',shade='#936681',skin='#f5cfa7';
@@ -145,12 +148,19 @@ function drawQuestMarker(t){
   }
   g.restore();
 }
-function draw(t){rect(0,0,960,560,'#98b878');for(let y=0;y<560;y+=30)for(let x=0;x<960;x+=30){if((x/30*17+y/30*31)%7<2){rect(x+8,y+9,3,5,'#86a96a');rect(x+12,y+7,2,7,'#86a96a');}}// walkways
-rect(170,298,620,72,'#d0c298');rect(428,300,72,260,'#d0c298');rect(263,235,78,85,'#d0c298');rect(620,220,75,110,'#d0c298');for(let i=0;i<20;i++){const x=190+i*29;rect(x,326+(i%3)*9,12,3,'#beae83');}for(let i=0;i<7;i++)rect(449+(i%2)*18,390+i*22,14,3,'#beae83');
+function draw(t){rect(0,0,960,560,'#98b878');for(let y=0;y<560;y+=30)for(let x=0;x<960;x+=30){if((x/30*17+y/30*31)%7<2){const wind=foliageWind(t,Math.floor(x/30)+Math.floor(y/30)*17,gameWeather.key,reducedMotion.matches);if(wind){g.strokeStyle='#86a96a';g.lineWidth=2;g.beginPath();g.moveTo(x+9,y+14);g.quadraticCurveTo(x+8,y+10,x+9+wind*3,y+8);g.moveTo(x+13,y+14);g.quadraticCurveTo(x+12,y+9,x+13+wind*4,y+6);g.stroke();}else{rect(x+8,y+9,3,5,'#86a96a');rect(x+12,y+7,2,7,'#86a96a');}}}// walkways
+rect(170,298,620,72,'#d0c298');rect(428,300,72,260,'#d0c298');rect(620,220,75,110,'#d0c298');for(let i=0;i<20;i++){const x=190+i*29;rect(x,326+(i%3)*9,12,3,'#beae83');}for(let i=0;i<7;i++)rect(449+(i%2)*18,390+i*22,14,3,'#beae83');
 // Surface detail follows existing path shapes, never modifies walkability.
-for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[263,235,78,63],[620,220,75,78]]){rect(px,py,pw,3,'#dfd3ae');rect(px,py+ph-3,pw,3,'#b5a77f');for(let i=0;i<Math.floor(pw*ph/750);i++){const gx=px+8+(i*47)%(pw-16),gy=py+8+(i*31)%(ph-16);rect(gx,gy,2+i%2,1,i%2?'#e3d5ae':'#b4a57c');}}
+for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[620,220,75,78]]){rect(px,py,pw,3,'#dfd3ae');rect(px,py+ph-3,pw,3,'#b5a77f');for(let i=0;i<Math.floor(pw*ph/750);i++){const gx=px+8+(i*47)%(pw-16),gy=py+8+(i*31)%(ph-16);rect(gx,gy,2+i%2,1,i%2?'#e3d5ae':'#b4a57c');}}
+// A softly worn teacher turnout merges into the main lane without a boxed seam.
+g.fillStyle='#c2bc90';g.beginPath();g.moveTo(259,303);g.quadraticCurveTo(278,285,275,260);g.quadraticCurveTo(275,237,300,236);g.quadraticCurveTo(326,237,327,261);g.quadraticCurveTo(325,285,345,303);g.closePath();g.fill();
+g.fillStyle='#d0c298';g.beginPath();g.moveTo(266,304);g.quadraticCurveTo(285,282,282,261);g.quadraticCurveTo(282,243,301,242);g.quadraticCurveTo(321,244,320,264);g.quadraticCurveTo(321,286,338,304);g.closePath();g.fill();
+for(let i=0;i<9;i++){const x=287+(i*13)%27,y=252+(i*17)%47;rect(x,y,2,1,i%2?'#dfd0a5':'#b9ac85');}
+[[273,254],[271,275],[266,290],[328,257],[331,280],[338,294]].forEach(([x,y])=>{rect(x,y,3,3,'#a7b580');rect(x+2,y+3,2,3,'#98b878');});
 // water
 rect(20,392,255,146,'#719fa1');rect(40,375,205,160,'#719fa1');rect(48,388,187,135,'#85b6ad');for(let i=0;i<7;i++){rect(55+(i*53)%160,408+i*15,26,3,'#b0cfc0');}rect(19,535,259,8,'#6f9c75');
+// Sparse bank planting stays outside the fish/ripple water clip.
+[[30,413],[253,451],[56,548],[213,549]].forEach(([x,y],i)=>{const lean=foliageWind(t,(i+1)*3,gameWeather.key,reducedMotion.matches)*3;g.strokeStyle='#65834e';g.lineWidth=2;g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x-2,y-6,x-4+lean,y-11);g.moveTo(x+3,y);g.quadraticCurveTo(x+3,y-7,x+5+lean,y-14);g.stroke();if(i%2===0)flower(x+7,y-4,'#e5d2a1');});
 drawPondLife(g,t,reducedMotion.matches,townFish);
 // An outdoor practice clearing replaces the old cabin.
 rect(578,243,154,53,'#b9c18d');rect(592,228,126,78,'#c8c799');rect(610,217,90,10,'#b9c18d');
@@ -161,7 +171,7 @@ rect(735,404,172,111,'#b7a379');rect(744,412,154,93,'#8c835c');for(let i=0;i<9;i
 // fences and foliage
 for(let x=20;x<960;x+=28){rect(x,32,6,29,'#b5aa7a');rect(x-2,38,29,5,'#c7bd8e');}
 for(let i=0;i<18;i++)flower(370+(i*71)%400,395+(i*37)%110,i%2?'#ecdb8f':'#e1a6a4');
-[[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1.6],[870,103,1.8],[930,178,1.4],[65,250,1.8],[139,279,1.2],[848,281,1.4],[919,356,1.2],[340,476,1.2],[585,495,1.3],[690,500,1]].forEach(a=>tree(...a));drawBenchLife(g,t,reducedMotion.matches);
+[[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1.6],[870,103,1.8],[930,178,1.4],[65,250,1.8],[139,279,1.2],[848,281,1.4],[919,356,1.2],[340,476,1.2],[585,495,1.3],[690,500,1]].forEach((a,i)=>tree(...a,t,i+1));drawBenchLife(g,t,reducedMotion.matches);
 // stand
 rect(650,284,7,28,'#665d43');rect(638,309,30,4,'#665d43');rect(637,269,34,22,'#705d42');rect(641,269,26,17,'#fff3cd');rect(653,269,2,16,'#d8c79d');rect(644,275,6,2,'#81906a');rect(657,278,7,2,'#81906a');
 drawGardenLife(g,t,reducedMotion.matches);
