@@ -1,15 +1,14 @@
-import {collection} from './model.js?v=20';
+import {collection} from './model.js?v=21';
 export const WEATHER=[{name:'晴光微風',key:'sun',wind:'5.5s'},{name:'柔風拂葉',key:'breeze',wind:'3.8s'},{name:'細雨潤花',key:'rain',wind:'6.5s'}];
 export function weatherAt(now=Date.now()){return WEATHER[Math.floor(now/120000)%WEATHER.length];}
 export const BED={cx:380,cy:286,rx:300,ry:66};
 export function plantPosition(slot){
- const row=Math.floor(slot/6),col=slot%6;
- // Five staggered rows inside the SAME ellipse rendered as soil below.
- const y=row===0?308:252+(row-1)*13, x=162+col*84+(row%2?18:0);
- return {x:x+(row===0?0:(row%2?18:-18)),y,scale:row===0?1.7:1.4-row*.10};
+ // One specimen per earned species: three taller back plants, three lower front plants.
+ const positions=[{x:185,y:318,scale:1.65},{x:245,y:264,scale:1.48},{x:410,y:264,scale:1.48},{x:365,y:318,scale:1.65},{x:545,y:318,scale:1.65},{x:575,y:264,scale:1.48}];
+ return {...positions[slot]};
 }
 export function insideBed(x,y){return ((x-BED.cx)/BED.rx)**2+((y-BED.cy)/BED.ry)**2<1;}
-export function gardenPlants(state){return collection(state).flatMap((f,i)=>f.earned?Array.from({length:Math.min(f.count,5)},(_,n)=>({...f,species:i,slot:n*6+i})):[]);}
+export function gardenPlants(state){return collection(state).flatMap((f,i)=>f.earned?[{...f,species:i,slot:i}]:[]);}
 // Stylized botanical references, not cultivar identification (see QA-v20.md).
 export const BOTANY=[
  {kind:'daisy',height:65,leaf:'rosette'}, {kind:'cosmos',height:92,leaf:'feathery'},

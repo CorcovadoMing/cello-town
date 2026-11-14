@@ -1,10 +1,10 @@
-import {resumeFromTap,requestPlaybackSession,clockStalled} from './audio-start.js?v=20';
-import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=20';
-import {installPullToRefreshGuard} from './scroll-guard.js?v=20';
-import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=20';
-import {gardenScene,weatherAt} from './garden.js?v=20';
-import {DEV_TOOLS} from './config.js?v=20';
-import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=20';
+import {resumeFromTap,requestPlaybackSession,clockStalled} from './audio-start.js?v=21';
+import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=21';
+import {installPullToRefreshGuard} from './scroll-guard.js?v=21';
+import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=21';
+import {gardenScene,weatherAt} from './garden.js?v=21';
+import {DEV_TOOLS} from './config.js?v=21';
+import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=21';
 installPullToRefreshGuard();
 let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
@@ -79,7 +79,7 @@ function audioFailure(message){stop();const old=context;context=null;if(old){old
 function updateWorklet(){if(audioNode)audioNode.port.postMessage({type:'settings',id:generation,bpm:state.bpm,volume:state.volume});}
 function finishDemo(){demoDone=true;stop();if($('audio-status'))$('audio-status').textContent='示範播放完畢。';if($('finish'))$('finish').disabled=state.steps.includes('listen');}
 async function prepareWorklet(ctx,gen){if(!ctx.audioWorklet||!window.AudioWorkletNode)return false;
- try{if(!workletContexts.has(ctx)){let timeout;try{await Promise.race([ctx.audioWorklet.addModule('./practice-worklet.js?v=20'),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('worklet-timeout')),2500);})]);}finally{clearTimeout(timeout);}workletContexts.add(ctx);}if(gen!==generation||!dlg.open)return false;
+ try{if(!workletContexts.has(ctx)){let timeout;try{await Promise.race([ctx.audioWorklet.addModule('./practice-worklet.js?v=21'),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('worklet-timeout')),2500);})]);}finally{clearTimeout(timeout);}workletContexts.add(ctx);}if(gen!==generation||!dlg.open)return false;
  const node=new AudioWorkletNode(ctx,'practice-processor',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[1]});audioNode=node;node.connect(ctx.destination);node.onprocessorerror=()=>{if(audioNode===node)audioFailure('聲音處理器中斷，已停止。請再按播放。');};node.port.onmessage=e=>{const m=e.data;if(m.id!==generation||audioNode!==node)return;if(m.type==='started'){clearTimeout(workletAck);if($('audio-status'))$('audio-status').textContent='AudioWorklet 已啟動播放';}if(m.type==='beat'&&$('beat')){$('beat').textContent=Array.from({length:4},(_,n)=>n===m.index%4?'●':'○').join(' ');document.querySelectorAll('.notes span').forEach((s,n)=>s.classList.toggle('active',mode==='demo'&&n===m.index));}if(m.type==='finished'&&mode==='demo')finishDemo();};return true;
  }catch{if(gen===generation&&audioNode){audioNode.disconnect();audioNode=null;}return false;}}
 async function startAudio(){if(mode){stop();return;}if(state.volume===0){$('audio-status').textContent='目前音量為 0，請先調高音量。';return;}const gen=++generation;try{const A=window.AudioContext||window.webkitAudioContext;if(!A)throw Error();if(!context||context.state==='closed')context=new A();const activeContext=context;releaseSession=requestPlaybackSession(navigator);mode='starting';$('audio').textContent='取消啟動';$('audio-status').textContent='正在啟動聲音…';await resumeFromTap(activeContext);if(gen!==generation||!dlg.open)return;if(activeContext.state!=='running')throw Error();const useWorklet=await prepareWorklet(activeContext,gen);if(gen!==generation||!dlg.open)return;mode=task==='listen'?'demo':'metro';step=0;demoUntil=0;next=activeContext.currentTime+.08;clockTime=activeContext.currentTime;clockSeen=performance.now();activeContext.onstatechange=()=>{if(context===activeContext&&(mode==='demo'||mode==='metro')&&activeContext.state!=='running')audioFailure('聲音被系統中斷，請再按播放。');};$('audio').textContent='停止聲音';$('audio-status').textContent=useWorklet?'正在啟動 AudioWorklet…':'相容模式播放（AudioWorklet 未啟用）';if(useWorklet){workletAck=setTimeout(()=>{if(gen===generation&&audioNode)audioFailure('AudioWorklet 未回應，請再按播放。');},2500);audioNode.port.postMessage({type:'start',id:gen,mode,bpm:state.bpm,volume:state.volume});}timer=setInterval(tick,25);tick();}catch{if(gen===generation)audioFailure('聲音未啟動，請再按播放；若仍無聲，請檢查裝置音量、靜音與藍牙輸出。');}}
