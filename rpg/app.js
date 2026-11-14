@@ -1,8 +1,8 @@
-import {installPullToRefreshGuard} from './scroll-guard.js?v=10';
-import {fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=10';
-import {gardenScene,weatherAt} from './garden.js?v=10';
-import {DEV_TOOLS} from './config.js?v=10';
-import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=10';
+import {installPullToRefreshGuard} from './scroll-guard.js?v=11';
+import {fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=11';
+import {gardenScene,weatherAt} from './garden.js?v=11';
+import {DEV_TOOLS} from './config.js?v=11';
+import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=11';
 installPullToRefreshGuard();
 let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
