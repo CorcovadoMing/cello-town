@@ -1,4 +1,4 @@
-import {collection} from './model.js?v=10';
+import {collection} from './model.js?v=20';
 export const WEATHER=[{name:'晴光微風',key:'sun',wind:'5.5s'},{name:'柔風拂葉',key:'breeze',wind:'3.8s'},{name:'細雨潤花',key:'rain',wind:'6.5s'}];
 export function weatherAt(now=Date.now()){return WEATHER[Math.floor(now/120000)%WEATHER.length];}
 export const BED={cx:380,cy:286,rx:300,ry:66};
@@ -6,21 +6,45 @@ export function plantPosition(slot){
  const row=Math.floor(slot/6),col=slot%6;
  // Five staggered rows inside the SAME ellipse rendered as soil below.
  const y=row===0?308:252+(row-1)*13, x=162+col*84+(row%2?18:0);
- return {x,y,scale:row===0?1.95:.88+row*.12};
+ return {x:x+(row===0?0:(row%2?18:-18)),y,scale:row===0?1.7:1.4-row*.10};
 }
 export function insideBed(x,y){return ((x-BED.cx)/BED.rx)**2+((y-BED.cy)/BED.ry)**2<1;}
 export function gardenPlants(state){return collection(state).flatMap((f,i)=>f.earned?Array.from({length:Math.min(f.count,5)},(_,n)=>({...f,species:i,slot:n*6+i})):[]);}
+// Stylized botanical references, not cultivar identification (see QA-v20.md).
+export const BOTANY=[
+ {kind:'daisy',height:65,leaf:'rosette'}, {kind:'cosmos',height:92,leaf:'feathery'},
+ {kind:'anemone',height:77,leaf:'lobed'}, {kind:'forget-me-not',height:59,leaf:'oval'},
+ {kind:'calendula',height:74,leaf:'spoon'}, {kind:'lily',height:101,leaf:'lance'}
+];
 function blossom(f){const i=f.species;
- // Plush, rounded silhouettes retain each collected flower's palette/species.
- const petals=(count,rx,ry,cy,rotate=0)=>Array.from({length:count},(_,n)=>`<g transform="rotate(${rotate+n*360/count})"><ellipse cx="0" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#petal-${i})" stroke="${f.shade}" stroke-width="1.25"/><ellipse cx="-2" cy="${cy-3}" rx="${rx*.4}" ry="${ry*.37}" fill="#fffdf3" opacity=".45"/></g>`).join('');
- const shape=i===0?petals(9,7,13,-14):i===1?petals(6,11,13,-12):i===2?petals(6,12,13,-12):i===3?petals(5,10,11,-11):i===4?petals(10,7,12,-13)+petals(7,5,9,-8,20):petals(6,8,16,-11);
- const center=i===2?'#8d739b':f.center;
- return shape+`<circle r="10" fill="${center}" stroke="${f.shade}" stroke-width="1"/><ellipse cx="-3" cy="-4" rx="5" ry="2.5" fill="#fff7d4" opacity=".45"/><g fill="#675345"><ellipse cx="-3.6" cy=".5" rx="1.1" ry="1.6"/><ellipse cx="3.6" cy=".5" rx="1.1" ry="1.6"/></g><path d="M-2 4Q0 6 2 4" fill="none" stroke="#675345" stroke-width="1" stroke-linecap="round"/><g fill="#f1a4a0" opacity=".6"><ellipse cx="-6" cy="3" rx="2" ry="1"/><ellipse cx="6" cy="3" rx="2" ry="1"/></g>`;
+ const petal=(d,n,offset=0)=>Array.from({length:n},(_,k)=>`<g transform="rotate(${offset+k*360/n})"><path d="${d}" fill="url(#petal-${i})" stroke="${f.shade}" stroke-width=".8"/><path d="M0-8Q-2-17 0-24" fill="none" stroke="#fffdf2" stroke-width=".7" opacity=".6"/></g>`).join('');
+ const dots=(n,r,c)=>Array.from({length:n},(_,k)=>`<circle cx="${Math.cos(k*2.399)*r*Math.sqrt((k+1)/n)}" cy="${Math.sin(k*2.399)*r*Math.sqrt((k+1)/n)}" r=".9" fill="${c}"/>`).join('');
+ if(i===5)return `<g transform="rotate(13)">${petal('M0 6C-8-4-19-23-10-29Q-4-30 0-24Q4-30 10-29C19-23 8-4 0 6Z',3)}${petal('M0 5Q-17-13 0-38Q17-13 0 5Z',3,60)}<path d="M0 3L-12-14M0 3L2-20M0 3L15-13" stroke="#94a063" stroke-width="1.4"/><g fill="#b8863f"><ellipse cx="-12" cy="-14" rx="3" ry="1.3" transform="rotate(30 -12 -14)"/><ellipse cx="2" cy="-20" rx="3" ry="1.3"/><ellipse cx="15" cy="-13" rx="3" ry="1.3" transform="rotate(-25 15 -13)"/></g><circle cy="3" r="3" fill="#d8c47e"/></g>`;
+ let shape,center=f.center,r=8;
+ if(i===0){shape=petal('M-2-6Q-7-21-3-28Q0-31 3-28Q7-21 2-6Z',18);r=9;}
+ if(i===1){shape=petal('M-4-4Q-18-15-12-27L-7-25L-3-29L1-26L6-29Q19-18 5-4Z',8);r=6;}
+ if(i===2){shape=petal('M-3-3Q-24-8-21-23Q-17-36-4-30Q13-34 16-23Q19-9 3-3Z',6,15);r=8;center='#4b3a65';}
+ if(i===3){shape=petal('M-2-2Q-10-6-7-12Q0-18 7-12Q10-6 2-2Z',5);r=3;}
+ if(i===4){shape=petal('M-2-5Q-8-20-3-29Q0-32 3-29Q8-20 2-5Z',19)+`<g transform="scale(.73) rotate(10)">${petal('M-2-5Q-8-20-3-29Q0-32 3-29Q8-20 2-5Z',15)}</g>`;r=7;}
+ return shape+`<circle r="${r+1}" fill="${f.shade}"/><circle r="${r}" fill="${center}"/>${dots(i===2?28:17,r-1,i===2?'#bda2d0':'#fce39d')}<ellipse cx="-2" cy="-3" rx="3" ry="1.5" fill="#fff7d4" opacity=".38"/>`;
+}
+function foliage(i){
+ const leaf=(x,y,angle,s=1)=>`<g transform="translate(${x} ${y}) rotate(${angle}) scale(${s})"><path d="M0 0Q-16-9-7-28Q10-20 0 0" fill="#658c62"/><path d="M0 0Q-5-13-7-24" fill="none" stroke="#a9c28a" stroke-width=".8"/></g>`;
+ if(i===0)return [-65,-30,15,50,85].map(a=>leaf(0,-2,a,1.1)).join('');
+ if(i===1)return [-1,1].map(dir=>`<g transform="translate(-2 -32) scale(${dir} 1)"><path d="M0 0L28-21M5-4L7-18M11-8L13-25M17-12L21-29M8-6L23-5M17-12L31-14" stroke="#668e62" stroke-width="1.5" stroke-linecap="round" fill="none"/></g>`).join('');
+ if(i===2)return [-1,1].map(d=>`<path transform="translate(0 -26) scale(${d} 1)" d="M0 0L9-14L11-6L18-22L21-13L30-16L27-7L32-3L17 0L19 6L5 4Z" fill="#698e63" stroke="#b1c990" stroke-width=".6"/>`).join('');
+ if(i===5)return [18,38,57,73].map((y,k)=>`<path d="M-2-${y}Q${k%2?28:-28}-${y+19} ${k%2?24:-24}-${y+28}Q${k%2?10:-10}-${y+18}-2-${y}Z" fill="${k%2?'#789b6c':'#597e58'}"/>`).join('');
+ return leaf(-2,-16,-50,i===3?.72:1.1)+leaf(-3,-34,65,i===3?.7:1.0)+leaf(0,-3,30,.8);
+}
+function plant(f){const h=BOTANY[f.species].height;
+ const stem=`<path d="M0 0Q-7-${h*.5} 0-${h}" fill="none" stroke="#4f7952" stroke-width="2.8"/><path d="M-1-3Q-6-${h*.5}-1-${h-2}" fill="none" stroke="#adc68d" stroke-width=".65"/>`;
+ if(f.species===3)return stem+foliage(3)+[-1,0,1].map((n)=>`<path d="M-2-27Q${n*24}-${h-4} ${n*18}-${h+5-n*9}" fill="none" stroke="#63865c" stroke-width="1.5"/><g transform="translate(${n*18} ${-h-5+n*9}) scale(.82)">${blossom(f)}</g>`).join('');
+ return stem+foliage(f.species)+`<g transform="translate(0 -${h}) rotate(${f.slot%2?9:-7})">${blossom(f)}</g>`;
 }
 export function gardenScene(state,weather=WEATHER[0]){
  const plants=gardenPlants(state), weatherSafe=WEATHER.find(w=>w.key===weather.key)||WEATHER[0];
  const gradients=collection(state).map((f,i)=>`<radialGradient id="petal-${i}" cx="35%" cy="20%"><stop stop-color="#fffaf1"/><stop offset=".4" stop-color="${f.petal}"/><stop offset="1" stop-color="${f.shade}"/></radialGradient>`).join('');
- const flowers=[...plants].sort((a,b)=>plantPosition(a.slot).y-plantPosition(b.slot).y).map(f=>{const {x,y,scale}=plantPosition(f.slot);return `<g transform="translate(${x} ${y}) scale(${scale})"><ellipse cy="1" rx="18" ry="4" fill="#443c2b" opacity=".22"/><g class="garden-stem" style="--delay:-${f.slot*.63}s"><path d="M0 0Q-7-38 0-83" fill="none" stroke="#466d45" stroke-width="3.4"/><path d="M-1-4Q-8-40-1-80" fill="none" stroke="#a6bc7c" stroke-width=".8"/><path d="M-2-25Q-35-29-27-45Q-9-43-2-25M-3-45Q23-62 27-48Q16-30-3-45" fill="#72956b"/><path d="m-3-27-20-15m20-1 24-8" fill="none" stroke="#b8c9a0" stroke-width=".8"/><g transform="translate(0 -85)">${blossom(f)}</g></g></g>`;}).join('');
+ const flowers=[...plants].sort((a,b)=>plantPosition(a.slot).y-plantPosition(b.slot).y).map(f=>{const {x,y,scale}=plantPosition(f.slot);return `<g data-species="${BOTANY[f.species].kind}" transform="translate(${x} ${y}) scale(${scale})"><ellipse cy="1" rx="18" ry="4" fill="#443c2b" opacity=".22"/><g class="garden-stem" style="--delay:-${f.slot*.63}s">${plant(f)}</g></g>`;}).join('');
  return `<div class="garden-scene weather-${weatherSafe.key}" style="--wind:${weatherSafe.wind}"><div class="garden-scene-label"><span>一方小花圃</span><small>${weatherSafe.name} · 遊戲天氣</small></div><svg viewBox="55 55 650 325" role="img" aria-label="${plants.length?'你的花圃，種著已獲得的'+collection(state).filter(f=>f.earned).map(f=>f.name).join('、'):'安靜的空花圃，等待第一朵練習獎勵'}"><defs><linearGradient id="garden-sky" x2="0" y2="1"><stop stop-color="#d6edf0"/><stop offset="1" stop-color="#fff6da"/></linearGradient><linearGradient id="garden-ground" x2="0" y2="1"><stop stop-color="#d7e4b2"/><stop offset="1" stop-color="#9fbd81"/></linearGradient><radialGradient id="garden-light"><stop stop-color="#fff9d5" stop-opacity=".95"/><stop offset="1" stop-color="#fff9d5" stop-opacity="0"/></radialGradient><linearGradient id="garden-soil" x2="0" y2="1"><stop stop-color="#756f52"/><stop offset="1" stop-color="#a09270"/></linearGradient>${gradients}</defs><rect width="760" height="410" fill="url(#garden-sky)"/><circle class="garden-sun" cx="585" cy="90" r="125" fill="url(#garden-light)"/><path d="M0 176Q130 105 250 167T510 151T760 160V410H0Z" fill="#bbd8ad"/><path d="M0 215Q150 164 330 207T760 195V410H0Z" fill="url(#garden-ground)"/><g opacity=".35" fill="#9bad85"><ellipse cx="39" cy="150" rx="46" ry="65"/><ellipse cx="742" cy="144" rx="55" ry="81"/></g><ellipse cx="380" cy="315" rx="332" ry="74" fill="#365441" opacity=".12"/>
 <ellipse cx="380" cy="298" rx="320" ry="81" fill="#9a8f72"/>
 <ellipse cx="380" cy="286" rx="320" ry="81" fill="#e0d8bd"/>
