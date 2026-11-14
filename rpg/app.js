@@ -1,8 +1,8 @@
-import {installPullToRefreshGuard} from './scroll-guard.js?v=14';
-import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=14';
-import {gardenScene,weatherAt} from './garden.js?v=14';
-import {DEV_TOOLS} from './config.js?v=14';
-import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=14';
+import {installPullToRefreshGuard} from './scroll-guard.js?v=16';
+import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=16';
+import {gardenScene,weatherAt} from './garden.js?v=16';
+import {DEV_TOOLS} from './config.js?v=16';
+import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=16';
 installPullToRefreshGuard();
 let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
@@ -152,11 +152,6 @@ function draw(t){rect(0,0,960,560,'#98b878');for(let y=0;y<560;y+=30)for(let x=0
 rect(170,298,620,72,'#d0c298');rect(428,300,72,260,'#d0c298');rect(620,220,75,110,'#d0c298');for(let i=0;i<20;i++){const x=190+i*29;rect(x,326+(i%3)*9,12,3,'#beae83');}for(let i=0;i<7;i++)rect(449+(i%2)*18,390+i*22,14,3,'#beae83');
 // Surface detail follows existing path shapes, never modifies walkability.
 for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[620,220,75,78]]){rect(px,py,pw,3,'#dfd3ae');rect(px,py+ph-3,pw,3,'#b5a77f');for(let i=0;i<Math.floor(pw*ph/750);i++){const gx=px+8+(i*47)%(pw-16),gy=py+8+(i*31)%(ph-16);rect(gx,gy,2+i%2,1,i%2?'#e3d5ae':'#b4a57c');}}
-// A softly worn teacher turnout merges into the main lane without a boxed seam.
-g.fillStyle='#c2bc90';g.beginPath();g.moveTo(259,303);g.quadraticCurveTo(278,285,275,260);g.quadraticCurveTo(275,237,300,236);g.quadraticCurveTo(326,237,327,261);g.quadraticCurveTo(325,285,345,303);g.closePath();g.fill();
-g.fillStyle='#d0c298';g.beginPath();g.moveTo(266,304);g.quadraticCurveTo(285,282,282,261);g.quadraticCurveTo(282,243,301,242);g.quadraticCurveTo(321,244,320,264);g.quadraticCurveTo(321,286,338,304);g.closePath();g.fill();
-for(let i=0;i<9;i++){const x=287+(i*13)%27,y=252+(i*17)%47;rect(x,y,2,1,i%2?'#dfd0a5':'#b9ac85');}
-[[273,254],[271,275],[266,290],[328,257],[331,280],[338,294]].forEach(([x,y])=>{rect(x,y,3,3,'#a7b580');rect(x+2,y+3,2,3,'#98b878');});
 // water
 rect(20,392,255,146,'#719fa1');rect(40,375,205,160,'#719fa1');rect(48,388,187,135,'#85b6ad');for(let i=0;i<7;i++){rect(55+(i*53)%160,408+i*15,26,3,'#b0cfc0');}rect(19,535,259,8,'#6f9c75');
 // Sparse bank planting stays outside the fish/ripple water clip.

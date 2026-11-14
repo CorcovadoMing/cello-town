@@ -20,3 +20,7 @@ test('rain and drifting leaves share rightward wind',()=>{for(const kind of ['ra
 
 import {foliageWind} from '../ambience.js';
 test('wind affects selected plants with stagger, fixed roots and reduced motion',()=>{assert.equal(foliageWind(1000,1),0);assert.equal(foliageWind(1000,3,'rain',true),0);assert.notEqual(foliageWind(1000,3),foliageWind(1000,6));for(let t=0;t<300000;t+=113)for(const w of ['sun','breeze','rain']){const a=foliageWind(t,3,w);assert.ok(a>=0&&a<=1);assert.ok(Math.abs(a-foliageWind(t+1,3,w))<.001);}});
+
+import {reactVisitor} from '../ambience.js';
+test('visitor reacts causally to nearby cat and paw, not an absent/distant threat',()=>{const v={x:820,y:420},far={x:100,y:500,paw:0},near={x:810,y:490,paw:0};assert.equal(reactVisitor(v,far).y,v.y);assert.equal(reactVisitor(v,near,0).y,v.y);assert.ok(reactVisitor(v,near).y<v.y);assert.ok(reactVisitor(v,{...near,paw:10}).y<reactVisitor(v,near).y);});
+test('reaction is continuous, finite, noncontact and search follows miss',()=>{for(let t=0;t<90000;t+=17){const a=gardenLife(t),b=gardenLife(t+.1);if(a.visitor&&b.visitor){assert.ok(Math.hypot(a.visitor.x-b.visitor.x,a.visitor.y-b.visitor.y)<.05);assert.ok(Math.hypot(a.visitor.x-a.cat.x,a.visitor.y-a.cat.y)>45);}}assert.equal(gardenLife(17000).cat.searching,true);assert.equal(gardenLife(21000).cat.searching,false);});
