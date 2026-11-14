@@ -1,10 +1,11 @@
-import {installPullToRefreshGuard} from './scroll-guard.js?v=9';
-import {drawPondLife,drawGardenLife} from './ambience.js?v=9';
-import {gardenScene,weatherAt} from './garden.js?v=9';
-import {DEV_TOOLS} from './config.js?v=9';
-import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=9';
+import {installPullToRefreshGuard} from './scroll-guard.js?v=10';
+import {fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=10';
+import {gardenScene,weatherAt} from './garden.js?v=10';
+import {DEV_TOOLS} from './config.js?v=10';
+import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=10';
 installPullToRefreshGuard();
 let gameWeather=weatherAt();
+const townFish=fishVariants(Math.floor(Math.random()*4294967296));
 const $=id=>document.getElementById(id), canvas=$('world'),g=canvas.getContext('2d'),dlg=$('dialog'),KEY='cello-town-rpg-v1';
 let state=fresh(),storeOK=true;try{const raw=localStorage.getItem(KEY);if(raw)state=normalize(JSON.parse(raw));}catch{storeOK=false;}
 const player={x:460,y:425,dir:1,walking:false};const npc={x:303,y:290},stand={x:655,y:310},garden={x:710,y:460};let keys=new Set(),target=null,last=0,near=null,task='listen',revealed=false,demoDone=false,practiced=false,context,timer,mode=null,voices=new Set(),step=0,next=0,generation=0;
@@ -82,7 +83,24 @@ function gardenBloom(x,y,f){
  rect(x-2,y-7,7,7,f.center);rect(x-2,y-7,3,3,'#fff6ca');
 }
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+function teacherPerson(x,y,t){
+ const bob=reducedMotion.matches?0:Math.round((1+Math.sin((t+1750)/540))*.7), yy=y-bob;
+ const p=(a,b,w,h,c)=>rect(x+a,yy+b,w,h,c);
+ const hair='#694b43',edge='#493e43',dress='#b7809e',shade='#936681',skin='#f5cfa7';
+ rect(x-11,y,22,5,'#294a3530');
+ p(-6,-8,4,8,skin);p(3,-8,4,8,skin);p(-7,-1,6,3,edge);p(2,-1,6,3,edge);
+ // Small puff sleeves, ivory collar, cinched waist and a scalloped A-line skirt.
+ p(-10,-25,20,8,dress);p(-12,-23,4,7,'#d39bb5');p(8,-23,4,7,'#d39bb5');
+ p(-12,-17,3,6,skin);p(9,-17,3,6,skin);p(-7,-17,14,4,shade);
+ p(-8,-13,16,5,dress);p(-10,-8,20,4,dress);p(-9,-5,5,2,'#f6dfcd');p(-2,-5,5,2,'#f6dfcd');p(5,-5,4,2,'#f6dfcd');
+ p(-5,-25,4,3,'#fff1d9');p(1,-25,4,3,'#fff1d9');p(-1,-21,2,3,'#ead292');p(-7,-15,14,2,'#e3bf97');
+ // Slim hair silhouette and tiny gold clip, not a large bow.
+ p(-7,-48,14,3,edge);p(-10,-45,20,17,hair);p(-11,-40,4,18,hair);p(7,-40,4,18,hair);
+ p(-8,-40,16,12,skin);p(-6,-28,12,3,skin);p(-8,-44,16,6,hair);p(-8,-39,5,3,hair);p(-4,-41,5,3,hair);
+ p(5,-43,3,2,'#f5d486');p(-6,-35,2,3,edge);p(4,-35,2,3,edge);p(-7,-30,3,2,'#e9a29a');p(5,-30,3,2,'#e9a29a');p(-1,-29,3,1,'#ac7770');
+}
 function person(x,y,t,{teacher=false,walking=false,dir=1}={}){
+  if(teacher){teacherPerson(x,y,t);return;}
   const outline='#3d3938', skin=teacher?'#f2c28d':'#f4c998';
   const hair=teacher?'#694b43':'#543b42', coat=teacher?'#ad7890':'#4a8f83';
   const shade=teacher?'#855c78':'#366c65', accent=teacher?'#edd38e':'#f4cb67';
@@ -128,7 +146,7 @@ function draw(t){rect(0,0,960,560,'#98b878');for(let y=0;y<560;y+=30)for(let x=0
 rect(170,298,620,72,'#d0c298');rect(428,300,72,260,'#d0c298');rect(263,235,78,85,'#d0c298');rect(620,220,75,110,'#d0c298');for(let i=0;i<20;i++){const x=190+i*29;rect(x,326+(i%3)*9,12,3,'#beae83');}for(let i=0;i<7;i++)rect(449+(i%2)*18,390+i*22,14,3,'#beae83');
 // water
 rect(20,392,255,146,'#719fa1');rect(40,375,205,160,'#719fa1');rect(48,388,187,135,'#85b6ad');for(let i=0;i<7;i++){rect(55+(i*53)%160,408+i*15,26,3,'#b0cfc0');}rect(19,535,259,8,'#6f9c75');
-drawPondLife(g,t,reducedMotion.matches);
+drawPondLife(g,t,reducedMotion.matches,townFish);
 // An outdoor practice clearing replaces the old cabin.
 rect(578,243,154,53,'#b9c18d');rect(592,228,126,78,'#c8c799');rect(610,217,90,10,'#b9c18d');
 [[592,234],[712,237],[583,269],[728,269]].forEach(([x,y],i)=>flower(x,y,i%2?'#efdaa1':'#e9a9a6'));
@@ -138,9 +156,11 @@ rect(735,404,172,111,'#b7a379');rect(744,412,154,93,'#8c835c');for(let i=0;i<9;i
 // fences and foliage
 for(let x=20;x<960;x+=28){rect(x,32,6,29,'#b5aa7a');rect(x-2,38,29,5,'#c7bd8e');}
 [[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1.6],[870,103,1.8],[930,178,1.4],[65,250,1.8],[139,279,1.2],[848,281,1.4],[919,356,1.2],[340,476,1.2],[585,495,1.3],[690,500,1]].forEach(a=>tree(...a));for(let i=0;i<18;i++)flower(370+(i*71)%400,395+(i*37)%110,i%2?'#ecdb8f':'#e1a6a4');
+drawBenchLife(g,t,reducedMotion.matches);
 // stand
 rect(650,284,7,28,'#665d43');rect(638,309,30,4,'#665d43');rect(637,269,34,22,'#705d42');rect(641,269,26,17,'#fff3cd');rect(653,269,2,16,'#d8c79d');rect(644,275,6,2,'#81906a');rect(657,278,7,2,'#81906a');
 drawGardenLife(g,t,reducedMotion.matches);
+drawTownWeather(g,t,gameWeather.key,reducedMotion.matches);
 let entities=[{y:npc.y,draw:()=>person(npc.x,npc.y,t,{teacher:true})},{y:player.y,draw:()=>person(player.x,player.y,t,player)}];entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());label('老師',npc.x,npc.y+24);drawQuestMarker(t);if(state.phase==='active'){label('來這裡練習',stand.x,stand.y-65,'#f4db91');}if(near){g.strokeStyle='#fff2c3';g.lineWidth=2;g.beginPath();g.ellipse(near==='npc'?npc.x:near==='garden'?garden.x:stand.x,near==='npc'?npc.y:near==='garden'?garden.y:stand.y,24,10,0,0,Math.PI*2);g.stroke();}}
 function blocked(x,y){return x<30||x>930||y<130||y>542||(x<275&&y>380)||(x>730&&x<910&&y>395)||(x>174&&x<330&&y>170&&y<240);}
 function update(dt){if(dlg.open){player.walking=false;return;}let dx=(keys.has('right')?1:0)-(keys.has('left')?1:0),dy=(keys.has('down')?1:0)-(keys.has('up')?1:0);if(!dx&&!dy&&target){const d=Math.hypot(target.x-player.x,target.y-player.y);if(d<5){target=null;}else{dx=(target.x-player.x)/d;dy=(target.y-player.y)/d;}}if(dx&&dy&&!target){dx/=Math.SQRT2;dy/=Math.SQRT2;}const speed=150*dt;let moved=false;if(!blocked(player.x+dx*speed,player.y)){player.x+=dx*speed;moved||=!!dx;}if(!blocked(player.x,player.y+dy*speed)){player.y+=dy*speed;moved||=!!dy;}player.walking=moved;if(dx)player.dir=dx>0?1:-1;near=Math.hypot(player.x-npc.x,player.y-npc.y)<65?'npc':Math.hypot(player.x-stand.x,player.y-stand.y)<65?'stand':Math.hypot(player.x-garden.x,player.y-garden.y)<55?'garden':null;$('interact').disabled=!near;$('interact').innerHTML=(near==='stand'?'練習':near==='garden'?'賞花':'交談')+' <span>E</span>';$('location').textContent=near==='npc'?'老師身旁':near==='stand'?'戶外譜架前':near==='garden'?'花園入口':'晨光小徑';}
