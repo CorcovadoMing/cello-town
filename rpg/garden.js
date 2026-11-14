@@ -1,4 +1,4 @@
-import {collection} from './model.js?v=21';
+import {collection} from './model.js?v=23';
 export const WEATHER=[{name:'晴光微風',key:'sun',wind:'5.5s'},{name:'柔風拂葉',key:'breeze',wind:'3.8s'},{name:'細雨潤花',key:'rain',wind:'6.5s'}];
 export function weatherAt(now=Date.now()){return WEATHER[Math.floor(now/120000)%WEATHER.length];}
 export const BED={cx:380,cy:286,rx:300,ry:66};
@@ -54,4 +54,10 @@ ${Array.from({length:18},(_,n)=>{const a=n*Math.PI/17;return `<path d="M${380+30
 <path d="M74 293Q380 426 686 293" fill="none" stroke="#f0e8ce" stroke-width="3" opacity=".65"/>
 <g transform="translate(650 204)" aria-hidden="true"><ellipse cx="0" cy="18" rx="20" ry="4" fill="#4b6b4b" opacity=".12"/><ellipse cx="0" cy="6" rx="15" ry="12" fill="#e9e4d4"/><circle cx="-9" cy="0" r="10" fill="#f4f0e3"/><ellipse cx="-15" cy="-15" rx="4" ry="12" fill="#f4f0e3" transform="rotate(-12 -15 -15)"/><ellipse cx="-6" cy="-16" rx="4" ry="12" fill="#f4f0e3"/><path d="M-15-22v12M-6-24v13" stroke="#d8b7ac" stroke-width="2" stroke-linecap="round"/><circle cx="-12" cy="-1" r="1.5" fill="#655d53"/><circle cx="14" cy="5" r="5" fill="#f6f2e8"/></g>
 ${flowers}<g class="garden-butterfly" aria-hidden="true"><g transform="translate(620 95)"><path d="M0 0C-25-21-28 11-2 8C-18 25 8 27 2 6C27 17 28-14 2 0" fill="#f2c98b" stroke="#cb9f6e" stroke-width="1"/><path d="M0-3v14m0-11-3-5m3 5 3-5" stroke="#887252" fill="none" stroke-width="1.3"/></g></g><g class="garden-rain" stroke="#f8fcff" stroke-width="1" opacity=".55">${Array.from({length:28},(_,n)=>`<path d="m${n*29} ${n*43%320} 5 16"/>`).join('')}</g>${!plants.length?'<text x="380" y="290" text-anchor="middle" fill="#f5f1df" font-size="16" font-family="sans-serif">讓下一次練習，在這裡開花。</text>':''}</svg><p>慢慢練，也慢慢長大。${plants.length?'每一種花，都來自你已交付的練習。收藏數量完整保留。':'交付第一輪任務後，這裡就會迎來第一朵花。'}</p></div>`;
+}
+
+// Town and close-up share the same one-per-earned-species selection.
+export function townPlantPosition(species){
+ const p=[{x:767,y:482},{x:777,y:440},{x:827,y:440},{x:817,y:482},{x:867,y:482},{x:877,y:440}];
+ return {...p[species]};
 }

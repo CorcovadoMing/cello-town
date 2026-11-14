@@ -40,3 +40,7 @@ export function completeRoundForTest(s){
  for(const step of ['listen','rhythm','memory'])next=complete(next,step);
  return turnIn(next);
 }
+
+// Explicit owner-confirmed game reset. Preferences survive; progress does not.
+export function clearRecords(s){return {...s,phase:'available',steps:[],note:'',history:[],bloomsTotal:0,roundMs:0,roundTimed:false};}
+export function clearStoredRecords(storage,key,s){const next=clearRecords(s);storage.setItem(key,JSON.stringify(next));return next;}

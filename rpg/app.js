@@ -1,10 +1,10 @@
-import {resumeFromTap,requestPlaybackSession,clockStalled} from './audio-start.js?v=21';
-import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=21';
-import {installPullToRefreshGuard} from './scroll-guard.js?v=21';
-import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=21';
-import {gardenScene,weatherAt} from './garden.js?v=21';
-import {DEV_TOOLS} from './config.js?v=21';
-import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=21';
+import {resumeFromTap,requestPlaybackSession,clockStalled} from './audio-start.js?v=23';
+import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=23';
+import {installPullToRefreshGuard} from './scroll-guard.js?v=23';
+import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife} from './ambience.js?v=23';
+import {gardenScene,gardenPlants,townPlantPosition,weatherAt} from './garden.js?v=23';
+import {DEV_TOOLS} from './config.js?v=23';
+import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,clearStoredRecords,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=23';
 installPullToRefreshGuard();
 let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
@@ -69,6 +69,8 @@ function rewardPreview(){const f=FLOWERS[bloomCount(state)%FLOWERS.length];show(
 const devTools=document.querySelector('.dev-tools');
 if(DEV_TOOLS){devTools.hidden=false;
 $('preview-reward').onclick=rewardPreview;
+$('clear-records').onclick=()=>{show('<div class="eyebrow">DEVELOPMENT / TEST</div><h2>清空這台裝置的所有小鎮紀錄？</h2><p>將永久清除本瀏覽器的所有花朵、練習手札與歷史、本輪任務進度、累計計時及筆記。無法復原。</p><p>速度、音量等偏好設定會保留，不影響其他網站或弓弦網站的資料。</p><button class="secondary" id="clear-cancel">取消，保留紀錄</button><button class="primary" id="clear-confirm">確認清空所有紀錄</button><p id="clear-error" role="status"></p>');$('clear-cancel').onclick=()=>dlg.close();$('clear-confirm').onclick=()=>{practiceOpen=false;pausePracticeTimer();stop();try{state=clearStoredRecords(localStorage,KEY,state);storeOK=true;}catch{storeOK=false;$('clear-error').textContent='儲存失敗，尚未清空紀錄。請確認瀏覽器允許本機儲存後再試。';return;}timerStarted=null;task='listen';demoDone=false;practiced=false;revealed=false;render();dlg.close();toast('所有小鎮練習紀錄已清空，速度與音量設定保留。');};};
+
 $('test-complete').onclick=()=>{pausePracticeTimer();if(state.phase==='done'){toast('本輪已交付，不重複領花。');return;}state=completeRoundForTest(state);save();toast('測試：本輪已完成，新增一朵花及一筆手札；沒有虛構練習時間。');};
 $('reset-round').onclick=()=>{show('<div class="eyebrow">DEVELOPMENT / TEST</div><h2>重設本輪任務？</h2><p>只清除本輪的接取、三項練習進度及計時，回到可接任務狀態。已獲得的花、歷史手札、筆記和音量／速度設定全部保留。</p><button class="secondary" id="reset-cancel">取消</button><button class="primary" id="reset-confirm">確認重設本輪</button>');$('reset-cancel').onclick=()=>dlg.close();$('reset-confirm').onclick=()=>{pausePracticeTimer();state=resetRound(state);demoDone=false;practiced=false;revealed=false;save();dlg.close();toast('本輪已重設。花園、手札與聲音設定都保留了。');};};
 }else devTools.remove();
@@ -79,7 +81,7 @@ function audioFailure(message){stop();const old=context;context=null;if(old){old
 function updateWorklet(){if(audioNode)audioNode.port.postMessage({type:'settings',id:generation,bpm:state.bpm,volume:state.volume});}
 function finishDemo(){demoDone=true;stop();if($('audio-status'))$('audio-status').textContent='示範播放完畢。';if($('finish'))$('finish').disabled=state.steps.includes('listen');}
 async function prepareWorklet(ctx,gen){if(!ctx.audioWorklet||!window.AudioWorkletNode)return false;
- try{if(!workletContexts.has(ctx)){let timeout;try{await Promise.race([ctx.audioWorklet.addModule('./practice-worklet.js?v=21'),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('worklet-timeout')),2500);})]);}finally{clearTimeout(timeout);}workletContexts.add(ctx);}if(gen!==generation||!dlg.open)return false;
+ try{if(!workletContexts.has(ctx)){let timeout;try{await Promise.race([ctx.audioWorklet.addModule('./practice-worklet.js?v=23'),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('worklet-timeout')),2500);})]);}finally{clearTimeout(timeout);}workletContexts.add(ctx);}if(gen!==generation||!dlg.open)return false;
  const node=new AudioWorkletNode(ctx,'practice-processor',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[1]});audioNode=node;node.connect(ctx.destination);node.onprocessorerror=()=>{if(audioNode===node)audioFailure('聲音處理器中斷，已停止。請再按播放。');};node.port.onmessage=e=>{const m=e.data;if(m.id!==generation||audioNode!==node)return;if(m.type==='started'){clearTimeout(workletAck);if($('audio-status'))$('audio-status').textContent='AudioWorklet 已啟動播放';}if(m.type==='beat'&&$('beat')){$('beat').textContent=Array.from({length:4},(_,n)=>n===m.index%4?'●':'○').join(' ');document.querySelectorAll('.notes span').forEach((s,n)=>s.classList.toggle('active',mode==='demo'&&n===m.index));}if(m.type==='finished'&&mode==='demo')finishDemo();};return true;
  }catch{if(gen===generation&&audioNode){audioNode.disconnect();audioNode=null;}return false;}}
 async function startAudio(){if(mode){stop();return;}if(state.volume===0){$('audio-status').textContent='目前音量為 0，請先調高音量。';return;}const gen=++generation;try{const A=window.AudioContext||window.webkitAudioContext;if(!A)throw Error();if(!context||context.state==='closed')context=new A();const activeContext=context;releaseSession=requestPlaybackSession(navigator);mode='starting';$('audio').textContent='取消啟動';$('audio-status').textContent='正在啟動聲音…';await resumeFromTap(activeContext);if(gen!==generation||!dlg.open)return;if(activeContext.state!=='running')throw Error();const useWorklet=await prepareWorklet(activeContext,gen);if(gen!==generation||!dlg.open)return;mode=task==='listen'?'demo':'metro';step=0;demoUntil=0;next=activeContext.currentTime+.08;clockTime=activeContext.currentTime;clockSeen=performance.now();activeContext.onstatechange=()=>{if(context===activeContext&&(mode==='demo'||mode==='metro')&&activeContext.state!=='running')audioFailure('聲音被系統中斷，請再按播放。');};$('audio').textContent='停止聲音';$('audio-status').textContent=useWorklet?'正在啟動 AudioWorklet…':'相容模式播放（AudioWorklet 未啟用）';if(useWorklet){workletAck=setTimeout(()=>{if(gen===generation&&audioNode)audioFailure('AudioWorklet 未回應，請再按播放。');},2500);audioNode.port.postMessage({type:'start',id:gen,mode,bpm:state.bpm,volume:state.volume});}timer=setInterval(tick,25);tick();}catch{if(gen===generation)audioFailure('聲音未啟動，請再按播放；若仍無聲，請檢查裝置音量、靜音與藍牙輸出。');}}
@@ -172,10 +174,13 @@ rect(578,243,154,53,'#b9c18d');rect(592,228,126,78,'#c8c799');rect(610,217,90,10
 [[592,234],[712,237],[583,269],[728,269]].forEach(([x,y],i)=>flower(x,y,i%2?'#efdaa1':'#e9a9a6'));
 // bench and garden
 rect(180,176,145,9,'#a78c62');rect(180,192,145,9,'#a78c62');rect(187,174,6,47,'#776748');rect(309,174,6,47,'#776748');rect(176,208,153,12,'#b69b6c');rect(190,218,6,20,'#776748');rect(307,218,6,20,'#776748');
-rect(735,404,172,111,'#b7a379');rect(744,412,154,93,'#8c835c');for(let i=0;i<9;i++){const x=767+i%3*50,y=435+Math.floor(i/3)*28;rect(x-8,y+5,19,5,'#6f704b');if(i<bloomCount(state))gardenBloom(x,y,FLOWERS[i%FLOWERS.length]);else{rect(x,y,2,8,'#759651');rect(x-3,y+2,4,3,'#96af6b');}}label('你的花園',820,391);
+rect(735,404,172,111,'#b7a379');rect(744,412,154,93,'#8c835c');for(const f of gardenPlants(state)){const {x,y}=townPlantPosition(f.species);rect(x-8,y+5,19,5,'#6f704b');gardenBloom(x,y,f);}label('你的花園',820,391);
 // fences and foliage
 for(let x=20;x<960;x+=28){rect(x,32,6,29,'#b5aa7a');rect(x-2,38,29,5,'#c7bd8e');}
-for(let i=0;i<18;i++)flower(370+(i*71)%400,395+(i*37)%110,i%2?'#ecdb8f':'#e1a6a4');
+for(let i=0;i<18;i++){const x=370+(i*71)%400,y=395+(i*37)%110;
+ // Keep decorative wildflowers outside the player's flowerbed.
+ if(x+5>=735&&x-3<=907&&y+8>=404&&y-4<=515)continue;
+ flower(x,y,i%2?'#ecdb8f':'#e1a6a4');}
 [[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1.6],[870,103,1.8],[930,178,1.4],[65,250,1.8],[139,279,1.2],[848,281,1.4],[919,356,1.2],[340,476,1.2],[585,495,1.3],[690,500,1]].forEach((a,i)=>tree(...a,t,i+1));drawBenchLife(g,t,reducedMotion.matches);
 // stand
 rect(650,284,7,28,'#665d43');rect(638,309,30,4,'#665d43');rect(637,269,34,22,'#705d42');rect(641,269,26,17,'#fff3cd');rect(653,269,2,16,'#d8c79d');rect(644,275,6,2,'#81906a');rect(657,278,7,2,'#81906a');
