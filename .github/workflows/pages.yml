@@ -22,9 +22,10 @@ jobs:
           find rpg -maxdepth 1 -name '*.js' -exec node --check '{}' ';'
       - run: |
           mkdir -p _site/rpg
-          cp index.html styles.css app.js model.js _site/
           find rpg -maxdepth 1 -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' \) -exec cp '{}' _site/rpg/ ';'
-          test -s _site/rpg/index.html
+          cp _site/rpg/* _site/
+          test -s _site/index.html
+          cmp _site/index.html _site/rpg/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

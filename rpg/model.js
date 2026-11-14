@@ -31,3 +31,12 @@ function validMs(value){return Number.isFinite(value)&&value>=0?Math.min(value,N
 export function addElapsed(s,deltaMs){return ['active','ready'].includes(s.phase)&&Number.isFinite(deltaMs)&&deltaMs>0?{...s,roundTimed:true,roundMs:validMs(validMs(s.roundMs)+deltaMs)}:s;}
 export function formatElapsed(seconds){const n=Number.isFinite(seconds)&&seconds>=0?Math.floor(seconds):0;return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');}
 export function historyDuration(h){return Number.isFinite(h.elapsedSeconds)&&h.elapsedSeconds>=0?formatElapsed(h.elapsedSeconds):'未記錄時長';}
+
+
+// Explicit development shortcut. Same transitions/reward rules, no fabricated time.
+export function completeRoundForTest(s){
+ if(s.phase==='done')return s;
+ let next=s.phase==='available'?accept(s):s;
+ for(const step of ['listen','rhythm','memory'])next=complete(next,step);
+ return turnIn(next);
+}

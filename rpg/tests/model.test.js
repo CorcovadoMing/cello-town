@@ -40,3 +40,7 @@ test('turn-in saves elapsed seconds once; old logs remain unknown',()=>{let s=ac
 test('timer formatting and backward compatible malformed duration handling',()=>{assert.equal(normalize({version:1}).roundMs,0);assert.equal(normalize({...fresh(),roundMs:-5}).roundMs,0);assert.equal(normalize({...fresh(),roundMs:Infinity}).roundMs,0);assert.equal(formatElapsed(3601),'60:01');assert.equal(formatElapsed(0),'00:00');});
 
 test('untimed new practice stays unknown while measured subsecond rounds may show zero',()=>{let s=accept(fresh());for(const step of ['listen','rhythm','memory'])s=complete(s,step);assert.equal(historyDuration(turnIn(s).history[0]),'未記錄時長');assert.equal(historyDuration(turnIn(addElapsed(s,400)).history[0]),'00:00');assert.equal(resetRound(addElapsed(s,400)).roundTimed,false);});
+
+
+import {completeRoundForTest} from '../model.js';
+test('development shortcut follows normal turn-in once without invented time',()=>{const a=completeRoundForTest(fresh());assert.equal(a.phase,'done');assert.equal(a.history.length,1);assert.equal(a.history[0].elapsedSeconds,undefined);assert.strictEqual(completeRoundForTest(a),a);const b=completeRoundForTest({...fresh(),roundMs:32100,roundTimed:true});assert.equal(b.history[0].elapsedSeconds,32);});
