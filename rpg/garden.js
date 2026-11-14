@@ -1,4 +1,4 @@
-import {collection} from './model.js?v=8';
+import {collection} from './model.js?v=9';
 export const WEATHER=[{name:'晴光微風',key:'sun',wind:'5.5s'},{name:'柔風拂葉',key:'breeze',wind:'3.8s'},{name:'細雨潤花',key:'rain',wind:'6.5s'}];
 export function weatherAt(now=Date.now()){return WEATHER[Math.floor(now/120000)%WEATHER.length];}
 export const BED={cx:380,cy:286,rx:300,ry:66};

@@ -60,3 +60,5 @@
 .garden-butterfly{animation:garden-flight 12s ease-in-out infinite;opacity:.85;pointer-events:none}.rain .garden-butterfly{display:none}@keyframes garden-flight{0%,100%{transform:translate(0,0) rotate(0deg)}30%{transform:translate(-42px,8px) rotate(-2deg)}65%{transform:translate(-20px,-14px) rotate(2deg)}}@media(prefers-reduced-motion:reduce){.garden-butterfly{animation:none!important}}
 @media(max-width:1200px),(max-width:1400px) and (any-pointer:coarse){main{grid-template-columns:minmax(0,1fr);padding:22px;gap:22px}aside{max-width:none}.touch-controls{display:flex}}
 .release-badge{position:fixed;right:10px;bottom:7px;z-index:2;font:10px/1.5 ui-monospace,monospace;letter-spacing:.04em;color:#617764;background:#f8f5ebe8;border:1px solid #d6dfcf;border-radius:5px;padding:3px 7px;pointer-events:none}
+
+html{overscroll-behavior-y:none}
