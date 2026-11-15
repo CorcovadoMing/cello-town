@@ -2,7 +2,7 @@
 // Narrowed beside the new lounge; no entry action, navigation or saved data here.
 export const MUSIC_ROOM=Object.freeze({x:580,y:126,w:196,h:113,depth:239});
 const ROOF_BANDS=[[560,114,236,12,'#526c5b'],[572,100,211,14,'#62806a'],[587,86,181,14,'#759175'],[603,73,150,13,'#89a17f'],[620,62,116,11,'#9db18c'],[618,60,120,3,'#c0c69b']];
-export function musicRoomRainCanopy(){const columns=new Float32Array(236);columns.fill(Infinity);for(const[x,y,w]of ROOF_BANDS)for(let k=x;k<x+w;k++)columns[k-560]=Math.min(columns[k-560],y);for(let x=714;x<745;x++)columns[x-560]=40;return {kind:'roof',left:560,columns};}
+export function musicRoomRainCanopy(){const columns=new Float32Array(236);columns.fill(Infinity);for(const[x,y,w]of ROOF_BANDS)for(let k=x;k<x+w;k++)columns[k-560]=Math.min(columns[k-560],y);for(let x=714;x<745;x++)columns[x-560]=40;return {kind:'roof',left:560,columns,groundMin:126,groundMax:239};}
 export function roomBlocks(x,y){return x>=580&&x<=776&&y>=126&&y<=239;}
 const r=(g,x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h);};
 export function drawMusicRoom(g){

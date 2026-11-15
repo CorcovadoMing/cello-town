@@ -11,8 +11,23 @@ export function treeRainCanopies(trees){return trees.map(([x,y,s],i)=>{
    for(let k=Math.max(0,Math.ceil(Math.min(ax,bx)));k<Math.min(columns.length,Math.max(ax,bx));k++){const yy=ay+(by-ay)*(k-ax)/(bx-ax);columns[k]=Math.min(columns[k],top+yy);}
   }
  }
- return {kind:'tree',left,columns};
+ return {kind:'tree',left,columns,groundMin:y+46*s-30*s,groundMax:y+46*s+40};
 });}
-export const UMBRELLA_BANDS=Object.freeze([[10,-78,3],[24,-75,3],[38,-72,4],[50,-68,4],[62,-64,4],[70,-60,4]].map(Object.freeze));
-export function umbrellaPose(actor,opening=1){const facing=actor.facing||'front',shaft=(facing==='back'?-7:10)*(facing==='left'?-1:1);return {kind:'umbrella',x:actor.x+shaft,y:actor.y,opening,facing};}
-export function umbrellaTop(u,x){if(u.opening<=0)return Infinity;const dx=Math.abs(x-u.x);for(const[w,y]of UMBRELLA_BANDS)if(dx<=w*u.opening/2)return u.y+y;return Infinity;}
+// Per-kind pixel domes: broad arch for the player, petal-edged flower dome
+// for the teacher. Paint and collision consume these exact same rectangles.
+export const UMBRELLA_BANDS=Object.freeze([[24,-82,2],[42,-80,3],[54,-77,4],[64,-73,5],[70,-68,4],[72,-64,4]].map(Object.freeze));
+export const TEACHER_UMBRELLA_BANDS=Object.freeze([[20,-86,2],[36,-84,3],[50,-81,4],[60,-77,5],[66,-72,5],[68,-67,4]].map(Object.freeze));
+const freezeRects=rs=>Object.freeze(rs.map(Object.freeze));
+const playerHem=freezeRects([[-36,-60,12,2],[-24,-60,48,1],[24,-60,12,2]]);
+const teacherHem=freezeRects([-27,-13.5,0,13.5,27].flatMap(x=>[[x-6,-63,12,3],[x-4,-60,8,2]]));
+export const UMBRELLA_SHAPES=Object.freeze(Object.fromEntries([
+ ['player',UMBRELLA_BANDS,playerHem,[-1,-85,2,3]],['teacher',TEACHER_UMBRELLA_BANDS,teacherHem,[-1,-89,2,3]]
+].map(([kind,bands,hem,cap])=>[kind,Object.freeze({bands,hem,cap:Object.freeze(cap),rects:freezeRects([...bands.map(([w,y,h])=>[-w/2,y,w,h]),...hem,cap])})])));
+export function umbrellaShape(kind='player'){return UMBRELLA_SHAPES[kind==='teacher'?'teacher':'player'];}
+export function umbrellaPose(actor,opening=1){const facing=actor.facing||'front',shaft=(facing==='back'?-7:10)*(facing==='left'?-1:1);return {kind:'umbrella',canopyKind:actor.kind==='teacher'?'teacher':'player',x:actor.x+shaft,y:actor.y,opening,facing};}
+export function umbrellaTop(u,x){if(u.opening<=0)return Infinity;const dx=x-u.x;let top=Infinity;for(const[rx,y,w]of umbrellaShape(u.canopyKind).rects)if(dx>=rx*u.opening&&dx<(rx+w)*u.opening)top=Math.min(top,u.y+y);return top;}
+
+// Screen silhouettes intercept only rain in their own ground-depth band.
+// Otherwise a foreground road would falsely remain dry below a distant tree.
+export function canopyCoversGround(c,y){return y>=(c.groundMin??-Infinity)&&y<=(c.groundMax??Infinity);}
+export function umbrellaCoversGround(u,y){return y>=u.y-24&&y<=u.y+24;}

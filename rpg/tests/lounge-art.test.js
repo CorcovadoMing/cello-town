@@ -13,3 +13,13 @@ test('reading book belongs to teacher only, not an always-present table prop',()
  const g={save(){},restore(){},translate(){},fillRect(){},set fillStyle(c){this.colors.push(c)},colors:[]};drawLoungeTable(g);
  assert.ok(!g.colors.includes('#f1e3bb'));assert.ok(!g.colors.includes('#48695a'));
 });
+
+test('large table book appears only when reading and never in rain',()=>{
+ const calls=[];const g={save(){},restore(){},translate(){},fillRect(...r){calls.push([this.fillStyle,...r])}};
+ drawLoungeTable(g,{reading:true});assert.ok(calls.some(([c,x,y,w,h])=>c==='#48695a'&&w===32&&h===14));
+ calls.length=0;drawLoungeTable(g,{reading:true,rain:true});assert.ok(!calls.some(c=>c[0]==='#48695a'));
+});
+test('teacher umbrella is white-grey with a distinct round scalloped silhouette',()=>{
+ function draw(kind){const r=[];const g={save(){},restore(){},translate(){},scale(){},fillRect(...a){r.push([this.fillStyle,...a])}};drawRainUmbrella(g,{x:0,y:0,kind},1);return r;}
+ const p=draw('player'),t=draw('teacher');assert.ok(t.some(r=>r[0]==='#fffdf4'));assert.ok(!t.some(r=>['#c99ba5','#a97889','#efd9c4'].includes(r[0])));assert.notDeepEqual(p.map(r=>r.slice(1)),t.map(r=>r.slice(1)));
+});

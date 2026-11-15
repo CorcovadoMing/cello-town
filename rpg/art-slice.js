@@ -1,4 +1,4 @@
-import {treeLeaves,leafOutline} from './rain-geometry.js?v=28';
+import {treeLeaves,leafOutline} from './rain-geometry.js?v=30';
 // Private art-direction study. Original vector pixels, no image assets or filters.
 // These caches affect drawing only: world anchors and gameplay stay in app.js.
 export function createTownArt(makeCanvas,trees){
@@ -81,16 +81,40 @@ export function createTownArt(makeCanvas,trees){
   poly(g,[[bx-8*s,by-1],[bx+9*s,by-1],[bx+21*s,by+6*s],[bx+12*s,by+9*s],[bx-8*s,by+5*s]],'#637c5b40');
  }
  poly(g,[[180,220],[324,220],[340,233],[330,245],[191,245],[176,234]],'#6f805449');
- poly(g,[[633,309],[666,309],[687,319],[671,324],[640,319]],'#7a775847');
  poly(g,[[735,507],[907,507],[919,520],[911,527],[742,525]],'#6b765244');
  // Preserve the approved old road raster above all new ground decoration.
  rect(g,170,298,620,72,'#d0c298');rect(g,428,300,72,260,'#d0c298');rect(g,620,220,75,110,'#d0c298');for(let i=0;i<20;i++){const x=190+i*29;rect(g,x,326+(i%3)*9,12,3,'#beae83');}for(let i=0;i<7;i++)rect(g,449+(i%2)*18,390+i*22,14,3,'#beae83');
-// Edge light/shade belongs only on the exposed soil perimeter. The north and
-// south branches share the same soil at their mouths, not two stacked end caps.
-// Keep the approved road footprints and all original texture marks unchanged.
-for(const [x,y,w,c] of [[170,298,450,'#dfd3ae'],[695,298,95,'#dfd3ae'],
- [170,367,258,'#b5a77f'],[500,367,290,'#b5a77f'],
- [428,557,72,'#b5a77f'],[620,220,75,'#dfd3ae']])rect(g,x,y,w,3,c);
+// Feather the original soil footprint into the meadow with little stepped
+// banks. The soil core and walking bounds stay put; outlying flecks are
+// stationary edge art, never sampled as newly wet terrain.
+const banks=[
+ [170,298,620,298,0,-1],[695,298,790,298,0,-1],
+ [170,370,428,370,0,1],[500,370,790,370,0,1],
+ [170,298,170,370,-1,0],[790,298,790,370,1,0],
+ [620,220,620,298,-1,0],[695,220,695,298,1,0],
+ [620,220,695,220,0,-1],[428,370,428,560,-1,0],[500,370,500,560,1,0],
+];
+banks.forEach(([x0,y0,x1,y1,nx,ny],seed)=>{
+ const horiz=ny!==0,span=horiz?x1-x0:y1-y0;
+ for(let i=0,k=0;i<span;k++){
+  const hash=(seed*19+k*47+k*k*5)%97,w=Math.min(4+hash%8,span-i);
+  const x=x0+(horiz?i:0),y=y0+(horiz?0:i);
+  const depth=1+Math.floor((1+Math.sin(i*.105+seed*1.7))*2)+(hash%7===0?3:0);
+  const strip=(from,to,col)=>{
+   if(horiz)rect(g,x,y+(ny>0?from:-to),w,to-from,col);
+   else rect(g,x+(nx>0?from:-to),y,to-from,w,col);
+  };
+  strip(0,depth,hash%3===0?'#cbbe93':'#cec095');
+  if(hash%4!==0)strip(depth,depth+1+hash%3,hash%3===1?'#b6b58a':'#bdba8e');
+  if(hash%5===0){
+   const xx=horiz?x+Math.floor(w*.5):x+nx*(depth+3);
+   const yy=horiz?y+ny*(depth+3):y+Math.floor(w*.5);
+   rect(g,xx,yy,3,1,'#c5b98c');
+   if(hash%2===0){rect(g,xx+3,yy-3,1,3,'#819b67');rect(g,xx+4,yy-2,2,2,'#97ad74');}
+  }
+  i+=w;
+ }
+});
 // Surface detail follows existing path shapes, never modifies walkability.
 for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[620,220,75,78]]){for(let i=0;i<Math.floor(pw*ph/750);i++){const gx=px+8+(i*47)%(pw-16),gy=py+8+(i*31)%(ph-16);rect(g,gx,gy,2+i%2,1,i%2?'#e3d5ae':'#b4a57c');}}
 

@@ -1,8 +1,9 @@
 import {collection} from './model.js?v=23';
-export const WEATHER=[{name:'晴光微風',key:'sun',wind:'5.5s'},{name:'柔風拂葉',key:'breeze',wind:'3.8s'},{name:'細雨潤花',key:'rain',wind:'6.5s'}];
-// Local ambient rhythm: 3m30 sun, 2m25 breeze, 65s rain in each 7m cycle.
+export const WEATHER=[{name:'晴光微風',key:'sun',wind:'5.5s'},{name:'柔風拂葉',key:'breeze',wind:'3.8s'},{name:'雨落小鎮',key:'rain',wind:'6.5s'}];
+// Local ambient rhythm: 3m sun, 3m breeze, then 6m of rain in a 12m cycle.
 // No real-world weather, location request, or saved clock to migrate.
-export function weatherAt(now=Date.now()){const phase=((now%420000)+420000)%420000;return WEATHER[phase<210000?0:phase<355000?1:2];}
+const SUN_MS=180000,BREEZE_MS=180000,RAIN_MS=360000,CYCLE_MS=SUN_MS+BREEZE_MS+RAIN_MS;
+export function weatherAt(now=Date.now()){const phase=((now%CYCLE_MS)+CYCLE_MS)%CYCLE_MS;return WEATHER[phase<SUN_MS?0:phase<SUN_MS+BREEZE_MS?1:2];}
 export const BED={cx:380,cy:286,rx:300,ry:66};
 export function plantPosition(slot){
  // One specimen per earned species: three taller back plants, three lower front plants.

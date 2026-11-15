@@ -1,14 +1,14 @@
-import {UMBRELLA_BANDS} from './rain-geometry.js?v=28';
+import {umbrellaShape} from './rain-geometry.js?v=30';
 // Original, ephemeral 8-bit scenery. No state, route, timing or storage ownership.
-import {drawPlayer} from './avatar.js?v=28';
-import {drawTeacher} from './teacher.js?v=28';
+import {drawPlayer} from './avatar.js?v=30';
+import {drawTeacher} from './teacher.js?v=30';
 const freeze=o=>Object.freeze(o);
-export const LOUNGE_LAYOUT=freeze({table:freeze({x:510,y:218,depth:245,solid:freeze({x:478,y:214,w:64,h:31})}),seats:freeze([
- freeze({id:'left',x:460,y:232,facing:'right',approach:freeze({x:443,y:250}),solid:freeze({x:450,y:225,w:20,h:12})}),
- freeze({id:'right',x:560,y:232,facing:'left',approach:freeze({x:577,y:250}),solid:freeze({x:550,y:225,w:20,h:12})})])});
+export const LOUNGE_LAYOUT=freeze({table:freeze({x:490,y:218,depth:245,solid:freeze({x:458,y:214,w:64,h:31})}),seats:freeze([
+ freeze({id:'left',x:440,y:232,facing:'right',approach:freeze({x:423,y:250}),solid:freeze({x:430,y:225,w:20,h:12})}),
+ freeze({id:'right',x:540,y:232,facing:'left',approach:freeze({x:557,y:250}),solid:freeze({x:530,y:225,w:20,h:12})})])});
 const rect=(g,x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h);};
-export function drawLoungeTable(g,{rain=false}={}){
- g.save();g.translate(510,218);
+export function drawLoungeTable(g,{rain=false,reading=false}={}){
+ g.save();g.translate(490,218);
  // The low screen-space top and slender legs leave the meadow visible around it.
  rect(g,-32,23,67,5,'#415d3c22');rect(g,-28,11,6,16,'#78624b');rect(g,23,11,6,16,'#78624b');
  rect(g,-27,11,2,15,'#bc9d70');rect(g,24,11,2,15,'#bc9d70');
@@ -16,7 +16,13 @@ export function drawLoungeTable(g,{rain=false}={}){
  rect(g,-34,-13,68,17,'#c2a473');rect(g,-34,4,68,5,'#92734e');rect(g,-32,9,64,3,'#755f48');
  rect(g,-32,-12,64,2,'#e3ca9b');rect(g,-32,-3,64,1,'#a68b61');rect(g,-32,4,64,1,'#d1b180');
  for(const[x,y,w]of[[-26,-8,13],[-4,-7,12],[16,-9,10],[-21,0,18],[7,1,14]])rect(g,x,y,w,1,'#b19366');
- // Table stays clear. The teacher owns the single book while actually reading.
+ // The single larger book rests on the near-right tabletop only while reading.
+ if(reading&&!rain){g.save();g.translate(-12,0);
+  rect(g,-3,-14,32,14,'#48695a');rect(g,-2,-15,14,12,'#f1e3bb');rect(g,13,-14,15,11,'#e4d5ae');
+  rect(g,12,-14,1,12,'#af9875');rect(g,-1,-15,12,1,'#fff4d4');rect(g,14,-14,12,1,'#fff0cc');
+  for(const yy of[-11,-8,-5]){rect(g,1,yy,8,1,'#bca98a');rect(g,16,yy+1,8,1,'#c0aa87');}
+  rect(g,22,-2,2,4,'#b97b77');g.restore();
+ }
  g.restore();
 }
 export function drawLoungeChair(g,seat){
@@ -42,24 +48,24 @@ export function drawSeatedResident(g,{x,y,kind='player',facing='right',t=0,reduc
  rect(g,-6,-3,8,3,dark);rect(g,0,-1,3,3,teacher?'#f5cfa7':dark);rect(g,-1,2,7,2,'#493e43');
  if(teacher){rect(g,-5,-6,10,2,'#f6dfcd');rect(g,-3,-8,3,2,'#e3bf97');}
  if(teacher&&reading){
-  // A quiet open book held above the lap; no new animation or task signal.
-  rect(g,0,-17,15,9,'#48695a');rect(g,1,-18,6,8,'#f1e3bb');rect(g,8,-17,6,7,'#e4d5ae');
-  rect(g,7,-17,1,8,'#af9875');rect(g,2,-16,4,1,'#c3b18e');rect(g,9,-15,4,1,'#c3b18e');
-  rect(g,-1,-12,3,3,'#f5cfa7');rect(g,13,-11,3,3,'#f5cfa7');
+  // Hands reach toward the table; the book is drawn once on the tabletop.
+  rect(g,6,-18,9,3,'#b7809e');rect(g,13,-18,4,3,'#f5cfa7');
+  rect(g,4,-14,11,3,'#936681');rect(g,14,-14,4,3,'#f5cfa7');
  }
  g.restore();
 }
-export function drawRainUmbrella(g,{x,y,facing='front'},opening=1,stage='open'){
+export function drawRainUmbrella(g,{x,y,facing='front',kind='player'},opening=1,stage='open'){
  g.save();g.translate(x,y);if(facing==='left')g.scale(-1,1);
- const back=facing==='back',shaft=back?-7:10;
- if(stage==='prepare'){rect(g,shaft,-39,3,20,'#647d73');rect(g,shaft+1,-40,1,4,'#93aa96');g.restore();return;}
+ const back=facing==='back',shaft=back?-7:10,teacher=kind==='teacher';
+ if(stage==='prepare'){rect(g,shaft,-39,3,20,teacher?'#a5aaa6':'#647d73');rect(g,shaft+1,-40,1,4,teacher?'#f4f2e8':'#93aa96');g.restore();return;}
  if(opening<=0){g.restore();return;}
- // Eight stepped contour bands make a small cloth canopy, never a smooth dome.
- rect(g,shaft,-73,1,40,'#766b54');rect(g,shaft,-33,4,2,'#766b54');rect(g,shaft+3,-36,1,3,'#766b54');
- const palette=['#647d73','#78958a','#93aa96'];
- for(const[full,yy,h]of UMBRELLA_BANDS){const w=full*opening;
-  rect(g,shaft-w/2,yy,w,h,palette[0]);if(w>=6)rect(g,shaft-w/2+2,yy,w/2-2,h,palette[1]);const stripe=Math.min(4,w);rect(g,shaft-stripe/2,yy,stripe,h,palette[2]);
+ const shape=umbrellaShape(kind),palette=teacher?['#b9bfba','#e6e7e0','#fffdf4']:['#5c786b','#78998a','#a6baa5'];
+ rect(g,shaft,-73,1,40,teacher?'#858c86':'#766b54');rect(g,shaft,-33,4,2,teacher?'#858c86':'#766b54');rect(g,shaft+3,-36,1,3,teacher?'#858c86':'#766b54');
+ for(const[full,yy,h]of shape.bands){const w=full*opening;
+  rect(g,shaft-w/2,yy,w,h,palette[0]);if(w>=6)rect(g,shaft-w/2+2*opening,yy,w/2-2*opening,h,palette[1]);
+  const stripe=Math.min(4*opening,w);rect(g,shaft-stripe/2,yy,stripe,h,palette[2]);
+  if(teacher&&w>28*opening){for(const side of[-1,1])rect(g,shaft+side*w*.28-opening,yy,2*opening,h,'#e8eae3');}
  }
- rect(g,shaft-35*opening,-56,14*opening,2,'#536b62');rect(g,shaft-12*opening,-56,24*opening,2,'#607b6d');rect(g,shaft+21*opening,-56,14*opening,2,'#536b62');
- rect(g,shaft,-80,1,3,'#766b54');g.restore();
+ for(const[dx,yy,w,h]of shape.hem){rect(g,shaft+dx*opening,yy,w*opening,h,teacher?'#d7dbd5':'#526f62');if(teacher&&h===3)rect(g,shaft+(dx+2)*opening,yy,(w-4)*opening,2,'#f5f3eb');}
+ const[cx,cy,cw,ch]=shape.cap;rect(g,shaft+cx*opening,cy,cw*opening,ch,teacher?'#8e9690':'#637663');g.restore();
 }

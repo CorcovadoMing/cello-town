@@ -26,5 +26,5 @@ test('actual town trunk centres retain spawn and reachable interaction destinati
   const trees=art.map(([x,y,s])=>({x:x+.5*s,y:y+32*s}));
   const blocked=(x,y)=>x<30||x>930||y<130||y>542||(x<275&&y>380)||(x>730&&x<910&&y>395)||(x>174&&x<330&&y>170&&y<240);
   const n=createNavigation({trees,blocked}),spawn={x:460,y:425}; assert.ok(n.isWalkable(spawn.x,spawn.y));
-  for(const end of [{x:303,y:325},{x:655,y:345},{x:710,y:460}]) {const route=n.findPath(spawn,end); assert.ok(route,JSON.stringify(end));let prev=spawn;for(const p of route){assert.ok(n.lineClear(prev,p));prev=p;}assert.deepEqual(route.at(-1),end);assert.ok(n.findPath(end,spawn));}
+  for(const end of [{x:303,y:325},{x:615,y:432},{x:710,y:460}]) {const route=n.findPath(spawn,end); assert.ok(route,JSON.stringify(end));let prev=spawn;for(const p of route){assert.ok(n.lineClear(prev,p));prev=p;}assert.deepEqual(route.at(-1),end);assert.ok(n.findPath(end,spawn));}
 });
