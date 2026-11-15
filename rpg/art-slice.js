@@ -1,4 +1,4 @@
-import {MUSIC_ROOM_APPROACH} from './music-room-art.js?v=32';
+import {MUSIC_ROOM_APPROACH} from './music-room-art.js?v=33';
 import {treeLeaves,leafOutline} from './rain-geometry.js?v=32';
 // Private art-direction study. Original vector pixels, no image assets or filters.
 // These caches affect drawing only: world anchors and gameplay stay in app.js.
@@ -126,14 +126,16 @@ banks.forEach(([x0,y0,x1,y1,nx,ny],seed)=>{
 for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[branch.x,branch.y,branch.w,branch.h]]){for(let i=0;i<Math.floor(pw*ph/750);i++){const gx=px+8+(i*47)%(pw-16),gy=py+8+(i*31)%(ph-16);rect(g,gx,gy,2+i%2,1,i%2?'#e3d5ae':'#b4a57c');}}
 
 
- // Warm-grey threshold: two short staggered courses, not a replacement for
- // the earthen road. Its shared bounds are deliberately outside the wet-soil mask.
- const stone=MUSIC_ROOM_APPROACH.stone;
- rect(g,stone.x,stone.y,stone.w,stone.h,'#8d8e80');
- for(const[x,y,w,h]of [[0,0,31,8],[33,0,31,8],[0,10,20,8],[22,10,20,8],[44,10,20,8]]){
-  const xx=stone.x+x,yy=stone.y+y;
-  poly(g,[[xx+2,yy],[xx+w-2,yy],[xx+w,yy+2],[xx+w,yy+h-2],[xx+w-2,yy+h],[xx+2,yy+h],[xx,yy+h-2],[xx,yy+2]],y?'#b5b1a1':'#bfbaaa');
-  rect(g,xx+3,yy+1,w-6,1,'#d9d2be');rect(g,xx+2,yy+h-2,w-4,1,'#9c9d8d');
+ // Three separated cedar sleepers. The meadow shows between the planks;
+ // neither the house collision nor the wet earthen approach needs to move.
+ const {centerX,landing}=MUSIC_ROOM_APPROACH;
+ for(const [w,dy,top] of [[50,0,'#b88958'],[44,7,'#bc9060'],[40,15,'#b88958']]){
+  const x=centerX-w/2,y=landing.y+dy;
+  rect(g,x-1,y+2,w+2,4,'#58553d48');
+  rect(g,x,y,w,5,'#79583d');rect(g,x+1,y,w-2,4,top);
+  rect(g,x+2,y,w-4,1,'#d2a679');
+  rect(g,x+6,y+2,Math.floor(w*.45),1,'#a47751');
+  rect(g,x+w-12,y+3,6,1,'#966b47');
  }
 
  const sprites=trees.map((_,index)=>{

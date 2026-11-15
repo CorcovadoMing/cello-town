@@ -65,3 +65,5 @@ html{overscroll-behavior-y:none}
 
 .map-input-hint{font-size:11px;line-height:1.35;text-align:right;color:#deead8}
 @media(max-width:600px){.map-input-hint{font-size:10px}}
+
+.room-enter{border:1px solid #b8bc91;border-radius:999px;background:#fcf4d9;color:#304535;font-size:12px;padding:0 12px;min-height:32px;line-height:1;white-space:nowrap;flex-shrink:0}.room-enter[hidden]{display:none}.room-enter:hover{background:#fff9e8}.world-bottom:has(.room-enter:not([hidden])) .map-input-hint{display:none}

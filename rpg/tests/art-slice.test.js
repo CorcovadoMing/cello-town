@@ -14,7 +14,10 @@ test('main road rectangles and original small marks remain while the branch foll
  const ops=contexts[0],road=ops.findIndex(a=>a[0]==='fillRect'&&a[1]==='#d0c298');assert.ok(road>=0);
  assert.deepEqual(ops.slice(road,road+3),[['fillRect','#d0c298',170,298,620,72],['fillRect','#d0c298',428,300,72,260],['fillRect','#d0c298',MUSIC_ROOM_APPROACH.soil.x,MUSIC_ROOM_APPROACH.soil.y,MUSIC_ROOM_APPROACH.soil.w,MUSIC_ROOM_APPROACH.soil.h]]);
  assert.equal(ops.slice(road).filter(a=>a[0]==='fillRect'&&a[1]==='#beae83').length,27);
- assert.ok(ops.slice(road).some(a=>a[1]==='#bfbaaa'),'small warm-grey threshold is cached');
+ const {centerX,landing}=MUSIC_ROOM_APPROACH;
+ const wood=ops.filter(a=>['#b88958','#bc9060'].includes(a[1]));
+ assert.deepEqual(wood.map(([, ,x,y,w,h])=>[x+w/2,y-landing.y,w,h]),[[centerX,0,48,4],[centerX,7,42,4],[centerX,15,38,4]]);
+ assert.ok(!ops.some(a=>a[1]==='#bfbaaa'),'no old slate');
 });
 test('private art caches once and exposes drawing only, with finite bounded surfaces',()=>{let allocations=0;const context=new Proxy({},{get:(o,k)=>k in o?o[k]:(...args)=>{for(const x of args)if(typeof x==='number')assert.ok(Number.isFinite(x));}});const trees=[[325,87,1.4],[139,279,1.2],[585,495,1.3]],before=JSON.stringify(trees);const art=createTownArt(()=>{allocations++;return{width:0,height:0,getContext:()=>context}},trees);assert.equal(allocations,4);assert.ok(art.stats.rgbaBytes<4_000_000);for(let i=0;i<600;i++){art.drawGround(context);art.drawTree(context,325,87,1.4,i,1);art.drawBench(context);art.drawBed(context)}assert.equal(allocations,4);assert.equal(JSON.stringify(trees),before);assert.equal(art.stats.animatedArtLayers,0);assert.deepEqual(Object.keys(art).sort(),['drawBed','drawBench','drawGround','drawTree','stats']);});
 

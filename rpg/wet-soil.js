@@ -1,4 +1,4 @@
-import {MUSIC_ROOM_APPROACH} from './music-room-art.js?v=32';
+import {MUSIC_ROOM_APPROACH} from './music-room-art.js?v=33';
 // Visual moisture only. No garden/reward/store dependency; dry means no overlay.
 import {rainLandings} from './ambience.js?v=32';
 // Exact existing dry-road rectangles, followed by the exposed bed interior.

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,createDoorApproach} from '../room-door.js';
+import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from '../room-door.js';
 import {roomBlocks,MUSIC_ROOM_APPROACH} from '../music-room-art.js';
 import {createNavigation} from '../navigation.js';
 test('one fixed door URL accepts only exact single from=room, preserves other query and hash',()=>{
@@ -40,7 +40,14 @@ test('bridge writes no storage and pointer navigation is arrival-only',()=>{
  const bridge=fs.readFileSync(new URL('../room-door.js',import.meta.url),'utf8');
  assert.doesNotMatch(bridge,/localStorage|sessionStorage/);
  const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
- assert.match(app,/if\(roomDoorHit\(x,y\)\)\{walkTo\(ROOM_ENTRY,'room'\);\}/);
+ assert.match(app,/if\(roomDoorHit\(x,y\)\)\{approachRoom\(\);\}/);
+ assert.match(app,/approachRoom=\(\)=>\{if\(!dlg.open\)walkTo\(ROOM_ENTRY,'room'\);\}/);
  assert.match(app,/if\(kind==='room'\)\{enterRoom\(\);return;\}/);
  assert.match(app,/if\(enteringRoom\|\|dlg.open\)return;/);
+});
+
+test('door shortcut is local to the cottage and includes returned player',()=>{
+ assert.ok(roomDoorNearby(ROOM_ENTRY));assert.ok(roomDoorNearby(ROOM_RETURN));
+ assert.ok(roomDoorNearby({x:676,y:293}));
+ assert.ok(!roomDoorNearby({x:610,y:270}));assert.ok(!roomDoorNearby({x:676,y:310}));
 });
