@@ -51,3 +51,9 @@ test('door shortcut is local to the cottage and includes returned player',()=>{
  assert.ok(roomDoorNearby({x:676,y:293}));
  assert.ok(!roomDoorNearby({x:610,y:270}));assert.ok(!roomDoorNearby({x:676,y:310}));
 });
+
+test('touch targets extend past the door and treads without capturing surrounding grass, road or windows',()=>{
+ assert.ok(roomDoorHit(640,225));assert.ok(roomDoorHit(713,247));assert.ok(roomDoorHit(707,272));
+ assert.ok(!roomDoorHit(634,225));assert.ok(!roomDoorHit(725,195));assert.ok(!roomDoorHit(676,276));
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');assert.doesNotMatch(html,/id="room-enter"/);
+});
