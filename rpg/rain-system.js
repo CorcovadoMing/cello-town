@@ -10,7 +10,10 @@ export function firstRainHit(x,fromY,toY,groundY,canopies=[],umbrellas=[]){
 }
 export function createRainSystem({canopies=[],excludeRects=[],seed=0}={}){
  const drops=Array.from({length:RAIN_COUNT},(_,id)=>({id,phase:'rest',cycle:0,born:0,x:0,y:-24,landingX:0,landingY:0,progress:0}));
- const contacts=[],umbrellas=[],frame={drops,contacts,umbrellas,actorOpen:[0,0],actorStage:['closed','closed']};
+ const contacts=[],umbrellas=[],frame={drops,contacts,umbrellas,groundHitAt(x,y){
+  if(excludeRects.some(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h))return {x,y,kind:'excluded'};
+  return firstRainHit(x,-24,y,y,canopies,umbrellas);
+ },actorOpen:[0,0],actorStage:['closed','closed']};
  let onset=null,last=null;
  function reset(d,born){d.born=born;d.phase='rest';const n=Math.imul(d.id+1,73856093)^Math.imul(d.cycle+1,19349663)^(seed>>>0);d.landingX=22+rainHash(n)%916;d.landingY=150+rainHash(n^0x9e3779b9)%410;d.depth=d.landingY<300?0:d.landingY<400?1:2;d.fallDuration=[650,580,510][d.depth];d.length=[12,15,18][d.depth];d.width=[1,1.3,1.6][d.depth];d.opacity=[.43,.54,.66][d.depth];d.x=d.landingX;d.y=-24;d.excluded=excludeRects.some(r=>d.x>=r.x&&d.x<=r.x+r.w&&d.landingY>=r.y&&d.landingY<=r.y+r.h);}
  return {sample(time,key,actors=[],reduced=false){

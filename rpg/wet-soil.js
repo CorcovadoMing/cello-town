@@ -12,32 +12,62 @@ export function soilCell(x,y){
  const cx=Math.floor((x-r.x)/8)*8+r.x,cy=Math.floor((y-r.y)/8)*8+r.y;
  return {x:cx,y:cy,w:Math.min(8,r.x+r.w-cx),h:Math.min(8,r.y+r.h-cy),kind:r.kind};
 }
+// A landing moistens a small elliptical patch, rather than one tiny square.
+// Amounts stay continuous: 0 is dry, 3 is the previous deepest shade.
+export const WET_RATES=Object.freeze({soak:.24,dry:.10,radiusX:20,radiusY:16});
 export function createWetSoil({excludeRects=[]}={}){
- const cells=new Map();let previous=null,wasRain=false,snapshot=[];
+ const cells=new Map();let previous=null,wasRain=false,snapshot=[],snapshotAt=-Infinity,dirty=false;
+ const excluded=(x,y)=>excludeRects.some(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h);
  return {update(time,key,reduced=false,rainFrame=null){
-  const now=Math.max(0,time),rain=key==='rain';let changed=false;
-  // A paused tab or weather transition does not replay invisible past contacts.
-  if(previous!==null&&rain&&wasRain&&!reduced&&now>=previous&&now-previous<1000){
+  const now=Math.max(0,time),rain=key==='rain',elapsed=previous===null?0:Math.max(0,(now-previous)/1000);
+  const contiguous=previous!==null&&now>=previous&&now-previous<1000;
+  let changed=false;const exposure=new Map();
+  // Paused tabs cannot invent missed contacts. Drying can still catch up.
+  if(contiguous&&rain&&wasRain&&!reduced){
    const hits=rainFrame?rainFrame.contacts:rainLandings(now,false,excludeRects).filter(d=>{const hit=now-d.age+d.fallDuration-(d.age<d.fallDuration?d.cycle:0);return hit>previous&&hit<=now}).map(d=>({id:d.id,x:d.landingX,y:d.landingY}));
-   for(const d of hits){const c=soilCell(d.x,d.y);if(!c)continue;const id=c.x+','+c.y,old=cells.get(id);
-    if(old||cells.size<WET_CELL_LIMIT){const level=Math.min(3,(old?.level||0)+1);if(!old||old.level!==level)changed=true;cells.set(id,{...c,level,dryAt:now+6000+(d.id%18)*173});}
+   for(const d of hits){
+    if(!soilCell(d.x,d.y))continue;
+    const visited=new Set();
+    for(let y=d.y-WET_RATES.radiusY;y<=d.y+WET_RATES.radiusY;y+=4)for(let x=d.x-WET_RATES.radiusX;x<=d.x+WET_RATES.radiusX;x+=4){
+     const c=soilCell(x,y);if(!c)continue;const id=c.x+','+c.y;if(visited.has(id))continue;visited.add(id);
+     const cx=c.x+c.w/2,cy=c.y+c.h/2,q=((cx-d.x)/WET_RATES.radiusX)**2+((cy-d.y)/WET_RATES.radiusY)**2;
+     if(q>1||excluded(cx,cy))continue;
+     // Use exactly the same current shelter query as the visible rain.
+     if(rainFrame?.groundHitAt){
+      if(!exposure.has(id))exposure.set(id,rainFrame.groundHitAt(cx,cy)?.kind==='ground');
+      if(!exposure.get(id))continue;
+     }
+     const old=cells.get(id)||{...c,level:0,target:0};
+     if(cells.has(id)||cells.size<WET_CELL_LIMIT){
+      old.target=Math.min(3,old.target+.32+.32*(1-q));cells.set(id,old);
+     }
+    }
    }
   }
-  if(!rain&&wasRain)for(const c of cells.values())c.dryAt=now+6000+((c.x*17+c.y*13)%18)*173;
-  if(!rain)for(const[id,c]of cells){
-   if(now>=c.dryAt){changed=true;c.level=Math.max(0,c.level-1-Math.floor((now-c.dryAt)/5000));c.dryAt=now+5000;if(!c.level)cells.delete(id);}
+  for(const[id,c]of cells){
+   const old=c.level;
+   if(rain){if(contiguous&&!reduced)c.level=Math.min(c.target,c.level+elapsed*WET_RATES.soak);}
+   else {c.target=0;c.level=Math.max(0,c.level-elapsed*WET_RATES.dry);if(c.level===0)cells.delete(id);}
+   if(old!==c.level)changed=true;
   }
   previous=now;wasRain=rain;
-  if(changed)snapshot=[...cells.values()].map(({dryAt,...c})=>({...c}));return snapshot;
+  // Continuous state, sampled visually at 25 Hz. The pixel-art overlays merge
+  // equal-alpha row runs and reuse snapshots between display ticks.
+  dirty ||= changed;
+  if((dirty&&now-snapshotAt>=40)||(!cells.size&&snapshot.length)){
+   snapshot=[...cells.values()].filter(c=>c.level>0).map(({target,...c})=>({...c}));snapshotAt=now;dirty=false;
+  }
+  return snapshot;
  }};
 }
 const wetRunCache=new WeakMap();
 export function drawWetSoil(g,cells,kind=null){
- // A visual snapshot changes only when a level/cell changes. Cache row runs
- // once per snapshot/kind, not two filtered arrays and sorts on every frame.
  let cache=wetRunCache.get(cells);if(!cache){cache=new Map();wetRunCache.set(cells,cache);}const key=kind||'all';let levels=cache.get(key);
- if(!levels){levels=[[],[],[]];const ordered=cells.filter(c=>!kind||c.kind===kind).sort((a,b)=>a.y-b.y||a.x-b.x);
-  for(let level=1;level<=3;level++){let run=null;for(const c of ordered){if(c.level!==level)continue;const w=c.w??8,h=c.h??8;if(run&&run.y===c.y&&run.h===h&&run.x+run.w===c.x)run.w+=w;else{run={x:c.x,y:c.y,w,h};levels[level-1].push(run);}}}cache.set(key,levels);
+ if(!levels){
+  levels=new Map();const ordered=cells.filter(c=>!kind||c.kind===kind).sort((a,b)=>a.y-b.y||a.x-b.x);
+  for(const c of ordered){const alpha=Math.round(Math.min(3,Math.max(0,c.level))/3*.35*255);if(!alpha)continue;let runs=levels.get(alpha);if(!runs){runs=[];levels.set(alpha,runs);}const run=runs.at(-1),w=c.w??8,h=c.h??8;
+   if(run&&run.y===c.y&&run.h===h&&run.x+run.w===c.x)run.w+=w;else runs.push({x:c.x,y:c.y,w,h});
+  }cache.set(key,levels);
  }
- g.save();g.fillStyle='#493d30';for(let level=1;level<=3;level++){g.globalAlpha=[0,.14,.25,.35][level];for(const r of levels[level-1])g.fillRect(r.x,r.y,r.w,r.h);}g.restore();
+ g.save();g.fillStyle='#493d30';for(const[alpha,runs]of levels){g.globalAlpha=alpha/255;for(const r of runs)g.fillRect(r.x,r.y,r.w,r.h);}g.restore();
 }

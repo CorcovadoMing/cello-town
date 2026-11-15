@@ -1,11 +1,11 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {createWetSoil,soilCell,drawWetSoil} from '../wet-soil.js';
 import {rainLandings} from '../ambience.js';
-test('soil contacts only, three capped levels, eventual exact dry, no replay',()=>{
+test('soil contacts only, continuous capped moisture, eventual exact dry, no replay',()=>{
  const w=createWetSoil();assert.deepEqual(w.update(0,'rain'),[]);
  assert.equal(soilCell(464,459).kind,'road');assert.equal(soilCell(126,465),null);
  let cells=[];for(let t=16;t<20000;t+=16)cells=w.update(t,'rain');
- assert.equal(cells.filter(c=>c.kind==='bed').length,12);assert.equal(cells.filter(c=>c.kind==='road').length,6);assert.ok(cells.every(c=>c.level===3));
+ assert.ok(cells.filter(c=>c.kind==='bed').length>12);assert.ok(cells.filter(c=>c.kind==='road').length>6);assert.ok(cells.every(c=>c.level>0&&c.level<=3));
  assert.ok(w.update(20000,'sun').length);assert.ok(w.update(27000,'sun').some(c=>c.level<3));
  assert.deepEqual(w.update(60000,'sun'),[]);
  const paused=createWetSoil();paused.update(0,'rain');assert.deepEqual(paused.update(30000,'rain'),[]);
