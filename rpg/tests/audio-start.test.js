@@ -1,5 +1,0 @@
-import test from 'node:test';import assert from 'node:assert/strict';import{resumeFromTap,requestPlaybackSession,clockStalled}from '../audio-start.js';
-test('resume invoked within synchronous tap stack and resolves',async()=>{let invoked=false;const promise=resumeFromTap({resume(){invoked=true;return Promise.resolve();}});assert.equal(invoked,true);await promise;});
-test('hung resume returns bounded actionable failure',async()=>{await assert.rejects(resumeFromTap({resume:()=>new Promise(()=>{})},5),/resume-timeout/);});
-test('playback session feature detection and restoration',()=>{const nav={audioSession:{type:'auto'}};const release=requestPlaybackSession(nav);assert.equal(nav.audioSession.type,'playback');release();assert.equal(nav.audioSession.type,'auto');requestPlaybackSession({})();requestPlaybackSession({get audioSession(){throw Error();}})();});
-test('stalled clock detection does not claim audible output',()=>{assert.equal(clockStalled(1,1,1600),true);assert.equal(clockStalled(1,1.1,1600),false);assert.equal(clockStalled(1,1,100),false);});

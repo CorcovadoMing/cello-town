@@ -1,7 +1,7 @@
 name: Test and deploy Pages
 on:
   push:
-    branches: [main]
+    branches: [main, 3d]
   workflow_dispatch:
 permissions:
   contents: read
@@ -12,7 +12,20 @@ jobs:
   test-and-package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out 2D from main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Check out 3D from its independent branch
+        uses: actions/checkout@v4
+        with:
+          ref: 3d
+          path: .preview-3d
+          persist-credentials: false
+      - name: Record source snapshots
+        run: |
+          git rev-parse HEAD
+          git -C .preview-3d rev-parse HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -26,6 +39,20 @@ jobs:
           cp _site/rpg/* _site/
           test -s _site/index.html
           cmp _site/index.html _site/rpg/index.html
+      - name: Test and package the isolated 3D preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .preview-3d/3D
+          npm ci --ignore-scripts --no-audit --no-fund
+          node scripts/vendor-three.mjs
+          node --test tests/*.test.js
+          node --check app.js
+          cd ../..
+          mkdir -p _site/3D/vendor
+          cp .preview-3d/3D/{index.html,style.css,app.js,state.js} _site/3D/
+          cp .preview-3d/3D/vendor/{three.module.js,SVGRenderer.js,Projector.js,THREE-LICENSE.txt} _site/3D/vendor/
+          test -s _site/3D/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
