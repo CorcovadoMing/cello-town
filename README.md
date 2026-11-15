@@ -26,7 +26,7 @@ python3 -m http.server 8080
 node --test rpg/tests/*.test.js
 ```
 
-開啟 `http://localhost:8080/rpg/`。根目錄保留早期原型；GitHub Pages 發布時使用 `rpg/` 作為首頁。3D 的相依版本、建置與測試方法見 [3D 分支說明](https://github.com/CorcovadoMing/cello-town/tree/3d/3D)。程式只分兩條開發線：`main` 維護 2D，`3d` 維護 3D；任一分支推送都會重新測試並組合發布。首頁與 `/rpg/` 使用 `main` 的相同 2D 來源，`/3D/` 使用 `3d` 的 3D 來源。部署日誌記錄兩邊實際使用的提交。
+開啟 `http://localhost:8080/rpg/`。根目錄保留早期原型；GitHub Pages 發布時使用 `rpg/` 作為首頁。3D 的相依版本、建置與測試方法見 [3D 分支說明](https://github.com/CorcovadoMing/cello-town/tree/3d/3D)。程式只分兩條開發線：`main` 維護 2D，`3d` 維護 3D；任一分支推送都會重新測試及組合；只有 `main` 的執行會發布。`3d` 推送不部署，通過測試後須在 `main` 手動執行 `Test and deploy Pages` 的 `workflow_dispatch` 才發布已核准的 3D 內容。首頁與 `/rpg/` 使用 `main` 的相同 2D 來源，`/3D/` 使用 `3d` 的 3D 來源。部署日誌記錄兩邊實際使用的提交。
 
 ## 著作權
 
