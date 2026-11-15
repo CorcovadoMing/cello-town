@@ -29,3 +29,13 @@ test('same-frame overlapping drops share exposure checks and 25 Hz snapshots; al
  const alphas=[];let alpha=0;drawWetSoil({save(){},restore(){},set globalAlpha(v){alpha=v},fillRect(){alphas.push(alpha)}},[{x:0,y:0,level:.75},{x:8,y:0,level:1.5},{x:16,y:0,level:3}]);
  assert.ok(Math.abs(alphas[0]-.0875)<.004);assert.ok(Math.abs(alphas[1]-.175)<.004);assert.ok(Math.abs(alphas[2]-.35)<.004);
 });
+
+test('rain resuming early preserves existing damp soil without new hits',()=>{
+ const model=createWetSoil(),empty={contacts:[]};
+ model.update(0,'rain',false,empty);
+ model.update(80,'rain',false,{contacts:[{id:1,x:300,y:330}]});
+ const before=model.update(120,'sun',false,empty);
+ assert.ok(before.length>0);
+ const resumed=model.update(200,'rain',false,empty);
+ assert.deepEqual(resumed,before);
+});

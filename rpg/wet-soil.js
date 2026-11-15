@@ -46,7 +46,12 @@ export function createWetSoil({excludeRects=[]}={}){
   }
   for(const[id,c]of cells){
    const old=c.level;
-   if(rain){if(contiguous&&!reduced)c.level=Math.min(c.target,c.level+elapsed*WET_RATES.soak);}
+   if(rain){
+    // If rain resumes before the soil is fully dry, retain the moisture
+    // already in the ground without replaying any earlier contacts.
+    if(!wasRain)c.target=c.level;
+    if(contiguous&&!reduced)c.level=Math.min(c.target,c.level+elapsed*WET_RATES.soak);
+   }
    else {c.target=0;c.level=Math.max(0,c.level-elapsed*WET_RATES.dry);if(c.level===0)cells.delete(id);}
    if(old!==c.level)changed=true;
   }
