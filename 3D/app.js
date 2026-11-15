@@ -40,7 +40,15 @@ function rod(a,b,r,c,p=scene){const v=new T.Vector3(...b).sub(new T.Vector3(...a
 function ring(x,y,z,r,t,c,p=scene){return mesh(new T.TorusGeometry(r,t,8,24),c,x,y,z,p);}
 // Open, sunny miniature set. No imported textures or external asset requests.
 box(0,-.16,0,6.2,.3,4.9,'#c9b48e');box(0,-.015,0,6.1,.06,4.8,'#e5d2af');for(let i=-5;i<=5;i++)box(i*.55,.018,0,.012,.004,4.7,'#d2bb96');for(let j=0;j<8;j++)box((j%3-1)*1.1,.022,-2.2+j*.6,1.08,.004,.012,'#d8c19d');
-const rearWall=box(0,1.5,-2.35,6.2,3.1,.13,'#c4d1b2');if(software)rearWall.renderOrder=-20;box(-3.05,.72,0,.12,1.55,4.7,'#d7ddc2');box(0,.12,-2.24,6,.24,.1,'#e7e5cb');box(-2.96,.12,0,.1,.24,4.6,'#e7e5cb');
+// Wall-only fill retains one quarter of dark shading in linear light; floor/sun stay untouched.
+function softenWall(o){o.material=o.material.clone();o.material.onBeforeCompile=shader=>{shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>','outgoingLight = max(outgoingLight, mix(diffuseColor.rgb, outgoingLight, 0.25));\n#include <opaque_fragment>');};o.material.customProgramCacheKey=()=> 'wall-quarter-darkness-006';o.userData.wallShadeRetention=.25;return o;}
+const rearWall=softenWall(box(0,1.445,-2.35,6.2,3.21,.13,'#c4d1b2'));rearWall.name='rear-wall-grounded';if(software)rearWall.renderOrder=-20;
+const sideWall=softenWall(box(-3.05,.6675,0,.12,1.655,4.7,'#d7ddc2'));sideWall.name='side-wall-grounded';
+// Continuous skirting overlaps both walls and the floor; its lower edge reaches the plinth.
+const rearSkirting=box(0,.065,-2.245,6.12,.19,.13,'#dddcc3');rearSkirting.name='rear-wall-base';
+const sideSkirting=box(-2.955,.065,0,.13,.19,4.7,'#dddcc3');sideSkirting.name='side-wall-base';
+for(const o of[rearSkirting,sideSkirting]){o.castShadow=false;softenWall(o);}
+box(0,.025,-2.165,6.03,.025,.025,'#b8b99f').castShadow=false;box(-2.875,.025,0,.025,.025,4.65,'#b8b99f').castShadow=false;
 // Window: one local coordinate system and a shared arched aperture.
 const windowGroup=new T.Group();windowGroup.position.set(-1.25,1.1,-2.12);scene.add(windowGroup);
 const WINDOW_APERTURE={half:.76,spring:.93,outerHalf:.87,sill:.025};
@@ -51,11 +59,12 @@ const windowFrame=mesh(new T.ExtrudeGeometry(windowOuter,{depth:.08,bevelEnabled
 windowFrame.name='window-continuous-frame';windowFrame.renderOrder=7;
 function windowLayer(shape,color,z,name){const o=new T.Mesh(new T.ShapeGeometry(shape,32),new T.MeshBasicMaterial({color,side:T.DoubleSide}));o.position.z=z;o.renderOrder=1+z*100;o.name=name;windowGroup.add(o);return o;}
 windowLayer(windowAperture,'#a5cfca',0,'window-sky');
-const windowSun=new T.Shape();windowSun.absarc(-.3,1.17,.16,0,Math.PI*2);windowLayer(windowSun,'#fff1bd',.012,'window-sun');
+const windowSun=new T.Shape();windowSun.absarc(-.3,1.17,.16,0,Math.PI*2);const fixedWindowSun=windowLayer(windowSun,'#fff1bd',.05,'window-sun');
 // Both low hills remain wholly within the straight-sided bottom aperture.
 const farHill=new T.Shape();farHill.moveTo(-.76,.1);farHill.lineTo(.76,.1);farHill.lineTo(.76,.44);farHill.bezierCurveTo(.4,.65,.18,.43,-.05,.49);farHill.bezierCurveTo(-.32,.62,-.55,.4,-.76,.46);farHill.closePath();windowLayer(farHill,'#91b8a3',.02,'window-far-hill');
 const nearHill=new T.Shape();nearHill.moveTo(-.76,.1);nearHill.lineTo(.76,.1);nearHill.lineTo(.76,.25);nearHill.bezierCurveTo(.4,.39,.14,.23,-.08,.31);nearHill.bezierCurveTo(-.35,.42,-.55,.24,-.76,.3);nearHill.closePath();windowLayer(nearHill,'#7fa18c',.028,'window-near-hill');
-const cloud=new T.Shape();cloud.moveTo(.06,1.08);cloud.bezierCurveTo(.01,1.12,.07,1.2,.13,1.18);cloud.bezierCurveTo(.16,1.29,.3,1.28,.32,1.19);cloud.bezierCurveTo(.42,1.21,.47,1.09,.38,1.07);cloud.lineTo(.06,1.08);cloud.closePath();windowLayer(cloud,'#edf4df',.036,'window-cloud');
+const cloud=new T.Shape();cloud.moveTo(.06,1.08);cloud.bezierCurveTo(.01,1.12,.07,1.2,.13,1.18);cloud.bezierCurveTo(.16,1.29,.3,1.28,.32,1.19);cloud.bezierCurveTo(.42,1.21,.47,1.09,.38,1.07);cloud.lineTo(.06,1.08);cloud.closePath();const driftingWindowCloud=windowLayer(cloud,'#edf4df',.036,'window-cloud');
+function animateWindowSky(t,reduced=false){driftingWindowCloud.position.x=reduced?0:Math.sin(t*.00015)*.10;}
 // Mullions are in front of every scenery layer, joined inside the same arch.
 box(0,.895,.085,.05,1.59,.045,'#f7eed7',windowGroup).renderOrder=8;
 box(0,.88,.085,1.52,.05,.045,'#f7eed7',windowGroup).renderOrder=8;
@@ -362,12 +371,19 @@ function createNappingCat({T,mesh,ball,rod,position=[-1.4,.03,-1.75],rotation=0,
   for(const x of[-.047,0,.047])detail('cat-forehead-stripe',[[x,.111,.145],[x*.95,.084,.172],[x*.85,.059,.186]],.007,C.stripe,head);
   for(const side of[-1,1])detail('cat-paw-toes',[[side*.018-.33,.19,.40],[side*.018-.33,.174,.443]],.0035,C.patch,group,6);
   // Decorative only: never set userData.station or add raycast/navigation targets.
-  group.userData={model:'napping-cat-procedural-006',decorative:true,animatedParts:['tail-tip','left-ear'],footprint:{x:1.22*scale,z:.94*scale},placement:'under-window'};
+  group.userData={model:'napping-cat-procedural-006',decorative:true,animatedParts:['tail-tip','left-ear','upper-body-breath'],footprint:{x:1.22*scale,z:.94*scale},placement:'under-window'};
   const stats={meshes:parts.length,triangles:parts.reduce((n,p)=>n+(p.geometry.index?p.geometry.index.count:p.geometry.attributes.position.count)/3,0),sharedSphereInstances:parts.filter(p=>p.geometry===sphere).length};
   function animateCat(t,reduced=false){
     const seconds=Number.isFinite(t)?t*.001:0;
-    tailTip.rotation.y=reduced?0:Math.sin(seconds*.55)*.035;
-    leftEar.rotation.z=earRest+(reduced?0:Math.pow(Math.max(0,Math.sin(seconds*.31)),18)*.022);
+    // Unequal quiet intervals and brief damped flicks, deterministic and entirely transient.
+    const cycle=seconds%37,windows=[[4.3,1.1],[13.8,.85],[28.2,1.45]];
+    let flick=0;for(const[start,duration]of windows){const u=(cycle-start)/duration;if(u>=0&&u<=1)flick+=Math.sin(u*Math.PI)*Math.sin(u*Math.PI*3)*.17;}
+    tailTip.rotation.y=reduced?0:flick;
+    const earPhase=(seconds+3.1)%23,earPulse=earPhase>18.1&&earPhase<18.65?Math.sin((earPhase-18.1)/.55*Math.PI)*.065:0;
+    leftEar.rotation.z=earRest+(reduced?0:earPulse);
+    const breath=reduced?0:(1+Math.sin(seconds*1.28))*.5;
+    body.scale.y=.225+breath*.007;body.position.y=.285+breath*.007;
+    rump.scale.y=.205+breath*.003; rump.position.y=.27+breath*.003;
   }
   animateCat(0,true);return {group,animateCat,stats};
 }
@@ -470,5 +486,5 @@ function resize(){const w=area.clientWidth,h=area.clientHeight;renderer.setSize(
 function standY(p){return (p.x*p.x/(1.6*1.6)+(p.z-.45)**2/(1.152*1.152)<=1?.045:.02)-.05;}
 function walkPose(swing,moving){for(const[leg,theta]of[[leftLeg,swing],[rightLeg,-swing]]){leg.rotation.x=theta;const sole=.53-.39*Math.cos(theta)-.065*Math.sin(theta)-Math.sqrt((.09*Math.cos(theta))**2+(.17*Math.sin(theta))**2);leg.position.y=.53+(moving&&theta>=0?.05-sole:0);}leftArm.rotation.x=-swing*.85;rightArm.rotation.x=swing*.85;body.position.y=0;}
 function animateIdle(t,moving){const still=reduced.matches||moving,breath=still?0:Math.sin(t*.0017);head.rotation.z=still?0:Math.sin(t*.0007)*.018;head.rotation.y=still?0:Math.sin(t*.00043)*.025;head.position.y=1.49+breath*.003;leftArm.position.y=rightArm.position.y=1+breath*.004;const phase=(t%4700)/4700,blink=still?1:phase>.955?Math.max(.10,Math.abs((phase-.9775)/.0225)):1;for(const eye of blinkEyes)eye.scale.y=blink;}
-function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;tickRoomCamera(t);roomCat.animateCat(t,reduced.matches);if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(!moving&&destination){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving);animateIdle(t,!!moving);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}requestAnimationFrame(frame);
+function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;tickRoomCamera(t);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(!moving&&destination){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving);animateIdle(t,!!moving);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}requestAnimationFrame(frame);
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();release();$('scene-status').textContent='3D 畫面暫停，請重新整理恢復。';status.textContent='3D 顯示中斷，穿搭設定仍保留。請重新整理。';});
