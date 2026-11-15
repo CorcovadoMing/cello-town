@@ -57,6 +57,7 @@ jobs:
         with:
           path: _site
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: test-and-package
     runs-on: ubuntu-latest
     permissions:

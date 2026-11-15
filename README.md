@@ -4,7 +4,7 @@
 
 [3D 網址](https://corcovadoming.github.io/cello-town/3D/) · [開發、測試及相依說明](3D/README.md)
 
-`main` 與 `3d` 使用相同的部署 workflow：任一分支推送時，分別取得兩邊來源、測試後組成同一份 Pages 網站。此分支不包含 2D 程式或存檔；不另設 experimental／release 發布分支。
+`main` 與 `3d` 使用相同的部署 workflow：任一分支推送時，分別取得兩邊來源並測試、打包；只有 `main` 的執行會發布。`3d` 推送只驗證，不部署；須在 `main` 手動執行 `Test and deploy Pages` 的 `workflow_dispatch` 才發布已核准的 3D 內容。此分支不包含 2D 程式或存檔；不另設 experimental／release 發布分支。
 
 ## 著作權
 
