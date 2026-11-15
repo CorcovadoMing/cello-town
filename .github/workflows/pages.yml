@@ -34,11 +34,11 @@ jobs:
           node --test rpg/tests/*.test.js
           find rpg -maxdepth 1 -name '*.js' -exec node --check '{}' ';'
       - run: |
-          mkdir -p _site/rpg
-          find rpg -maxdepth 1 -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' \) -exec cp '{}' _site/rpg/ ';'
-          cp _site/rpg/* _site/
+          mkdir -p _site
+          find rpg -maxdepth 1 -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' \) -exec cp '{}' _site/ ';'
           test -s _site/index.html
-          cmp _site/index.html _site/rpg/index.html
+          cmp _site/index.html rpg/index.html
+          test ! -e _site/rpg
       - name: Test and package the isolated 3D preview
         shell: bash
         run: |
