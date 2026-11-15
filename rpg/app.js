@@ -1,11 +1,11 @@
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=34';
 import {createTerrainArt} from './terrain-art.js?v=32';
-import {createRainSystem} from './rain-system.js?v=32';
+import {createRainSystem} from './rain-system.js?v=34';
 import {treeRainCanopies,umbrellaPose} from './rain-geometry.js?v=32';
 import {MUSIC_ROOM,roomBlocks,drawMusicRoom,musicRoomRainCanopy} from './music-room-art.js?v=33';
 import {createLounge} from './lounge-state.js?v=32';
 import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella} from './lounge-art.js?v=32';
-import {createWetSoil,drawWetSoil} from './wet-soil.js?v=33';
+import {createWetSoil,drawWetSoil} from './wet-soil.js?v=34';
 const RAIN_EXCLUSIONS=Object.freeze([{x:410,y:175,w:160,h:95}]);
 const wetSoil=createWetSoil({excludeRects:RAIN_EXCLUSIONS});
 import {createTownArt,drawBackFence} from './art-slice.js?v=33';

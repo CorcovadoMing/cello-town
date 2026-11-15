@@ -24,4 +24,4 @@ test('avatar polish stays pixel-only, scales just four percent around soles, and
 
 test('032 changed art and ambience use new cache keys',()=>{const s=readFileSync(new URL('../app.js',import.meta.url),'utf8');assert.ok(s.includes('art-slice.js?v=33'));for(const name of ['terrain-art','teacher'])assert.ok(s.includes(name+'.js?v=32'));});
 
-test('032 weather dependency graph coherent',()=>{const s=readFileSync(new URL('../app.js',import.meta.url),'utf8');assert.ok(s.includes('wet-soil.js?v=33'));for(const name of ['ambience','lounge-state','lounge-art'])assert.ok(s.includes(name+'.js?v=32'));});
+test('032 weather dependency graph coherent',()=>{const s=readFileSync(new URL('../app.js',import.meta.url),'utf8');assert.ok(s.includes('wet-soil.js?v=34'));assert.ok(s.includes('rain-system.js?v=34'));for(const name of ['ambience','lounge-state','lounge-art'])assert.ok(s.includes(name+'.js?v=32'));});
