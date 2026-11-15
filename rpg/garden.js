@@ -1,6 +1,8 @@
 import {collection} from './model.js?v=23';
 export const WEATHER=[{name:'晴光微風',key:'sun',wind:'5.5s'},{name:'柔風拂葉',key:'breeze',wind:'3.8s'},{name:'細雨潤花',key:'rain',wind:'6.5s'}];
-export function weatherAt(now=Date.now()){return WEATHER[Math.floor(now/120000)%WEATHER.length];}
+// Local ambient rhythm: 3m30 sun, 2m25 breeze, 65s rain in each 7m cycle.
+// No real-world weather, location request, or saved clock to migrate.
+export function weatherAt(now=Date.now()){const phase=((now%420000)+420000)%420000;return WEATHER[phase<210000?0:phase<355000?1:2];}
 export const BED={cx:380,cy:286,rx:300,ry:66};
 export function plantPosition(slot){
  // One specimen per earned species: three taller back plants, three lower front plants.

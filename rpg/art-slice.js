@@ -1,3 +1,4 @@
+import {treeLeaves,leafOutline} from './rain-geometry.js?v=28';
 // Private art-direction study. Original vector pixels, no image assets or filters.
 // These caches affect drawing only: world anchors and gameplay stay in app.js.
 export function createTownArt(makeCanvas,trees){
@@ -27,6 +28,48 @@ export function createTownArt(makeCanvas,trees){
  // The old practice clearing stays at its exact station, now a soft irregular
  // material edge instead of three overlapping selection-like rectangles.
  patch(652,268,76,39,'#afbc89',3);patch(636,260,58,28,'#b6c190',5);patch(690,282,31,17,'#aebc88',1);
+ // Low, broken grass clusters leave clear resting space between groups. These
+ // are surface pixels only, baked once; no objects, collision or random shimmer.
+ const grassGroups=[[80,184],[133,217],[178,159],[253,153],[360,204],[429,214],[511,176],[549,220],[773,184],[817,236],[882,252],[78,333],[112,360],[217,271],[268,257],[390,269],[471,267],[551,284],[760,273],[817,376],[873,374],[301,395],[357,432],[391,490],[526,412],[561,451],[634,412],[671,448],[726,378],[698,534]];
+ grassGroups.forEach(([cx,cy],seed)=>{
+  const count=3+seed%3;
+  for(let i=0;i<count;i++){
+   const x=cx+(i*17+seed*7)%43-21,y=cy+(i*11+seed*3)%25-12;
+   const dark=seed%3===0?'#8ca572':'#91aa75',light=seed%2?'#b1c18d':'#adc08a';
+   rect(g,x,y,2,3,dark);rect(g,x-2,y-2-i%2,2,2+i%2,dark);
+   if((seed+i)%3!==0)rect(g,x+3,y-3,1,3,dark);
+   rect(g,x+(i%2?1:-2),y-3-i%2,1,2,light);
+  }
+ });
+ // Original pixel meadow margins inspired by the owner's pastoral moodboard,
+ // not copied assets. Irregular pockets frame water and clearings; the centre
+ // remains restful. All flowers here are scenery, outside the earned garden.
+ const meadow=[ [291,409,23,11],[303,451,20,14],[290,497,15,12],
+  [99,551,31,7],[190,553,34,6],[370,239,28,13],[499,190,24,11],
+  [532,250,25,12],[800,219,23,12],[825,385,25,9],
+  [540,466,27,12],[632,442,26,11],[389,519,18,9] ];
+ meadow.forEach(([cx,cy,rx,ry],seed)=>{
+  patch(cx,cy,rx,ry,seed%2?'#95ad72':'#8fa96c',seed+2);
+  const count=9+seed%5;
+  for(let i=0;i<count;i++){
+   const angle=i*2.399+seed*.7,r=.35+.65*((i*7+seed)%13)/13;
+   const x=Math.round(cx+Math.cos(angle)*rx*r),y=Math.round(cy+Math.sin(angle)*ry*r);
+   const h=3+(i+seed)%4,dark=seed%2?'#658a56':'#719451';
+   rect(g,x,y-h,2,h,dark);rect(g,x-2,y-h+1,2,Math.max(2,h-2),dark);
+   if(i%3!==0)rect(g,x+3,y-h-1,2,h-1,'#93b468');
+   rect(g,x,y-h,1,2,i%2?'#b2ca7b':'#bdce87');
+  }
+ });
+ // Three small wildflower pockets, never a collectible or a replacement for
+ // the existing earned flower bed. Small four-pixel petals, no new geometry.
+ [[302,443],[374,232],[638,438]].forEach(([cx,cy],seed)=>{
+  for(let i=0;i<4;i++){
+   const x=cx+(i*13+seed*5)%29-14,y=cy+(i*7)%13-6;
+   rect(g,x,y-3,1,5,'#658a56');
+   rect(g,x-2,y-5,5,2,i%3?'#f2edd3':'#dfb9be');
+   rect(g,x,y-7,1,6,i%3?'#f2edd3':'#dfb9be');rect(g,x,y-5,1,1,'#d8c680');
+  }
+ });
  // Small planted edges are clustered by objects, never sprinkled as map noise.
  const tuft=(x,y,s=1)=>{poly(g,[[x-7*s,y],[x-6*s,y-6*s],[x-2*s,y-3*s],[x,y-10*s],[x+3*s,y-5*s],[x+6*s,y-7*s],[x+7*s,y]],'#7d9665');rect(g,x-2*s,y-6*s,2*s,5*s,'#bac38a');};
  [[172,245,1],[332,242,.9],[343,258,.7],[182,284,.6],[353,285,.7],[539,385,.9],[559,391,.6],[726,392,1],[721,421,.7],[912,461,.7],[711,487,.8],[347,413,.8],[404,432,.6]].forEach(a=>tuft(...a));
@@ -42,22 +85,21 @@ export function createTownArt(makeCanvas,trees){
  poly(g,[[735,507],[907,507],[919,520],[911,527],[742,525]],'#6b765244');
  // Preserve the approved old road raster above all new ground decoration.
  rect(g,170,298,620,72,'#d0c298');rect(g,428,300,72,260,'#d0c298');rect(g,620,220,75,110,'#d0c298');for(let i=0;i<20;i++){const x=190+i*29;rect(g,x,326+(i%3)*9,12,3,'#beae83');}for(let i=0;i<7;i++)rect(g,449+(i%2)*18,390+i*22,14,3,'#beae83');
+// Edge light/shade belongs only on the exposed soil perimeter. The north and
+// south branches share the same soil at their mouths, not two stacked end caps.
+// Keep the approved road footprints and all original texture marks unchanged.
+for(const [x,y,w,c] of [[170,298,450,'#dfd3ae'],[695,298,95,'#dfd3ae'],
+ [170,367,258,'#b5a77f'],[500,367,290,'#b5a77f'],
+ [428,557,72,'#b5a77f'],[620,220,75,'#dfd3ae']])rect(g,x,y,w,3,c);
 // Surface detail follows existing path shapes, never modifies walkability.
-for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[620,220,75,78]]){rect(g,px,py,pw,3,'#dfd3ae');rect(g,px,py+ph-3,pw,3,'#b5a77f');for(let i=0;i<Math.floor(pw*ph/750);i++){const gx=px+8+(i*47)%(pw-16),gy=py+8+(i*31)%(ph-16);rect(g,gx,gy,2+i%2,1,i%2?'#e3d5ae':'#b4a57c');}}
+for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[620,220,75,78]]){for(let i=0;i<Math.floor(pw*ph/750);i++){const gx=px+8+(i*47)%(pw-16),gy=py+8+(i*31)%(ph-16);rect(g,gx,gy,2+i%2,1,i%2?'#e3d5ae':'#b4a57c');}}
 
  const sprites=trees.map((_,index)=>{
   const scale=trees[index][2],c=make(Math.ceil(64*scale),Math.ceil(88*scale)),p=c.getContext('2d'),seed=index+1;p.scale(scale,scale);p.translate(32,40);
   // Warm lit left edge of the trunk, cool brown right plane, two roots.
   poly(p,[[-5,18],[5,18],[5,42],[10,46],[-9,46],[-5,41]],'#79634d');
   rect(p,-4,19,3,23,'#b29867');rect(p,-1,29,2,12,'#937d57');rect(p,3,26,2,16,'#685944');
-  const leaf=(x,y,w,h,color)=>poly(p,[[x+4,y],[x+w-6,y],[x+w-6,y+3],[x+w,y+3],[x+w,y+h-5],[x+w-4,y+h-5],[x+w-4,y+h],[x+3,y+h],[x+3,y+h-3],[x,y+h-3],[x,y+5],[x+4,y+5]],color);
-  const round=seed%3===2;
-  // Large overlapping foliage planes carry volume; a few warm pixels finish it.
-  leaf(-25,-11,50,39,'#496b4d');leaf(-29,-10,24,28,'#567953');leaf(7,-17,22,36,'#3f624a');
-  leaf(round?-23:-21,-27,round?46:42,39,'#6f8b59');leaf(-23,-21,30,29,'#819b65');
-  leaf(-11,-37,28,26,'#91a76c');leaf(-16,-33,19,17,'#a6b77a');
-  leaf(-23,-9,20,15,'#8fa66b');leaf(0,-15,22,21,'#78925c');leaf(-9,10,24,16,'#597d51');
-  if(seed%3===0)leaf(14,-2,17,17,'#658851');
+  for(const [x,y,w,h,color] of treeLeaves(seed))poly(p,leafOutline(x,y,w,h),color);
   // Per-placement deterministic accents, baked once. Light remains upper-left;
   // no new canvases, per-frame randomness or silhouette changes.
   const variants=[
@@ -88,4 +130,25 @@ for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[620,220,75,78]]){
   // Cache allocation is explicit and bounded, independent of frame count.
   stats:Object.freeze({canvases:1+sprites.length,rgbaBytes:(960*560+sprites.reduce((n,c)=>n+c.width*c.height,0))*4,animatedArtLayers:0})
  };
+}
+
+// Drawing-only finish for the existing rear fence. Its original 6x29 posts,
+// 29x5 rail segments and 28px spacing stay inside the same occupied pixels.
+export function drawBackFence(ctx){
+ const rect=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(x,y,w,h);};
+ // The rail runs behind the posts, with one warm top plane and a narrow shadow.
+ for(let x=20,i=0;x<960;x+=28,i++){
+  rect(x-2,38,29,5,i%3===1?'#ad956b':'#b29a70');
+  rect(x-2,38,29,1,'#d0ba8c');rect(x-2,42,29,1,'#917a58');
+  rect(x+8,40,7+i%3,1,i%2?'#c3aa7e':'#a28b65');
+ }
+ // Front-facing posts retain the old silhouette. Small fixed grain differences
+ // avoid a stamped pattern; no randomness, animation, new assets or state.
+ for(let x=20,i=0;x<960;x+=28,i++){
+  rect(x,32,6,29,i%3===2?'#b09a70':'#b6a078');
+  rect(x,32,1,28,'#d1bc90');rect(x+5,33,1,28,'#8f7958');
+  rect(x,32,6,2,'#d5bf91');rect(x+1,59,4,2,'#9d865f');
+  rect(x+2+i%2,46+i%3,1,7,'#a18a63');
+  rect(x+2,39,1,1,'#806d52');
+ }
 }

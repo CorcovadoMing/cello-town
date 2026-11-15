@@ -13,6 +13,8 @@ export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false
  const bob=motion?(walking?Math.round(Math.abs(Math.sin(t/105))*2):Math.round((1+Math.sin(t/540))*1.4)):0;
  const blink=motion&&!walking&&t%3600>3450;
  g.save();g.fillStyle='#294a3540';g.fillRect(x-15,y-2,30,7);g.fillStyle='#294a3520';g.fillRect(x-10,y+4,20,2);g.translate(x,y-bob);
+ // Four percent larger around the soles, independent of movement/collision size.
+ g.translate(0,2);g.scale(1.04,1.04);g.translate(0,-2);
  const p=(px,py,w,h,c)=>{g.fillStyle=c;g.fillRect(px,py,w,h);};
  if(facing==='left'||facing==='right'){
   if(facing==='left')g.scale(-1,1);
@@ -50,6 +52,56 @@ export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false
   p(-7,-50,14,3,outline);p(-12,-47,24,3,outline);p(-15,-44,30,18,outline);p(-12,-26,24,3,outline);p(-8,-23,16,2,outline);
   p(-10,-46,20,4,hair);p(-13,-42,26,6,hair);p(-13,-36,26,9,skin);p(-10,-27,20,4,skin);p(-12,-38,5,5,hair);p(-7,-40,4,4,hair);
   p(-5,-52,11,3,outline);p(-4,-51,9,2,hat);p(-7,-46,7,2,'#9b6970');p(-5,-35,2,blink?1:4,outline);p(4,-35,2,blink?1:4,outline);p(-8,-30,4,2,'#e88d87');p(6,-30,4,2,'#e88d87');p(0,-28,3,1,'#945b59');
+ }
+ // Restrained pixel clusters: dimensional cloth and directional hair sheen.
+ // Face, silhouette and movement remain the original cute character.
+ if(facing==='left'||facing==='right'){
+  p(-10,-43,4,2,'#77515a');p(-8,-41,5,2,'#94646b');p(-2,-45,6,2,'#67464d');
+  p(-11,-35,2,6,'#67464d');p(-9,-29,3,2,'#49333b');
+  p(-4,-51,3,1,'#87b4a0');p(1,-51,2,2,'#367266');
+  p(-7,-26,6,2,'#fff1d7');p(-5,-23,2,6,'#fff1d7');p(-4,-18,4,2,'#d5c5a9');
+  p(4,-25,1,3,'#6a9980');p(3,-21,2,1,'#ffe2a0');
+  p(3,-14,3,1,'#87a78b');p(-5,-13,2,1,'#456f5d');
+  p(1,-10,2,5,'#548572');p(-5,-9,1,4,'#3e695c');
+  p(-6,-1-stride,5,1,'#786257');p(2,-1+stride,5,1,'#786257');
+ }else{
+  // Back uses long ribbon-like hair clusters; front fringe remains recognizable.
+  if(facing==='back'){
+   p(-9,-43,4,2,'#77515a');p(-5,-42,6,2,'#94646b');p(1,-43,5,2,'#77515a');
+   p(-11,-38,2,6,'#77515a');p(-8,-36,2,7,'#67464d');p(8,-40,2,6,'#67464d');
+   p(-6,-28,4,2,'#49333b');p(2,-27,4,2,'#49333b');
+   p(-6,-18,3,1,'#87a78b');p(3,-18,3,1,'#87a78b');
+  }else{
+   p(-9,-44,5,2,'#77515a');p(-4,-43,5,2,'#94646b');p(3,-44,5,2,'#77515a');
+   p(-11,-39,2,3,'#67464d');p(8,-40,3,2,'#67464d');
+   p(-3,-20,6,1,'#87a78b');p(-1,-17,2,1,'#548572');
+   p(-5,-22,1,1,'#ffe2a0');p(5,-22,1,1,'#ffe2a0');
+  }
+  p(-3,-51,3,1,'#87b4a0');p(3,-51,2,2,'#367266');
+  p(-13,-23,2,5,'#fff1d7');p(11,-23,2,5,'#fff1d7');
+  p(-14,-17,4,1,'#d5c5a9');p(10,-17,4,1,'#d5c5a9');
+  p(-8,-25,1,3,'#fff1d7');p(7,-25,1,3,'#fff1d7');
+  p(-7,-11,2,5,'#548572');p(3,-11,2,5,'#548572');
+  p(-7,-1+stride,4,1,'#786257');p(4,-1-stride,4,1,'#786257');
+ }
+ // Larger intentional pixel clusters: clear tailored silhouette, not noise.
+ if(facing==='left'||facing==='right'){
+  p(-10,-44,4,2,'#94646b');p(-6,-43,5,2,'#aa7b7d');p(-9,-40,3,3,'#77515a');
+  p(-11,-32,3,5,'#49333b');p(-6,-27,2,3,'#67464d');
+  p(2,-26,2,5,'#87a78b');p(-5,-17,9,2,'#548572');p(-4,-15,8,2,coat);
+  p(-4,-21,2,3,'#d5c5a9');p(-4,-18,3,1,'#fff1d7');p(-6,-12,12,1,'#274e46');
+ }else{
+  p(-10,-45,5,2,'#94646b');p(-5,-44,6,2,'#aa7b7d');p(2,-45,5,2,'#77515a');
+  if(facing==='back'){
+   p(-10,-38,3,6,'#77515a');p(-7,-35,2,6,'#67464d');p(6,-39,3,7,'#67464d');
+   p(-6,-25,1,5,'#87a78b');p(5,-25,1,5,'#87a78b');p(-6,-18,4,1,'#a2b99a');p(2,-18,4,1,'#a2b99a');
+  }else{
+   p(-11,-37,2,3,'#67464d');p(9,-39,2,3,'#67464d');
+   p(-6,-26,1,4,'#87a78b');p(5,-26,1,4,'#87a78b');
+   p(-4,-20,8,1,'#a2b99a');p(-4,-19,1,4,shade);p(3,-19,1,4,shade);p(-3,-15,6,1,'#274e46');
+  }
+  p(-8,-13,16,1,'#548572');p(-8,-11,16,1,'#274e46');
+  p(-13,-22,2,3,'#fff7e3');p(11,-22,2,3,'#fff7e3');
  }
  g.restore();
 }
