@@ -4,3 +4,5 @@ export function defaults(){return Object.fromEntries(Object.keys(OPTIONS).map(k=
 export function normalize(x){const out=defaults();for(const k in out)if(Number.isInteger(x?.[k])&&x[k]>=0&&x[k]<OPTIONS[k].length)out[k]=x[k];return out;}
 export function update(s,k,v){return normalize({...s,[k]:v});}
 export function move(p,x,z,dt){const len=Math.hypot(x,z)||1,speed=1.65*Math.min(Math.max(dt,0),.05);const next={x:Math.max(-2.2,Math.min(2.2,p.x+x/len*speed)),z:Math.max(-.8,Math.min(1.9,p.z+z/len*speed))};return next;}
+
+export function stepToward(p,target,dt){const dx=target.x-p.x,dz=target.z-p.z,d=Math.hypot(dx,dz),step=1.65*Math.min(Math.max(dt,0),.05);if(d<=step)return {...target};return move(p,dx,dz,dt);}
