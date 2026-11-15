@@ -16,7 +16,8 @@ function gardenCore(time,reduced=false){
  const running=!reduced&&cycle>=4000&&cycle<19500;
  const sit=reduced?0:Math.max(ease((cycle-20000)/700)*(1-ease((cycle-23200)/700)),cycle>=14000&&cycle<15500?Math.sin((cycle-14000)/1500*Math.PI):0),lie=reduced?0:ease((cycle-23200)/700)*(1-ease((cycle-27000)/700));
  const rest=sit+lie;
- const cat={x:idleX+(track-idleX)*engaged+burst*10*flightDirection((t-600)/2300),y:535-43*engaged-jump,dir:engaged>.5?flightDirection((t-600)/2300):flightDirection(idleClock/3000),tail:reduced?0:Math.sin(t/550)*3,pounce,running,sit,lie,aim,wiggle,burst,paw:pounce?Math.sin((cycle-14000)/1500*Math.PI)*10:0,stride:reduced?0:Math.sin(t/(running?90:180))*(running?3:1.5)*(1-rest),phase:cycle<4000?'idle':cycle<8000?'approach':cycle<14000?'chase':cycle<15500?'pounce':cycle<19500?'retreat':'idle'};
+ const restStroll=reduced?0:-8*ease((cycle-27200)/650)*(1-ease((cycle-28800)/650)),groundY=535-43*engaged+restStroll;
+ const cat={groundY,x:idleX+(track-idleX)*engaged+burst*10*flightDirection((t-600)/2300),y:groundY-jump,dir:engaged>.5?flightDirection((t-600)/2300):flightDirection(idleClock/3000),tail:reduced?0:Math.sin(t/550)*3,pounce,running,sit,lie,aim,wiggle,burst,paw:pounce?Math.sin((cycle-14000)/1500*Math.PI)*10:0,stride:reduced?0:Math.sin(t/(running?90:180))*(running?3:1.5)*(1-rest),phase:cycle<4000?'idle':cycle<8000?'approach':cycle<14000?'chase':cycle<15500?'pounce':cycle<19500?'retreat':'idle'};
  const attention=reduced?0:ease((cycle-6000)/1500)*(1-ease((cycle-16000)/2500));
  const reacted=reactVisitor(visitor,cat,attention);
  if(reacted&&attention>.1){const dx=reacted.x-cat.x;if(Math.abs(dx)>4)cat.dir=dx>0?1:-1;}
@@ -24,23 +25,159 @@ function gardenCore(time,reduced=false){
  if(cat.searching){cat.stride*=cycle<17000?0:.25;cat.tail*=.5;}
  return {visitor:reacted,cat};
 }
-export function gardenLife(time,reduced=false){const result=gardenCore(time,reduced);if(result.visitor&&!reduced){const before=gardenCore(Math.max(0,time-8)).visitor,after=gardenCore(time+8).visitor;if(before&&after){const vx=after.x-before.x;if(Math.abs(vx)>.012)result.visitor.dir=vx>0?1:-1;}}return result;}
+// Use ground travel, never the vertical pounce arc, to choose a readable body direction.
+export function catFacing(vx,vy,fallback='right'){if(Math.hypot(vx,vy)<.008)return fallback;if(Math.abs(vy)>Math.abs(vx)*1.05)return vy<0?'up':'down';return vx<0?'left':'right';}
+export function gardenLife(time,reduced=false){const result=gardenCore(time,reduced);const before=gardenCore(Math.max(0,time-16),reduced),after=gardenCore(time+16,reduced);let vx=after.cat.x-before.cat.x,vy=after.cat.groundY-before.cat.groundY;let fallback=result.cat.dir>0?'right':'left';if(!reduced&&Math.hypot(vx,vy)<.008){const earlier=gardenCore(Math.max(0,time-240));fallback=catFacing(result.cat.x-earlier.cat.x,result.cat.groundY-earlier.cat.groundY,fallback);}result.cat.facing=reduced?'right':catFacing(vx,vy,fallback);result.cat.groundVX=vx;result.cat.groundVY=vy;if(result.visitor&&!reduced){const bv=gardenCore(Math.max(0,time-8)).visitor,av=gardenCore(time+8).visitor;if(bv&&av){const speed=av.x-bv.x;if(Math.abs(speed)>.012)result.visitor.dir=speed>0?1:-1;}}return result;}
+// Original integer-grid sprites: O fur, L cheek/paws, S tabby, E eye, N nose.
+const CAT_SIDE_WALK=[
+'....................O....O..',
+'....................OO..OO..',
+'....................OOOOOO..',
+'....................OSOOO...',
+'....................OOOEOO..',
+'.....................OLLLON.',
+'..O.....OOOOOOOOOOOOOOLLLL..',
+'.OO...OOOSOOOSOOOSOOOOOO....',
+'.O...OOOOOSOOOSOOOSOOOOO....',
+'.OO.OOOOOOOOOOOOOOOOOOOO....',
+'..OOOOOOOOOOOOOOOOOOOOOO....',
+'.....OOOOOOOOOOOOOOOOOO.....',
+'......OOOOOOOOOOOOOOOO......',
+'......OOO..........OOO......',
+'......OO...........OO.......',
+'......OO...........OO.......',
+'......OO...........OO.......',
+'......OO...........OO.......',
+'......LLL..........LLL......'];
+const CAT_SIDE_REST=[
+'....................O....O..',
+'....................OO..OO..',
+'....................OOOOOO..',
+'.......OOOOOOOOOOOOOOSOOO...',
+'.....OOOOSOOOSOOOSOOOOEEOO..',
+'....OOOOOOSOOOSOOOSOOOLLLON.',
+'...OOOOOOOOOOOOOOOOOOOLLLL..',
+'...OOOOOOOOOOOOOOOOOOOOO....',
+'....OOOOOOOOOOOOOOOOOO......',
+'..OOOOOOLLL......LLLLLL.....'];
+const CAT_FRONT_WALK=[
+'...O......O...',
+'...OO....OO...',
+'...OOOOOOOO...',
+'...OSOSOSOO...',
+'...OOEOOEOO...',
+'...OLLLLLLO...',
+'....LLNLLL....',
+'....OLLLLO....',
+'.....OOOO.....',
+'....OOOOOO....',
+'....SOOOOS....',
+'....OOOOOO....',
+'....SOOOOS....',
+'....OOOOOO....',
+'....OO..OO....',
+'....OO..OO....',
+'....OO..OO....',
+'....OO..OO....',
+'....OO..OO....',
+'....LL..LL....'];
+const CAT_FRONT_REST=[
+'...O......O...',
+'...OO....OO...',
+'...OOOOOOOO...',
+'...OSOSOSOO...',
+'...OEEOOEEO...',
+'...OLLLLLLO...',
+'....LLNLLL....',
+'...OOLLLLOO...',
+'..OSOOOOOOSO..',
+'..OOOOOOOOOO..',
+'...LLL..LLL...'];
+const CAT_BACK_WALK=[
+'...O......O...', '...OOOOOOOO...', '...OOOOOOOO...', '...OOSSSSOO...',
+'...OOOOOOOO...', '....OSSSSO....', '....OOOOOO....', '.....OOOO.....',
+'....OSSSSO....', '...OOOOOOOO...', '...OSSSSSSO...', '...OOOOOOOO...',
+'...OOOSSOOO...', '....OOSSOO....', '....OOSSOO....', '....OO..OO....',
+'....OO..OO....', '....OO..OO....', '....OO..OO....', '....LL..LL....'];
+const CAT_BACK_REST=[
+'...O......O...', '...OOOOOOOO...', '...OOOOOOOO...', '...OOSSSSOO...',
+'....OOOOOO....', '...OOSSSSOO...', '..OOOOOOOOOO..', '..OSSSSSSSSO..',
+'..OOOOOOOOOO..', '...OOOSSOOO...', '....OOSSOO....'];
+export function drawGardenCat(g,c){
+ const facing=c.facing||(c.dir<0?'left':'right'),vertical=facing==='up'||facing==='down',back=facing==='up',rest=Math.max(c.lie||0,c.sit||0),playing=!!c.pounce||(c.paw||0)>.1,tucked=!playing&&rest>.6;
+ const rows=vertical?(back?(tucked?CAT_BACK_REST:CAT_BACK_WALK):(tucked?CAT_FRONT_REST:CAT_FRONT_WALK)):(tucked?CAT_SIDE_REST:CAT_SIDE_WALK),pixels=new Map(),w=rows[0].length,h=rows.length,put=(x,y,k)=>pixels.set(x+','+y,k);
+ rows.forEach((row,y)=>[...row].forEach((k,x)=>{if(k!=='.'){if(back&&y<8)k=k==='E'||k==='L'||k==='N'?'O':k;put(x,y,k)}}));
+ if(back){for(const[x,y]of[[7,h-7],[7,h-6],[8,h-5],[9,h-4],[10,h-3],[11,h-3],[12,h-4],[12,h-5]]){put(x,y,'S');put(x,y+1,'O');}}
+ if(!vertical&&!tucked){for(const[x,y]of[[23,2],[22,3],[23,3],[24,3],[22,4],[23,4],[24,4],[23,5]])put(x,y,'E');put(22,3,'W');put(23,4,'I');}
+ // Separate farther limbs and subtle stride at pixel resolution, never a biped bounce.
+ if(!tucked){const shift=Math.round(Math.max(-2,Math.min(2,(c.stride||0)*.5)));if(vertical){for(let y=h-6;y<h-3;y++){put(6,y,'S');put(7,y,'S');}put(5,h-4-shift,'L');put(8,h-4+shift,'L');for(const x of[4,5,8,9])pixels.delete(x+','+(h-1));put(4,h-1+shift,'L');put(5,h-1+shift,'L');put(8,h-1-shift,'L');put(9,h-1-shift,'L');}else{for(let y=h-6;y<h-1;y++){put(9,y,'S');put(22,y,'S');}put(9,h-1-shift,'L');put(22,h-1+shift,'L');}}
+ if(!back){const y=vertical?8:(tucked?4:7);for(let x=vertical?5:10;x<(vertical?9:16);x++)if(pixels.get(x+','+y)==='O')put(x,y,'H');}
+ if(!tucked&&(c.aim||0)>.05){const amount=c.aim,compressed=new Map();for(const[id,k]of pixels){const[x,y]=id.split(',').map(Number),ny=Math.round(h-1-(h-1-y)*(1-.28*amount));compressed.set((x+(!vertical&&y>8?Math.round((c.wiggle||0)*.25):0))+','+ny,k);}pixels.clear();for(const[id,k]of compressed)pixels.set(id,k);}
+ if(playing){
+  // Extended forelegs and trailing hocks make a real reach/pounce silhouette;
+  // ground shadow and airborne translation still come from the original timeline.
+  if(!vertical){for(const id of [...pixels.keys()]){const[x,y]=id.split(',').map(Number);if(x>=19&&y>=h-6)pixels.delete(id);}
+   const lift=Math.round(Math.min(3,(c.paw||0)*.25));for(let i=0;i<11;i++){put(20+i,12-Math.floor(i*.3)-lift,'O');put(20+i,13-Math.floor(i*.3)-lift,'L');}put(30,10-lift,'L');
+   for(let i=0;i<4;i++){put(6-i,h-5+i,'S');put(5-i,h-5+i,'O');}}
+  else{for(const id of [...pixels.keys()]){const[x,y]=id.split(',').map(Number);if((x<=5||x>=8)&&y>=h-6)pixels.delete(id);}
+   for(let i=0;i<5;i++){put(3-i,10-i,'O');put(10+i,10-i,'O');}put(-2,5,'L');put(15,5,'L');}
+ }
+
+ const colors={W:'#fff0cb',I:'#b9854a',H:'#e9aa62',O:'#d58b43',L:'#f4d4a0',S:'#a6572f',E:'#353b32',N:'#824b3a'},scale=1.35;
+ g.save();g.translate(Math.round(c.x),Math.round(c.groundY??c.y));g.fillStyle='#3f58372a';g.beginPath();g.ellipse(0,4,vertical?11:20,2.5,0,0,Math.PI*2);g.fill();g.translate(0,Math.round(c.y-(c.groundY??c.y)));if(!vertical&&facing==='left')g.scale(-1,1);g.scale(scale,scale);g.translate(-w/2,-h+2);
+ // Four-neighbour one-pixel outline gives crisp stepped edges, not antialiased ellipses.
+ g.fillStyle='#74533a';for(const id of pixels.keys()){const[x,y]=id.split(',').map(Number);for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]])if(!pixels.has((x+dx)+','+(y+dy)))g.fillRect(x+dx,y+dy,1,1);}
+ for(const[id,k]of pixels){const[x,y]=id.split(',').map(Number);g.fillStyle=colors[k];g.fillRect(x,y,1,1);}
+ if(vertical&&!back&&!tucked){g.fillStyle='#fff0cb';g.fillRect(5,4,1,1);g.fillRect(8,4,1,1);}
+ g.restore();
+}
 export function drawPondLife(g,time,reduced,variants=defaultFish){g.save();g.beginPath();g.rect(48,388,187,135);g.clip();for(const [i,f] of pondLife(time,reduced).entries()){const v=variants[i];g.save();g.translate(f.x,f.y);g.scale(f.dir*v.size*v.length,v.size*v.girth);g.fillStyle=v.color;g.globalAlpha=.92;g.beginPath();g.ellipse(0,0,9,4,0,0,Math.PI*2);g.fill();if(v.fin!=='none'){g.beginPath();g.moveTo(-7,0);if(v.fin==='round'){g.quadraticCurveTo(-20,-9+f.tail,-15,f.tail);g.quadraticCurveTo(-20,9+f.tail,-7,0);}else{g.lineTo(-15,-5+f.tail);g.lineTo(-12,f.tail);g.lineTo(-15,5+f.tail);}g.closePath();g.fill();}g.fillStyle='#fff1c0';g.fillRect(0,-2,4,2);g.fillStyle='#567f79';g.fillRect(6,-1,1.5,1.5);g.restore();if(f.surface!==null){g.globalAlpha=(1-f.surface)*.55;g.strokeStyle='#e2f0d9';g.lineWidth=1.2;g.beginPath();g.ellipse(f.x,f.y,5+f.surface*19,2+f.surface*7,0,0,Math.PI*2);g.stroke();g.globalAlpha=1;}}g.restore();}
 export function drawGardenLife(g,time,reduced){const {visitor:v,cat:c}=gardenLife(time,reduced);g.save();if(v){g.save();g.translate(v.x,v.y);g.scale(v.dir,1);if(v.kind==='butterfly'){g.fillStyle='#f4d28d';for(const side of [-1,1]){g.beginPath();g.ellipse(side*5,0,3+Math.abs(v.wing)*2,6,side*.4,0,Math.PI*2);g.fill();}g.fillStyle='#8e7450';g.fillRect(-1,-4,2,8);g.fillRect(2,-2,3,3);}else if(v.kind==='bee'){g.fillStyle='#fff3d1';g.beginPath();g.ellipse(-3,-4,5,3+Math.abs(v.wing)*2,0,0,Math.PI*2);g.fill();g.fillStyle='#e7b655';g.fillRect(-6,-2,12,6);g.fillStyle='#665743';g.fillRect(-1,-2,3,6);g.fillRect(5,-1,2,2);}else{g.fillStyle='#7596ac';g.beginPath();g.ellipse(0,0,8,5,0,0,Math.PI*2);g.fill();g.fillStyle='#b6cfdb';g.beginPath();g.ellipse(-2,-3,7,2+Math.abs(v.wing)*4,-.4,0,Math.PI*2);g.fill();g.fillStyle='#e7be6f';g.fillRect(7,-2,4,2);}g.restore();}
-g.translate(c.x,c.y);g.fillStyle='#3f58372a';g.beginPath();g.ellipse(0,4,20,4,0,0,Math.PI*2);g.fill();g.scale(c.dir,1);
-// Blend into a tucked-paw loaf, keeping a full round body and unscaled face.
-if(c.lie>0){g.save();g.globalAlpha=c.lie;g.strokeStyle='#ad8868';g.lineWidth=5;g.lineCap='round';g.beginPath();g.moveTo(-11,-4);g.quadraticCurveTo(-23,-7,-19,-14);g.stroke();g.fillStyle='#d8b38b';g.beginPath();g.ellipse(-2,-7,16,10,0,0,Math.PI*2);g.fill();g.fillStyle='#e8c9a4';g.beginPath();g.ellipse(12,-13,10,9,0,0,Math.PI*2);g.fill();g.beginPath();g.moveTo(4,-18);g.lineTo(5,-26);g.lineTo(11,-20);g.moveTo(14,-20);g.lineTo(21,-26);g.lineTo(22,-16);g.fill();g.fillStyle='#f1d6b5';g.beginPath();g.ellipse(10,1,6,2,0,0,Math.PI*2);g.ellipse(18,1,4,2,0,0,Math.PI*2);g.fill();g.strokeStyle='#76634e';g.lineWidth=1;g.beginPath();g.moveTo(11,-13);g.lineTo(14,-12);g.lineTo(16,-13);g.stroke();g.fillStyle='#c58e83';g.fillRect(21,-11,2,2);g.restore();}
-g.globalAlpha=1-c.lie;g.strokeStyle='#ad8868';g.lineWidth=5;g.lineCap='round';g.beginPath();g.moveTo(-12,-8);g.quadraticCurveTo(-26,-14,-21,-25+c.tail);g.stroke();g.fillStyle='#d8b38b';g.fillRect(-14+8*c.sit+c.wiggle,-15-3*c.sit-3*c.aim,25-8*c.sit,13+3*c.sit+3*c.aim);if(c.sit>0){g.beginPath();g.ellipse(-5,-7,8*c.sit,10*c.sit,0,0,Math.PI*2);g.fill();g.fillRect(9,-10*c.sit,4,10*c.sit+2);}g.fillRect(-11+c.stride+c.wiggle,-3,6,5);if(c.paw>0){g.strokeStyle='#e8c9a4';g.lineWidth=5;g.lineCap='round';g.beginPath();g.moveTo(8,-10);g.quadraticCurveTo(14,-10-c.paw,16+c.paw*.35,-6-c.paw*2.1);g.stroke();}else g.fillRect(7-c.stride,-3,5,5);g.translate(0,c.aim*4);g.fillStyle='#e8c9a4';g.fillRect(3,-25,17,16);g.beginPath();g.moveTo(3,-25);g.lineTo(4,-33);g.lineTo(10,-25);g.moveTo(12,-25);g.lineTo(19,-32);g.lineTo(20,-23);g.fill();g.fillStyle='#9e785a';g.fillRect(-8,-15,3,6);g.fillRect(-1,-15,3,6);g.fillStyle='#59604a';g.fillRect(13,-21,2,c.searching?2:3);g.fillStyle='#c58e83';g.fillRect(19,-16,2,2);g.restore();}
+drawGardenCat(g,c);g.restore();}
 
 // Uses the owning app's single gameWeather snapshot; never a second schedule.
 export function townWeather(time,key,reduced=false){const t=reduced?0:Math.max(0,time);if(key==='rain')return Array.from({length:42},(_,i)=>({x:(i*137+t*.017)%960,y:(i*89+t*.072)%560,length:7+i%4}));if(key==='breeze')return Array.from({length:7},(_,i)=>({x:(i*157+t*.025)%960,y:85+i*64+Math.sin(t/1600+i)*9,length:22+i%3*7}));return [];}
 export function drawTownWeather(g,time,key,reduced){g.save();g.beginPath();g.rect(0,0,960,560);g.clip();if(key==='sun'){const light=g.createRadialGradient(790,75,10,790,75,270);light.addColorStop(0,'#fff6bb35');light.addColorStop(1,'#fff6bb00');g.fillStyle=light;g.fillRect(0,0,960,560);g.strokeStyle='#fff5c458';g.lineWidth=1.5;for(let i=0;i<4;i++){const x=666+i*54,y=112+i*22,p=reduced?2:2+Math.sin(time/1500+i)*1.5;g.beginPath();g.moveTo(x-p,y);g.lineTo(x+p,y);g.moveTo(x,y-p);g.lineTo(x,y+p);g.stroke();}}else if(key==='rain'){g.strokeStyle='#effaff88';g.lineWidth=1.2;g.lineCap='round';for(const d of townWeather(time,key,reduced)){g.beginPath();g.moveTo(d.x,d.y);g.lineTo(d.x+d.length*(.017/.072),d.y+d.length);g.stroke();}}else if(key==='breeze'){g.strokeStyle='#eef5d878';g.lineWidth=1.2;g.lineCap='round';for(const d of townWeather(time,key,reduced)){g.beginPath();g.moveTo(d.x,d.y);g.quadraticCurveTo(d.x+14,d.y-7,d.x+d.length,d.y);g.stroke();g.fillStyle='#d4d79a99';g.beginPath();g.ellipse(d.x+6,d.y+4,3,1.4,-.3,0,Math.PI*2);g.fill();}}g.restore();}
 
-export function drawBenchLife(g,time,reduced){const breath=reduced?0:Math.sin(time/1350)*.7;g.save();
-// Curled cream cat resting on the bench, distinct from the playful garden cat.
-g.translate(223,207);g.fillStyle='#6d62482a';g.beginPath();g.ellipse(0,1,19,3,0,0,Math.PI*2);g.fill();g.fillStyle='#ead4ae';g.beginPath();g.ellipse(0,-6,16,8+breath,0,0,Math.PI*2);g.fill();g.fillStyle='#d3b48d';g.beginPath();g.arc(3,-6,8,.2,Math.PI*1.8);g.lineWidth=4;g.strokeStyle='#d3b48d';g.stroke();g.fillStyle='#f0ddbd';g.fillRect(-14,-14,11,10);g.beginPath();g.moveTo(-14,-13);g.lineTo(-14,-19);g.lineTo(-9,-14);g.moveTo(-8,-14);g.lineTo(-3,-19);g.lineTo(-3,-12);g.fill();g.strokeStyle='#877357';g.lineWidth=1;g.beginPath();g.moveTo(-12,-9);g.lineTo(-9,-8);g.lineTo(-6,-9);g.stroke();g.restore();
-g.save();g.translate(245,240);const dogBreath=reduced?0:Math.sin(time/1600+2)*.65;g.fillStyle='#4f583329';g.beginPath();g.ellipse(0,5,29,4,0,0,Math.PI*2);g.fill();
-// Rounded side-resting torso, folded paws, low head and floppy ear.
-g.fillStyle='#bda285';g.beginPath();g.ellipse(4,-4,23,12+dogBreath,0,0,Math.PI*2);g.fill();g.fillStyle='#d5bfa1';g.beginPath();g.ellipse(-19,-1,11,8,-.15,0,Math.PI*2);g.ellipse(12,6,12,3,0,0,Math.PI*2);g.fill();g.fillStyle='#a98a69';g.beginPath();g.ellipse(-12,-5,5,10,-.25,0,Math.PI*2);g.fill();g.fillStyle='#e4cfaf';g.beginPath();g.ellipse(-25,2,7,4,0,0,Math.PI*2);g.fill();g.fillStyle='#6b5d4b';g.fillRect(-31,0,3,3);g.strokeStyle='#6b5d4b';g.lineWidth=1;g.beginPath();g.moveTo(-25,-2);g.quadraticCurveTo(-22,0,-19,-2);g.stroke();g.restore();}
+export function restTailMotion(time,reduced=false){if(reduced)return{cat:0,dog:0};const t=Math.max(0,time),c=t%17800,d=t%23100;const pulse=(v,start,duration,turns,amplitude)=>{if(v<start||v>start+duration)return 0;const u=(v-start)/duration;return Math.sin(u*Math.PI)*Math.sin(u*Math.PI*turns)*amplitude;};return{cat:pulse(c,14500,900,2.5,2.7),dog:pulse(d,17400,1300,4,3.8)};}
+export function drawBenchLife(g,time,reduced){const flick=restTailMotion(time,reduced);const breath=reduced?0:Math.sin(time/1350)*.7;g.save();
+// Original pixel calico: flat torso, chin on outstretched paws, irregular patches.
+const loaf=[
+'....C....D..............................',
+'....CC..DD.........CCCCCC...............',
+'....CCCDDD...CCCCCDDCCCCOOOCCC...........',
+'....CCCCCCCCCCCCDDDDCCCOOOOCCCC..........',
+'...CCCCCCCCCCCCCDDDDCCCOOOOCCCCC.........',
+'..CCEECCCCCCCCCCCCCCCCCCCCCCCCCC........',
+'.NCCCCLLLCCCCCCCCCCCCCCCCCCCCCCCC........',
+'..LLLLLLLLLLLLLLLLLLLLLLLLLLLLLL........',
+'...LLLLLLL.................LLLLLL.......'];
+const pixels=new Map();loaf.forEach((r,y)=>[...r].forEach((k,x)=>{if(k!=='.')pixels.set(x+','+y,k)}));
+// The tail alone occasionally twitches; the head, chin and paws remain planted.
+const tip=Math.round(flick.cat*.55);for(const[x,y]of[[32,5],[33,5],[34,6],[35,6],[36,7],[36,8],[36,9],[35,10+tip],[34,10+tip]])pixels.set(x+','+y,'O');
+g.translate(195,197);g.scale(1.45,1.45);g.fillStyle='#6d62482a';g.fillRect(2,9,35,2);g.fillStyle='#87725a';for(const id of pixels.keys()){const[x,y]=id.split(',').map(Number);for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]])if(!pixels.has((x+dx)+','+(y+dy)))g.fillRect(x+dx,y+dy,1,1);}
+const palette={C:'#ead4ae',L:'#f5e2c1',D:'#665b50',O:'#cd955d',E:'#6b5944',N:'#ad7f71'};for(const[id,k]of pixels){const[x,y]=id.split(',').map(Number);g.fillStyle=palette[k];g.fillRect(x,y,1,1);}g.restore();
+// Original sleepy dog pixel sprite; the dark ear overlaps the head, never floats.
+g.save();g.translate(213,224);g.scale(1.5,1.5);
+const dog=[
+'................CCCCCCCC.............',
+'..............CCCCCCCCCCCC...........',
+'............CCCCCCCCCCCCCCC..........',
+'.......CCCCCCCCCCCCCCCCCCCCCC.........',
+'.....CCCCDDCCCCCCCCCCCCCCCCCCC........',
+'....CCCCCDDDCCCCCCCCCCCCCCCCCCC.......',
+'...CCCCCCDDDCCCCCCCCCCCCCCCCCCC.......',
+'...CEEECCDDDCCCCCCCCCCCCCCCCCCCC......',
+'.LLLCCCCCDDDCCCCCCCCCCCCCCCCCCCC......',
+'NLLLLCCCCDDDCCCCCCCCCCCCCCCCCCCC......',
+'NLLLLLCCCCDDCCCCCCCCCCCCCCCCCCC.......',
+'.LLLLLLLLCCCCCCCCCCCCCCCCCCCCC........',
+'...LLLLLLLLLL.......LLLLLLLLLL........',
+'....LLLLLLLLL......LLLLLLLLLL.........'];
+const dogPixels=new Map();dog.forEach((r,y)=>[...r].forEach((k,x)=>{if(k!=='.')dogPixels.set(x+','+y,k)}));
+const wag=Math.round(flick.dog*.5);for(const[x,y]of[[29,7],[30,7],[31,7],[32,8],[33,9],[33,10],[33,11],[32,12+wag],[31,13+wag]])dogPixels.set(x+','+y,'C');
+g.fillStyle='#4f583329';g.fillRect(3,14,31,2);g.fillStyle='#79634d';for(const id of dogPixels.keys()){const[x,y]=id.split(',').map(Number);for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]])if(!dogPixels.has((x+dx)+','+(y+dy)))g.fillRect(x+dx,y+dy,1,1);}
+const dogPalette={C:'#bda285',D:'#927455',L:'#e4cfaf',E:'#655442',N:'#514b40'};for(const[id,k]of dogPixels){const[x,y]=id.split(',').map(Number);g.fillStyle=dogPalette[k];g.fillRect(x,y,1.08,1.08);}g.fillStyle='#cfb89a';g.fillRect(18,2,5,1);g.restore();}
+
 
 export function foliageWind(time,seed,weather='sun',reduced=false){if(reduced||seed%3!==0)return 0;const strength=weather==='breeze'?1:weather==='rain'?.7:.4;const phase=seed*1.731;return strength*(.55+.24*Math.sin(time/2600+phase)+.16*Math.sin(time/4100+phase*.7));}
