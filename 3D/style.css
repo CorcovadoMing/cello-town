@@ -55,3 +55,17 @@ body[data-editor=wardrobe] .category-tabs{grid-template-columns:repeat(5,minmax(
 @media(max-width:600px){.preview-open aside{width:250px}.preview-open .choices.silhouettes button{min-height:46px}.preview-open .category-tab svg{height:25px}}
 body[data-editor=wardrobe] aside{width:270px}
 body[data-editor=wardrobe] .category-tabs{gap:4px}
+
+
+/* Treat the room as one bounded canvas rather than a tall scrolling document. */
+html,body{overscroll-behavior-y:none}
+@media(max-width:600px){
+ main{padding:10px}
+ .stage{min-height:0}
+ #scene{height:clamp(300px,144vw,min(600px,calc(100svh - 22px)))}
+ .preview-open #scene{height:clamp(300px,164vw,min(690px,calc(100svh - 22px)))}
+ .preview-open aside{max-height:min(calc(100svh - 80px),55%);overscroll-behavior-y:contain;touch-action:pan-y}
+}
+@media(max-width:600px) and (max-height:560px){
+ .preview-open aside{max-height:43%}
+}
