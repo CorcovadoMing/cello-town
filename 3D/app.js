@@ -60,8 +60,27 @@ box(0,.895,.085,.05,1.59,.045,'#f7eed7',windowGroup).renderOrder=8;
 box(0,.88,.085,1.52,.05,.045,'#f7eed7',windowGroup).renderOrder=8;
 box(0,.025,.13,1.94,.1,.36,'#e7d5b5',windowGroup).renderOrder=9;
 const curtainTop=WINDOW_APERTURE.spring+WINDOW_APERTURE.outerHalf+.14,curtainBottom=WINDOW_APERTURE.sill+.07;
-for(const side of [-1,1]){const drape=new T.Shape();drape.moveTo(side*.79,curtainTop-.045);drape.lineTo(side*1.12,curtainTop-.045);drape.lineTo(side*1.12,curtainBottom);drape.quadraticCurveTo(side*.92,curtainBottom-.035,side*.84,curtainBottom+.035);drape.bezierCurveTo(side*1.04,.62,side*.82,1.25,side*.79,curtainTop-.045);drape.closePath();const cloth=mesh(new T.ExtrudeGeometry(drape,{depth:.025,bevelEnabled:false,curveSegments:20}),'#e9ddc5',0,0,.17,windowGroup);cloth.renderOrder=10;for(let n=0;n<3;n++){const x=side*(.87+n*.08);rod([x,curtainTop-.06,.202],[x,curtainBottom+.03,.202],.012,'#f7edd8',windowGroup).renderOrder=10;}}
-rod([-1.19,curtainTop,.19],[1.19,curtainTop,.19],.025,'#a9956c',windowGroup).renderOrder=11;
+const curtains=new T.Group();curtains.name='curtains-soft-tiebacks';windowGroup.add(curtains);
+const curtainOuter=WINDOW_APERTURE.outerHalf+.26,tieY=WINDOW_APERTURE.spring-.26;
+for(const side of [-1,1]){
+ const drape=new T.Shape(),sx=x=>side*x;
+ drape.moveTo(sx(WINDOW_APERTURE.half-.18),curtainTop-.04);
+ drape.quadraticCurveTo(sx(.77),curtainTop-.12,sx(.90),WINDOW_APERTURE.spring+.26);
+ drape.bezierCurveTo(sx(.96),WINDOW_APERTURE.spring+.06,sx(1.03),tieY+.12,sx(1.02),tieY);
+ drape.quadraticCurveTo(sx(.97),.40,sx(.84),curtainBottom+.05);
+ drape.quadraticCurveTo(sx(.99),curtainBottom-.02,sx(curtainOuter),curtainBottom+.02);
+ drape.bezierCurveTo(sx(1.10),.55,sx(curtainOuter+.05),1.15,sx(curtainOuter),curtainTop-.04);
+ drape.quadraticCurveTo(sx(.89),curtainTop+.015,sx(WINDOW_APERTURE.half-.18),curtainTop-.04);drape.closePath();
+ const cloth=mesh(new T.ExtrudeGeometry(drape,{depth:.018,bevelEnabled:true,bevelSize:.006,bevelThickness:.004,bevelSegments:2,curveSegments:28}),'#e7dcc8',0,0,.17,curtains);cloth.name='curtain-pulled-back-'+side;cloth.renderOrder=10;
+ for(let n=0;n<2;n++){
+  const curve=new T.CatmullRomCurve3([[.73+n*.18,curtainTop-.07,.197],[.96+n*.09,1.22,.197],[1.04+n*.025,tieY,.197],[.96+n*.10,curtainBottom+.06,.197]].map(([x,y,z])=>new T.Vector3(sx(x),y,z)));
+  const fold=mesh(new T.TubeGeometry(curve,28,.007,5,false),'#f1e8d6',0,0,0,curtains);fold.name='curtain-soft-fold';fold.renderOrder=10;
+ }
+ const tie=rod([sx(.99),tieY+.025,.203],[sx(1.12),tieY-.01,.203],.014,'#c6ae82',curtains);tie.name='curtain-tieback';tie.renderOrder=11;
+}
+const curtainRod=rod([-curtainOuter-.06,curtainTop,.19],[curtainOuter+.06,curtainTop,.19],.023,'#b6a17b',curtains);curtainRod.name='curtain-rod';curtainRod.renderOrder=11;
+// Cloth is decorative: no cast shadows or synthetic curtain-shadow geometry.
+curtains.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;}});
 // SVG has no depth buffer: keep this backdrop below every foreground object.
 if(typeof software!=='undefined'&&software)windowGroup.traverse(o=>{if(o.isMesh)o.renderOrder-=12;});
 // Wardrobe and hanging cloth, little shelf.
