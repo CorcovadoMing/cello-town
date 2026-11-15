@@ -3,7 +3,7 @@
 把一輪大提琴練習，種成一朵花。這是獨立的單人練習遊戲，和 [弓弦的每日音階練習](https://corcovadoming.github.io/daily-key-practice/) 不共用紀錄。
 
 - [2D 小鎮](https://corcovadoming.github.io/cello-town/)：目前正式入口。
-- [3D 日光更衣室](https://corcovadoming.github.io/cello-town/3D/)：獨立測試版，程式在 [experimental/3d](https://github.com/CorcovadoMing/cello-town/tree/experimental/3d/3D)；不是整座小鎮的 3D 版。
+- [3D 日光更衣室](https://corcovadoming.github.io/cello-town/3D/)：獨立測試版，程式在 [3d](https://github.com/CorcovadoMing/cello-town/tree/3d/3D)；不是整座小鎮的 3D 版。
 
 ## 2D：從練習到花園
 
@@ -26,7 +26,7 @@ python3 -m http.server 8080
 node --test rpg/tests/*.test.js
 ```
 
-開啟 `http://localhost:8080/rpg/`。根目錄保留早期原型；GitHub Pages 發布時使用 `rpg/` 作為首頁。3D 的相依版本、建置與測試方法見 [3D 分支說明](https://github.com/CorcovadoMing/cello-town/tree/experimental/3d/3D)。Pages 只在 `main` 發布：首頁與 `/rpg/` 使用相同 2D 來源，`/3D/` 則使用已審查且鎖定的分支提交。
+開啟 `http://localhost:8080/rpg/`。根目錄保留早期原型；GitHub Pages 發布時使用 `rpg/` 作為首頁。3D 的相依版本、建置與測試方法見 [3D 分支說明](https://github.com/CorcovadoMing/cello-town/tree/3d/3D)。程式只分兩條開發線：`main` 維護 2D，`3d` 維護 3D；任一分支推送都會重新測試並組合發布。首頁與 `/rpg/` 使用 `main` 的相同 2D 來源，`/3D/` 使用 `3d` 的 3D 來源。部署日誌記錄兩邊實際使用的提交。
 
 ## 著作權
 

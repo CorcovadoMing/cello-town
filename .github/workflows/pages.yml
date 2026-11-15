@@ -1,7 +1,7 @@
 name: Test and deploy Pages
 on:
   push:
-    branches: [main]
+    branches: [main, 3d]
   workflow_dispatch:
 permissions:
   contents: read
@@ -12,13 +12,20 @@ jobs:
   test-and-package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Check out the reviewed 3D preview
+      - name: Check out 2D from main
         uses: actions/checkout@v4
         with:
-          ref: "0400c2c39da20dfffcd8e553d0842f5ea0985c68"
+          ref: main
+      - name: Check out 3D from its independent branch
+        uses: actions/checkout@v4
+        with:
+          ref: 3d
           path: .preview-3d
           persist-credentials: false
+      - name: Record source snapshots
+        run: |
+          git rev-parse HEAD
+          git -C .preview-3d rev-parse HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
