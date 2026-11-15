@@ -44,8 +44,8 @@ box(0,-.16,0,6.2,.3,4.9,'#c9b48e');box(0,-.015,0,6.1,.06,4.8,'#e5d2af');for(let 
 const FLOOR_TOP=.015;
 const rearWall=box(0,FLOOR_TOP+3.1/2,-2.35,6.2,3.1,.13,'#c4d1b2');rearWall.name='rear-wall-grounded';rearWall.castShadow=false;if(software)rearWall.renderOrder=-20;
 const sideWall=box(-3.05,FLOOR_TOP+1.55/2,0,.12,1.55,4.7,'#d7ddc2');sideWall.name='side-wall-grounded';
-// A shorter shadow-only wall keeps a small attached rectangle on the real floor receiver.
-const wallCaster=box(0,FLOOR_TOP+.775/2,-2.35,6.2,.775,.13,'#c4d1b2');wallCaster.name='rear-wall-shadow-proxy';wallCaster.material=wallCaster.material.clone();wallCaster.material.colorWrite=false;wallCaster.material.depthWrite=false;wallCaster.material.shadowSide=T.DoubleSide;wallCaster.receiveShadow=false;wallCaster.raycast=()=>{};if(software)wallCaster.visible=false;
+// A low shadow-only sill keeps a short attached contact shadow on the real floor receiver.
+const wallCaster=box(0,FLOOR_TOP+.14/2,-2.35,6.2,.14,.13,'#c4d1b2');wallCaster.name='rear-wall-shadow-proxy';wallCaster.material=wallCaster.material.clone();wallCaster.material.colorWrite=false;wallCaster.material.depthWrite=false;wallCaster.material.shadowSide=T.DoubleSide;wallCaster.receiveShadow=false;wallCaster.raycast=()=>{};if(software)wallCaster.visible=false;
 const rearSkirting=box(0,FLOOR_TOP+.095,-2.245,6.12,.19,.13,'#dddcc3');rearSkirting.name='rear-wall-base';
 const sideSkirting=box(-2.955,FLOOR_TOP+.095,0,.13,.19,4.7,'#dddcc3');sideSkirting.name='side-wall-base';
 for(const o of[rearSkirting,sideSkirting])o.castShadow=false;
@@ -93,6 +93,14 @@ const curtainRod=rod([-curtainOuter-.06,curtainTop,.19],[curtainOuter+.06,curtai
 curtains.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;}});
 // SVG has no depth buffer: keep this backdrop below every foreground object.
 if(typeof software!=='undefined'&&software)windowGroup.traverse(o=>{if(o.isMesh)o.renderOrder-=12;});
+// The four-pane light belongs on the clear rear wall, not as a grid across the rug.
+windowGroup.traverse(o=>{if(o.isMesh)o.castShadow=false;});
+const wallLight=new T.Group();wallLight.name='soft-four-pane-wall-light';wallLight.position.set(.66,2.36,-2.277);scene.add(wallLight);
+if(!software){const c=document.createElement('canvas');c.width=160;c.height=128;const q=c.getContext('2d');q.filter='blur(6px)';q.fillStyle='rgba(52,65,42,.22)';q.fillRect(12,10,136,108);q.filter='blur(3px)';q.fillStyle='rgba(255,245,190,.72)';for(const x of[22,84])for(const y of[20,67])q.fillRect(x,y,54,39);const map=new T.CanvasTexture(c);map.colorSpace=T.SRGBColorSpace;const p=new T.Mesh(new T.PlaneGeometry(1.24,1.06),new T.MeshBasicMaterial({map,transparent:true,opacity:.78,depthWrite:false}));p.name='wall-light-soft-static-mask';wallLight.add(p);}else{
+ const patch=(x,y,w,h,color,opacity)=>{const o=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color,transparent:true,opacity,depthWrite:false}));o.position.set(x,y,0);o.renderOrder=-15;wallLight.add(o);};
+ patch(0,0,1.10,.90,'#556345',.10);for(const x of[-.24,.24])for(const y of[-.20,.20])patch(x,y,.40,.32,'#fff4bf',.22);
+}
+wallLight.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;o.raycast=()=>{};}});
 // Wardrobe and hanging cloth, little shelf.
 const wardrobeStart=scene.children.length;
 box(2.1,1.02,-1.85,1.25,2,.65,'#a6805f');box(2.1,1.04,-1.5,1.1,1.77,.035,'#c3a57d');box(2.1,1.04,-1.46,.025,1.78,.02,'#907054');for(const x of [1.98,2.23])ball(x,1.08,-1.41,.035,.035,.035,'#f4d99c');box(2.1,2.07,-1.85,1.4,.13,.77,'#b2956d');
@@ -101,12 +109,12 @@ scene.children.slice(wardrobeStart).forEach(o=>{o.userData.station='wardrobe';})
 const vanity=new T.Group();vanity.position.set(.65,0,-1.65);vanity.scale.setScalar(.88);scene.add(vanity);
 box(0,.78,0,1.05,.12,.5,'#bc9874',vanity);box(0,.68,0,.87,.16,.4,'#d4b590',vanity);
 for(const x of [-.4,.4])for(const z of [-.16,.16])rod([x,.68,z],[x,.04,z],.035,'#a98160',vanity);
-const mirrorBack=ball(0,1.4,-.17,.38,.49,.045,'#c7aa7a',vanity);const mirrorGlass=ball(0,1.4,-.115,.325,.43,.012,'#b7d2cc',vanity);mirrorGlass.receiveShadow=false;
+const mirrorBack=ball(0,1.4,-.17,.38,.49,.045,'#c7aa7a',vanity);const mirrorGlass=ball(0,1.4,-.115,.325,.43,.012,'#b7d2cc',vanity);mirrorGlass.receiveShadow=false;mirrorGlass.material=new T.MeshBasicMaterial({color:'#c8dedb'});
 // One tiny preblurred color suggestion, not a reflected scene or a second render pass.
 let mirrorHint=null,mirrorCanvas=null,mirrorTexture=null;
-if(!software){mirrorCanvas=document.createElement('canvas');mirrorCanvas.width=mirrorCanvas.height=128;mirrorTexture=new T.CanvasTexture(mirrorCanvas);mirrorTexture.colorSpace=T.SRGBColorSpace;mirrorHint=new T.Mesh(new T.PlaneGeometry(.46,.63),new T.MeshBasicMaterial({map:mirrorTexture,transparent:true,opacity:0,depthWrite:false}));mirrorHint.position.set(0,1.39,-.09);mirrorHint.name='mirror-hazy-color-suggestion';vanity.add(mirrorHint);}
-function refreshMirrorHint(){if(!mirrorHint)return;const c=mirrorCanvas.getContext('2d');c.clearRect(0,0,128,128);c.save();c.filter='blur(10px)';for(const[x,y,rx,ry,color]of[[64,42,24,25,OPTIONS.hairColor[state.hairColor]],[64,51,17,19,OPTIONS.skin[state.skin]],[64,94,29,33,OPTIONS.color[state.color]]]){c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();}c.restore();mirrorTexture.needsUpdate=true;}
-function updateMirrorHint(){if(!mirrorHint)return;const proximity=Math.max(0,1-Math.hypot(pos.x-.65,pos.z+1.65)/2.2);mirrorHint.material.opacity=.19*proximity;mirrorHint.position.x=Math.max(-.025,Math.min(.025,(pos.x-.65)*.025));}
+if(!software){mirrorCanvas=document.createElement('canvas');mirrorCanvas.width=mirrorCanvas.height=128;mirrorTexture=new T.CanvasTexture(mirrorCanvas);mirrorTexture.colorSpace=T.SRGBColorSpace;mirrorHint=new T.Mesh(new T.PlaneGeometry(.56,.74),new T.MeshBasicMaterial({map:mirrorTexture,transparent:true,opacity:0,depthWrite:false}));mirrorHint.position.set(0,1.39,-.09);mirrorHint.name='mirror-hazy-color-suggestion';vanity.add(mirrorHint);}
+function refreshMirrorHint(){if(!mirrorHint)return;const c=mirrorCanvas.getContext('2d');c.clearRect(0,0,128,128);c.save();c.beginPath();c.ellipse(64,64,60,61,0,0,Math.PI*2);c.clip();c.filter='blur(10px)';for(const[x,y,rx,ry,color]of[[64,29,44,43,OPTIONS.hairColor[state.hairColor]],[64,46,34,34,OPTIONS.skin[state.skin]],[64,113,58,51,OPTIONS.color[state.color]]]){c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();}c.restore();mirrorTexture.needsUpdate=true;}
+function updateMirrorHint(){if(!mirrorHint)return;const proximity=Math.max(0,Math.min(1,(1.7-Math.hypot(pos.x-.65,pos.z+1.65))/.85));mirrorHint.material.opacity=.48*proximity;mirrorHint.position.x=Math.max(-.015,Math.min(.015,(pos.x-.65)*.015));}
 rod([-.23,1.58,-.098],[-.08,1.77,-.098],.012,'#ecf4e7',vanity);cylinder(.31,.89,.05,.075,.065,.16,'#dbc5a4',vanity);
 vanity.traverse(o=>{o.userData.station='vanity';});
 // Rug center and stitched border.

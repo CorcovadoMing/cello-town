@@ -19,3 +19,11 @@ The earlier wall-luminance interpretation in420bb746 was superseded by Ming's cl
 - 32Node regressions.
 - Full390/820/1280 WebGL lifecycle after floor-shadow fix;390 repeated after mirror; SVG820 fallback checked. Actual wardrobe/vanity/cello taps, arrival-only mock, focus/close and camera restoration.
 - No product data, storage schema,2D source, formal deployment or remote changes.
+
+## Superseding visual direction: wall motif and clear mirror
+
+Ming subsequently requested the four-pane motif on the WALL, not the floor. The quarter-area rectangular floor result above is historical, no longer the final design.
+- Window frame/mullions now cast no floor grid. General furniture/player/plant shadows stay. Rear proxy is only.14high, making a short attached contact band; wall bottoms remain exactlyfloor top.
+- One static160×128 feathered mask on the clear rear wall has a soft slightlylarger dark rectangle around four lighterpanes. It lies between realwindow andwardrobe, abovevanity; no paint over glass/props. Actual front/diagonal views inspected. SVG uses five muted untextured panels as graceful lower-fidelity approximation.
+- Mirror quad enlarged.56×.74 with three broadcolor masses and ellipticalclip. Pale bluegray unlitglass avoids dirtydark idle; ghostopacity exactly0 beyond1.7units, strongestnearvanity (.48maximum). No facial/appareldetail, stillonequad and appearance-onlypaint.
+- Paired390 far/near images checked and actualvanity/cello lifecycle passed. Updated renderer budget190calls/69094triangles;390median39.4ms,82046.5ms insameheadlesssoftwareGPU versusoriginal188calls/39.8ms/46.8ms. Larger mirrorcolor changes do not addgeometry/passes. No realphone thermalclaim.
