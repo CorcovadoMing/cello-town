@@ -1,12 +1,21 @@
-# Private 006 wall, sleeping-cat and sky follow-up
+# Private 006: clarified floor shadow, sleeping cat, sky and mirror
 
-Baseline: a65d1828325b306978745df31dc91e7b474499ac (unpublished 006). Public release remains 005 until separately approved.
+The earlier wall-luminance interpretation in420bb746 was superseded by Ming's clarification. Public release remains005 pending separate approval.
 
-- Wall bottom extends into plinth; continuous skirting overlaps wall/floor and thin contact trim joins the seam. Original geometry already intersected floor: the reported floating appearance was primarily the bright seam and shading, not a literal gap.
-- Wall-only material retains 25% of dark shading in linear light. This is not a promise of exactly 75% reduction in display RGB. Sun direction/intensity, floor materials, shadows on other objects remain unchanged; wall casting/receiving remains enabled.
-- Actual WebGL front samples: wall RGB154/170/132 →187/200/168 at two unobstructed locations. Two floor samples remain212/190/143 before/after. Front and diagonal views visually checked.
-- Sleeping upper body breath raises/scales the upper silhouette, retaining its lower contour. Paws/cushion stay fixed. Unequal quiet intervals separate brief tail-tip flicks; occasional small ear twitch. Reduced motion resets all to rest.
-- Cloud drifts ±.10 units slowly inside the aperture. Sun remains fixed and is physically in front of cloud (.05 vs .036 local depth); mullions remain ahead. Neither sky layer casts shadows. Reduced motion uses centered cloud.
-- 31 isolated tests pass, including deterministic anchor/flick samples, reduced motion, wall material isolation and bounded cloud motion. Actual timed WebGL samples confirm pawY=.143, cushionY=.066 throughout, varying upper-bodyY and tail angle.
-- 390/820/1280 actual WebGL room/furniture/cello mock lifecycle passed after wall/cat change; final cloud addition repeated390 plus SVG820 fallback. No actual tablet device claim.
-- Appearance storage, task data, furniture/camera interactions, and all 2D source untouched.
+## Actual floor-shadow correction
+- Controlled same-camera per-mesh toggles proved the rectangular floor patch is cast by rearWall: rear-off removes it, side-off does not. Window/furniture shadows remain.
+- Removed wall-only luminance shader. Original wall colors return. Both rendered wall bottoms are exactlyy=.015, matching finished floor top, not extending through it.
+- Full rear wall no longer casts its tall rectangle. A shadow-only .775high proxy at the same foot produces a short real floor shadow; original height3.1. Material colorWrite/depthWrite false, no raycast, DoubleSide shadow. SVG omits proxy.
+- Shadow bias−.00005, normalBias.002; skirting starts atfloor and covers wall joint. Sun location/intensity and floor materials unchanged.
+- Actual isolated WebGL512² floor measurement: fullheight56616 darkpixels, shortheight15261, ratio26.96% including filtered edges. Geometric projected depth3.40→.85 (25%). The effect is attached to wall foot, not a translated synthetic rectangle. Front/diagonal renders inspected.
+
+## Preserved/added decoration
+- Cat intermittent unequal tail-flick windows, occasional ear twitch, subtle upper-body breathing. Paws/cushion unchanged; reduced motion resets rest.
+- Bounded slow cloud drift±.10 within arch; fixed sun in front atz.05 versuscloud.036, both shadow-free. Reduced motion static.
+- Mirror is explicitly a hazy color suggestion, not a true reflection: one128² CanvasTexture quad with three broad blurred color masses. Painted only on appearance rebuild; frame update onlyproximityopacity and bounded lateraloffset. No secondscene/render target/readback. SVG retains plain glass.
+- Same private Chromium/SwiftShader baseline→mirror:390 calls188→189, triangles69402→69404, medianframe39.8→39.6ms;820 median46.8→46.8ms. These small samples show no material regression, not a physical-phone heat/battery guarantee.
+
+## QA scope
+- 32Node regressions.
+- Full390/820/1280 WebGL lifecycle after floor-shadow fix;390 repeated after mirror; SVG820 fallback checked. Actual wardrobe/vanity/cello taps, arrival-only mock, focus/close and camera restoration.
+- No product data, storage schema,2D source, formal deployment or remote changes.
