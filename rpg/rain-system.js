@@ -1,4 +1,4 @@
-import {umbrellaPose,umbrellaTop,canopyCoversGround,umbrellaCoversGround} from './rain-geometry.js?v=30';
+import {umbrellaPose,umbrellaTop,canopyCoversGround,umbrellaCoversGround} from './rain-geometry.js?v=32';
 export const RAIN_COUNT=126;
 const rainHash=n=>{n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return(n^(n>>>16))>>>0;};
 // Pure segment sampler shared by visible hits and soil events. Earliest hit wins.

@@ -1,13 +1,13 @@
-import {umbrellaShape} from './rain-geometry.js?v=30';
+import {umbrellaShape} from './rain-geometry.js?v=32';
 // Original, ephemeral 8-bit scenery. No state, route, timing or storage ownership.
-import {drawPlayer} from './avatar.js?v=30';
-import {drawTeacher} from './teacher.js?v=30';
+import {drawPlayer} from './avatar.js?v=32';
+import {drawTeacher} from './teacher.js?v=32';
 const freeze=o=>Object.freeze(o);
 export const LOUNGE_LAYOUT=freeze({table:freeze({x:490,y:218,depth:245,solid:freeze({x:458,y:214,w:64,h:31})}),seats:freeze([
  freeze({id:'left',x:440,y:232,facing:'right',approach:freeze({x:423,y:250}),solid:freeze({x:430,y:225,w:20,h:12})}),
  freeze({id:'right',x:540,y:232,facing:'left',approach:freeze({x:557,y:250}),solid:freeze({x:530,y:225,w:20,h:12})})])});
 const rect=(g,x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h);};
-export function drawLoungeTable(g,{rain=false,reading=false}={}){
+export function drawLoungeTable(g,{rain=false,readingSide=null}={}){
  g.save();g.translate(490,218);
  // The low screen-space top and slender legs leave the meadow visible around it.
  rect(g,-32,23,67,5,'#415d3c22');rect(g,-28,11,6,16,'#78624b');rect(g,23,11,6,16,'#78624b');
@@ -16,12 +16,14 @@ export function drawLoungeTable(g,{rain=false,reading=false}={}){
  rect(g,-34,-13,68,17,'#c2a473');rect(g,-34,4,68,5,'#92734e');rect(g,-32,9,64,3,'#755f48');
  rect(g,-32,-12,64,2,'#e3ca9b');rect(g,-32,-3,64,1,'#a68b61');rect(g,-32,4,64,1,'#d1b180');
  for(const[x,y,w]of[[-26,-8,13],[-4,-7,12],[16,-9,10],[-21,0,18],[7,1,14]])rect(g,x,y,w,1,'#b19366');
- // The single larger book rests on the near-right tabletop only while reading.
- if(reading&&!rain){g.save();g.translate(-12,0);
-  rect(g,-3,-14,32,14,'#48695a');rect(g,-2,-15,14,12,'#f1e3bb');rect(g,13,-14,15,11,'#e4d5ae');
-  rect(g,12,-14,1,12,'#af9875');rect(g,-1,-15,12,1,'#fff4d4');rect(g,14,-14,12,1,'#fff0cc');
-  for(const yy of[-11,-8,-5]){rect(g,1,yy,8,1,'#bca98a');rect(g,16,yy+1,8,1,'#c0aa87');}
-  rect(g,22,-2,2,4,'#b97b77');g.restore();
+ // Read from the teacher's chair: the bottom margin faces their hands.
+ if(!rain&&(readingSide==='left'||readingSide==='right')){
+  const left=readingSide==='left';g.save();g.translate(left?-17:17,-5);
+  g.scale(1,.52);g.rotate(left?Math.PI/2:-Math.PI/2);
+  rect(g,-16,-13,32,26,'#48695a');rect(g,-15,-12,14,23,'#f1e3bb');rect(g,1,-11,14,22,'#e4d5ae');
+  rect(g,-1,-11,2,23,'#af9875');rect(g,-14,-12,12,2,'#fff4d4');rect(g,2,-11,12,2,'#fff0cc');
+  for(const yy of[-6,-2,2,6]){rect(g,-12,yy,8,1,'#bca98a');rect(g,3,yy+1,8-(yy===6?3:0),1,'#c0aa87');}
+  rect(g,10,9,2,5,'#b97b77');g.restore();
  }
  g.restore();
 }

@@ -41,3 +41,14 @@ test('either player chair makes teacher choose opposite and vacate before switch
   s=a.update(.04,{teacher,practice:true});assert.equal(s.mode,'return');assert.equal(s.reading,false);
  }
 });
+
+test('solo reading is unhurried and a late player can still join',()=>{
+ const a=createLounge({navigation,random:()=>.75}),teacher={x:303,y:334};let s;
+ for(let i=0;i<1000;i++){s=a.update(.05,{teacher});if(s.mode==='seated')break;}assert.equal(s.mode,'seated');
+ for(let i=0;i<800;i++)s=a.update(.05,{teacher});
+ assert.equal(s.mode,'seated');assert.equal(s.reading,true);
+ let chat=0;
+ for(let i=0;i<44;i++){s=a.update(.05,{teacher,playerSeated:true});chat+=Number(s.chat);}
+ assert.equal(s.mode,'seated');assert.equal(s.reading,false);assert.equal(chat,1);
+ s=a.update(.05,{teacher,playerSeated:true,rain:true});assert.equal(s.mode,'return');assert.equal(s.reading,false);
+});

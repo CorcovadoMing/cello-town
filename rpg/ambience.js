@@ -1,4 +1,4 @@
-import {umbrellaTop,umbrellaCoversGround} from './rain-geometry.js?v=30';
+import {umbrellaTop,umbrellaCoversGround,canopyCoversGround} from './rain-geometry.js?v=32';
 // Pure bounded animation state; seed supplied once by app, no saved-state changes.
 export function fishVariants(seed=1){let n=seed>>>0;const rand=()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;return n/4294967296;};const colors=['#ed923d','#f5dd91','#535a78','#d66f62','#757449'];for(let k=0;k<5;k++)rand();for(let i=colors.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[colors[i],colors[j]]=[colors[j],colors[i]];}return Array.from({length:3},(_,i)=>({color:colors[i],size:.8+rand()*.35,length:.78+rand()*.5,girth:.72+rand()*.65,fin:['round','fork','none'][Math.floor(rand()*3)]}));}
 const defaultFish=fishVariants(1);
@@ -125,13 +125,14 @@ export function drawGardenCat(g,c){
    for(let i=0;i<5;i++){put(3-i,10-i,'O');put(10+i,10-i,'O');}put(-2,5,'L');put(15,5,'L');}
  }
 
+ if(c.rainAlert&&c.groom>.1){put(4,8-Math.round(c.groom*2),'L');put(4,9,'O');}
  const colors=c.palette||{W:'#fff0cb',I:'#b9854a',H:'#e9aa62',O:'#d58b43',L:'#f4d4a0',S:'#a6572f',E:'#353b32',N:'#824b3a'},size=c.palette?1:1.10,scale=1.35*size;
- g.save();g.translate(Math.round(c.x),Math.round(c.groundY??c.y));g.fillStyle='#3f58372a';g.beginPath();g.ellipse(0,4,(vertical?11:20)*size,2.5,0,0,Math.PI*2);g.fill();g.translate(0,Math.round(c.y-(c.groundY??c.y)));if(!vertical&&facing==='left')g.scale(-1,1);g.scale(scale,scale);g.translate(-w/2,-h+2);
+ g.save();g.translate(Math.round(c.x),Math.round(c.groundY??c.y));g.fillStyle='#3f58372a';g.beginPath();g.ellipse(0,4,(vertical?11:20)*size,2.5,0,0,Math.PI*2);g.fill();g.translate(c.shake||0,Math.round(c.y-(c.groundY??c.y)));if(!vertical&&facing==='left')g.scale(-1,1);g.scale(scale,scale);g.translate(-w/2,-h+2);
  // Four-neighbour one-pixel outline gives crisp stepped edges, not antialiased ellipses.
  g.fillStyle='#74533a';for(const id of pixels.keys()){const[x,y]=id.split(',').map(Number);for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]])if(!pixels.has((x+dx)+','+(y+dy)))g.fillRect(x+dx,y+dy,1,1);}
  for(const[id,k]of pixels){const[x,y]=id.split(',').map(Number);g.fillStyle=colors[k];g.fillRect(x,y,1,1);}
  if(vertical&&!back&&!tucked){g.fillStyle='#fff0cb';g.fillRect(5,4,1,1);g.fillRect(8,4,1,1);}
- g.restore();
+ g.restore();if(c.rainAlert&&Math.abs(c.shake||0)>.5)drawPetShake(g,c.x,c.groundY??c.y,c.shake);
 }
 export function drawPondLife(g,time,reduced,variants=defaultFish){g.save();g.beginPath();g.rect(48,388,187,135);g.clip();for(const [i,f] of pondLife(time,reduced).entries()){const v=variants[i];g.save();g.translate(f.x,f.y);g.scale(f.dir*v.size*v.length,v.size*v.girth);g.fillStyle=v.color;g.globalAlpha=.92;g.beginPath();g.ellipse(0,0,9,4,0,0,Math.PI*2);g.fill();if(v.fin!=='none'){g.beginPath();g.moveTo(-7,0);if(v.fin==='round'){g.quadraticCurveTo(-20,-9+f.tail,-15,f.tail);g.quadraticCurveTo(-20,9+f.tail,-7,0);}else{g.lineTo(-15,-5+f.tail);g.lineTo(-12,f.tail);g.lineTo(-15,5+f.tail);}g.closePath();g.fill();}g.fillStyle='#fff1c0';g.fillRect(0,-2,4,2);g.fillStyle='#567f79';g.fillRect(6,-1,1.5,1.5);g.restore();if(f.surface!==null){g.globalAlpha=(1-f.surface)*.55;g.strokeStyle='#e2f0d9';g.lineWidth=1.2;g.beginPath();g.ellipse(f.x,f.y,5+f.surface*19,2+f.surface*7,0,0,Math.PI*2);g.stroke();g.globalAlpha=1;}}g.restore();}
 export function drawGardenLife(g,time,reduced,context=null){const {visitor:v,cat:c}=context?.life||gardenLife(time,reduced);g.save();if(v){g.save();g.translate(v.x,v.y);g.scale(v.dir,1);if(v.kind==='butterfly'){g.fillStyle='#f4d28d';for(const side of [-1,1]){g.beginPath();g.ellipse(side*5,0,3+Math.abs(v.wing)*2,6,side*.4,0,Math.PI*2);g.fill();}g.fillStyle='#8e7450';g.fillRect(-1,-4,2,8);g.fillRect(2,-2,3,3);}else if(v.kind==='bee'){g.fillStyle='#fff3d1';g.beginPath();g.ellipse(-3,-4,5,3+Math.abs(v.wing)*2,0,0,Math.PI*2);g.fill();g.fillStyle='#e7b655';g.fillRect(-6,-2,12,6);g.fillStyle='#665743';g.fillRect(-1,-2,3,6);g.fillRect(5,-1,2,2);}else{g.fillStyle='#7596ac';g.beginPath();g.ellipse(0,0,8,5,0,0,Math.PI*2);g.fill();g.fillStyle='#b6cfdb';g.beginPath();g.ellipse(-2,-3,7,2+Math.abs(v.wing)*4,-.4,0,Math.PI*2);g.fill();g.fillStyle='#e7be6f';g.fillRect(7,-2,4,2);}g.restore();}
@@ -212,7 +213,8 @@ const dog=[
 const dogPixels=new Map();dog.forEach((r,y)=>[...r].forEach((k,x)=>{if(k!=='.')dogPixels.set(x+','+y,k)}));
 const wag=Math.round(flick.dog*.5);for(const[x,y]of[[29,7],[30,7],[31,7],[32,8],[33,9],[33,10],[33,11],[32,12+wag],[31,13+wag]])dogPixels.set(x+','+y,'C');
 g.fillStyle='#4f583329';g.fillRect(3,14,31,2);g.fillStyle='#79634d';for(const id of dogPixels.keys()){const[x,y]=id.split(',').map(Number);for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]])if(!dogPixels.has((x+dx)+','+(y+dy)))g.fillRect(x+dx,y+dy,1,1);}
-const dogPalette={C:'#bda285',D:'#927455',L:'#e4cfaf',E:'#655442',N:'#514b40'};for(const[id,k]of dogPixels){const[x,y]=id.split(',').map(Number);g.fillStyle=dogPalette[k];g.fillRect(x,y,1.08,1.08);}g.fillStyle='#cfb89a';g.fillRect(18,2,5,1);g.restore();}
+for(let y=3;y<7;y++)for(let x=18;x<24;x++)if(dogPixels.get(x+','+y)==='C')dogPixels.set(x+','+y,'D');for(let y=8;y<11;y++)dogPixels.set('11,'+y,'B');
+const dogPalette=DOG_PALETTE;for(const[id,k]of dogPixels){const[x,y]=id.split(',').map(Number);g.fillStyle=dogPalette[k];g.fillRect(x,y,1.08,1.08);}g.fillStyle='#cfb89a';g.fillRect(18,2,5,1);g.restore();}
 
 
 export function foliageWind(time,seed,weather='sun',reduced=false){if(reduced||seed%3!==0)return 0;const strength=weather==='breeze'?1:weather==='rain'?.7:.4;const phase=seed*1.731;return strength*(.55+.24*Math.sin(time/2600+phase)+.16*Math.sin(time/4100+phase*.7));}
@@ -254,7 +256,10 @@ export function drawRainFrame(g,frame){
 }
 // Ephemeral weather response. Routes use the caller's pet navigation and the
 // exact visible canopy columns; nothing writes save data or changes collision.
-export function createRainPets({navigation,canopies=[],trees=[]}={}){
+// Pet-only ground core includes the drawn roots plus small-body clearance.
+export function petTrunkBlocked(trees,x,y){return trees.some(([tx,ty,scale])=>x>=tx-9*scale-14&&x<=tx+10*scale+14&&y>=ty+34*scale-7&&y<=ty+46*scale+7);}
+export function rainPetGesture(time,offset=0,reduced=false){const phase=(time/1000+offset)%17;return {shake:reduced?0:phase>2&&phase<2.7?Math.sin((phase-2)*45)*1.1:0,groom:reduced?0:phase>8&&phase<10.3?Math.max(0,Math.sin((phase-8)*6)):0};}
+export function createRainPets({navigation,rainNavigation=navigation,canopies=[],trees=[]}={}){
  let last=null,clock=0,raining=false,rainAge=0,dryAge=0;
  const benchCat={x:223,y:211,facing:'left',mode:'home',path:[],moving:false},benchHome={x:223,y:211},benchLanding={x:238,y:247};let benchAge=0,benchJump=null,dogDryDone=false,benchDryDone=false;
  function jumpBench(up){benchJump={from:{x:benchCat.x,y:benchCat.y},to:up?benchHome:benchLanding,age:0,up};benchCat.mode=up?'jumpUp':'jumpDown';benchCat.path=[];}
@@ -263,15 +268,15 @@ export function createRainPets({navigation,canopies=[],trees=[]}={}){
  const pondLand={x:293,y:459};let pondAge=0,pondHop=null;
  const homeDog={x:240,y:245};
  const point=p=>({x:p.x,y:p.y});
- const sheltered=(x,y)=>canopies.some((c,i)=>{const k=Math.floor(x-c.left),tree=trees[i];return tree&&k>=8&&k<c.columns.length-8&&Number.isFinite(c.columns[k])&&Math.abs(y-(tree[1]+46*tree[2]))<=66;});
- function chooseShelter(p,avoid=[]){const candidates=[];for(let i=0;i<trees.length;i++){const[x,y,s]=trees[i],c=canopies[i];if(!c)continue;for(let dx=-28*s;dx<=28*s;dx+=8)for(const dy of[0,12,24,36,-12,-24]){const q={x:x+dx,y:y+46*s+dy};if(navigation.isWalkable(q.x,q.y)&&sheltered(q.x,q.y)&&avoid.every(a=>!a||Math.hypot(a.x-q.x,a.y-q.y)>=46))candidates.push({q,bound:Math.hypot(q.x-p.x,q.y-p.y)});}}candidates.sort((a,b)=>a.bound-b.bound);let best=null;for(const candidate of candidates){if(best&&candidate.bound>=best.d)break;const path=navigation.findPath(p,candidate.q);if(!path)continue;let from=p,d=0;for(const to of path){d+=Math.hypot(to.x-from.x,to.y-from.y);from=to;}if(!best||d<best.d)best={q:candidate.q,path,d};}return best;}
+ const sheltered=(x,y)=>canopies.some((c,i)=>{const k=Math.floor(x-c.left),tree=trees[i];return tree&&k>=8&&k<c.columns.length-8&&Number.isFinite(c.columns[k])&&canopyCoversGround(c,y)&&Math.abs(y-(tree[1]+46*tree[2]))<=66;});
+ function chooseShelter(p,avoid=[]){const candidates=[];for(let i=0;i<trees.length;i++){const[x,y,s]=trees[i],c=canopies[i];if(!c)continue;for(const dx of[-(12*s+18),12*s+18])for(const dy of[8,14,-8]){const q={x:x+dx,y:y+46*s+dy};if(rainNavigation.isWalkable(q.x,q.y)&&sheltered(q.x,q.y)&&avoid.every(a=>!a||Math.hypot(a.x-q.x,a.y-q.y)>=46))candidates.push({q,bound:Math.hypot(q.x-p.x,q.y-p.y)});}}candidates.sort((a,b)=>a.bound-b.bound);let best=null;for(const candidate of candidates){if(best&&candidate.bound>=best.d)break;const path=rainNavigation.findPath(p,candidate.q);if(!path)continue;let from=p,d=0;for(const to of path){d+=Math.hypot(to.x-from.x,to.y-from.y);from=to;}if(!best||d<best.d)best={q:candidate.q,path,d};}return best;}
 
- function route(p,q){const path=navigation.findPath(p,q);if(path){p.path=path;p.goal=point(q);}return !!path;}
- function step(p,dt,speed){let budget=dt*speed,moved=0;while(p.path.length&&budget>0){const q=p.path[0],d=Math.hypot(q.x-p.x,q.y-p.y);if(d<.01){p.path.shift();continue;}const n=Math.min(d,budget),next={x:p.x+(q.x-p.x)/d*n,y:p.y+(q.y-p.y)/d*n};if(!navigation.lineClear(p,next)){p.path=[];break;}p.facing=catFacing(next.x-p.x,next.y-p.y,p.facing);p.x=next.x;p.y=next.y;budget-=n;moved+=n;if(n===d)p.path.shift();}p.moving=moved>.01;return moved;}
+ function route(p,q){const path=(p.rainRoute?rainNavigation:navigation).findPath(p,q);if(path){p.path=path;p.goal=point(q);}return !!path;}
+ function step(p,dt,speed){let budget=dt*speed,moved=0;while(p.path.length&&budget>0){const q=p.path[0],d=Math.hypot(q.x-p.x,q.y-p.y);if(d<.01){p.path.shift();continue;}const n=Math.min(d,budget),next={x:p.x+(q.x-p.x)/d*n,y:p.y+(q.y-p.y)/d*n};if(!(p.rainRoute?rainNavigation:navigation).lineClear(p,next)){p.path=[];break;}p.facing=catFacing(next.x-p.x,next.y-p.y,p.facing);p.x=next.x;p.y=next.y;budget-=n;moved+=n;if(n===d)p.path.shift();}p.moving=moved>.01;return moved;}
  return {update(time,{weather='sun',player=null,playerUmbrella=null,reduced=false}={}){
   const dt=last===null?0:Math.min(.05,Math.max(0,(time-last)/1000));if(last===null)clock=time;last=time;
   const wet=weather==='rain';
-  if(wet&&!raining){if(cat.mode==='home'){const base=gardenLife(clock,reduced).cat;Object.assign(cat,{x:base.x,y:base.groundY,facing:base.facing});returnCat=point(cat);}Object.assign(cat,{mode:'notice',path:[],jump:0,pondPaw:0});pondHop=null;dog.mode='notice';dog.path=[];rainAge=0;dogGoal=chooseShelter(dog);catGoal=chooseShelter(cat,[dogGoal?.q]);}
+  if(wet&&!raining){for(const p of[dog,cat,benchCat])p.rainRoute=true;if(cat.mode==='home'){const base=gardenLife(clock,reduced).cat;Object.assign(cat,{x:base.x,y:base.groundY,facing:base.facing});returnCat=point(cat);}Object.assign(cat,{mode:'notice',path:[],jump:0,pondPaw:0});pondHop=null;dog.mode='notice';dog.path=[];rainAge=0;dogGoal=chooseShelter(dog);catGoal=chooseShelter(cat,[dogGoal?.q]);}
   if(!wet&&raining){for(const p of[dog,cat]){p.mode='return';p.path=[];}route(dog,homeDog);route(cat,returnCat);}
   raining=wet;rainAge+=dt;replan-=dt;dryAge=wet?0:dryAge+dt;benchAge+=dt;
   if(!reduced){
@@ -279,7 +284,7 @@ export function createRainPets({navigation,canopies=[],trees=[]}={}){
     if(dog.mode==='notice'&&rainAge>=dog.wait){dog.mode='shelter';if(dogGoal)dog.path=dogGoal.path.slice();}
     const u=playerUmbrella,near=player&&Math.hypot(player.x-cat.x,player.y-cat.y)<(cat.mode==='follow'?125:82),open=u&&u.opening>=.95;
     if(open&&near){
-     if(cat.mode!=='follow'||replan<=0){const side=u.x>=player.x?1:-1,q={x:player.x+side*17,y:player.y+9};if(navigation.isWalkable(q.x,q.y)&&umbrellaCoversGround(u,q.y)&&Number.isFinite(umbrellaTop(u,q.x-22))&&Number.isFinite(umbrellaTop(u,q.x+22))&&route(cat,q)){cat.mode='follow';replan=.45;}}
+     if(cat.mode!=='follow'||replan<=0){const side=u.x>=player.x?1:-1,q={x:player.x+side*17,y:player.y+9};if(rainNavigation.isWalkable(q.x,q.y)&&umbrellaCoversGround(u,q.y)&&Number.isFinite(umbrellaTop(u,q.x-22))&&Number.isFinite(umbrellaTop(u,q.x+22))&&route(cat,q)){cat.mode='follow';replan=.45;}}
     }else if(cat.mode==='follow'){cat.mode='shelter';catGoal=chooseShelter(cat,[dogGoal?.q]);cat.path=catGoal?catGoal.path.slice():[];}
     if(cat.mode==='notice'&&rainAge>=cat.wait){cat.mode='shelter';if(catGoal)cat.path=catGoal.path.slice();}
    }
@@ -304,7 +309,7 @@ export function createRainPets({navigation,canopies=[],trees=[]}={}){
    if(!wet&&dryAge>18&&!benchDryDone&&benchCat.mode==='home'){benchCat.mode='stretch';benchAge=0;benchDryDone=true;}
    if(benchCat.mode==='stretch'&&benchAge>2){jumpBench(false);benchAge=0;}
    if(wet&&benchCat.mode==='home'){benchCat.mode='stretch';benchAge=0;}
-   if(benchJump){benchJump.age+=dt;const u=Math.min(1,benchJump.age/.8),q=benchJump;benchCat.x=q.from.x+(q.to.x-q.from.x)*u;benchCat.y=q.from.y+(q.to.y-q.from.y)*u;benchCat.jump=Math.sin(u*Math.PI)*14;benchCat.facing=q.up?'up':'down';if(u===1){const up=q.up;benchJump=null;benchCat.jump=0;if(up){benchCat.mode='home';benchCat.facing='left';}else{benchCat.mode=wet?'shelter':'dryStroll';const place=wet?chooseShelter(benchCat,[dogGoal?.q,catGoal?.q]):null;if(place)benchCat.path=place.path.slice();else route(benchCat,{x:388,y:270});}}}
+   if(benchJump){benchJump.age+=dt;const u=Math.min(1,benchJump.age/.8),q=benchJump;benchCat.x=q.from.x+(q.to.x-q.from.x)*u;benchCat.y=q.from.y+(q.to.y-q.from.y)*u;benchCat.jump=Math.sin(u*Math.PI)*14;benchCat.facing=q.up?'up':'down';if(u===1){const up=q.up;benchJump=null;benchCat.jump=0;if(up){benchCat.rainRoute=false;benchCat.mode='home';benchCat.facing='left';}else{benchCat.mode=wet?'shelter':'dryStroll';const place=wet?chooseShelter(benchCat,[dogGoal?.q,catGoal?.q]):null;if(place)benchCat.path=place.path.slice();else route(benchCat,{x:388,y:270});}}}
    else if(benchCat.mode==='dryStroll'&&!benchCat.path.length){benchCat.mode='dryRest';benchCat.facing='left';benchAge=0;}
    if(wet&&['dryStroll','dryRest','return'].includes(benchCat.mode)){benchCat.mode='shelter';const place=chooseShelter(benchCat,[dogGoal?.q,catGoal?.q]);benchCat.path=place?place.path.slice():[];}
    if(!wet&&benchCat.mode==='shelter'){benchCat.mode='return';route(benchCat,benchLanding);}
@@ -312,27 +317,73 @@ export function createRainPets({navigation,canopies=[],trees=[]}={}){
    if(benchCat.mode==='return'&&!benchCat.path.length&&Math.hypot(benchCat.x-benchLanding.x,benchCat.y-benchLanding.y)<1)jumpBench(true);
    if(!benchJump)step(benchCat,dt,wet?52:29);
    step(dog,dt,wet?67:37);if(!pondHop)step(cat,dt,cat.mode==='follow'?160:wet?58:cat.mode==='pondTravel'?47:39);
-   if(!wet){if(dog.mode==='return'&&!dog.path.length&&Math.hypot(dog.x-homeDog.x,dog.y-homeDog.y)<1)dog.mode='home';if(cat.mode==='return'&&!cat.path.length&&Math.hypot(cat.x-returnCat.x,cat.y-returnCat.y)<1)cat.mode='home';}
+   if(!wet){if(dog.mode==='return'&&!dog.path.length&&Math.hypot(dog.x-homeDog.x,dog.y-homeDog.y)<1){dog.mode='home';dog.rainRoute=false;}if(cat.mode==='return'&&!cat.path.length&&Math.hypot(cat.x-returnCat.x,cat.y-returnCat.y)<1){cat.mode='home';cat.rainRoute=false;}}
   }else {dog.moving=false;cat.moving=false;benchCat.moving=false;}
   if(!wet&&cat.mode==='home')clock+=dt*1000;
+  if(wet)for(const p of[dog,cat,benchCat])if(p.mode==='shelter'&&!p.moving&&!p.path.length)p.facing='down';
+  const dg=rainPetGesture(time,0,reduced),cg=rainPetGesture(time,5,reduced),bg=rainPetGesture(time,11,reduced);
   const life=gardenLife(clock,reduced),activeCat=cat.mode!=='home';
-  if(activeCat){life.visitor=null;life.cat={...life.cat,x:cat.x,y:cat.y-(cat.jump||0),groundY:cat.y,facing:cat.facing,dir:cat.facing==='left'?-1:1,pounce:false,paw:cat.pondPaw||0,pondPaw:cat.mode==='pondWatch',aim:0,wiggle:0,burst:0,searching:false,running:cat.moving,stride:cat.moving?Math.sin(time/90)*2.5:0,sit:cat.moving||cat.mode==='pondWatch'||cat.mode==='pondStartle'?0:1,lie:0,phase:cat.mode};}
-  return {life,pondContact:cat.mode==='pondStartle'?{x:269,y:459,progress:Math.min(1,(pondHop?.age||0)/.6)}:null,pondFish:cat.mode==='pondWatch'?pondLife(time,reduced).map(point):null,benchCat:{...point(benchCat),facing:benchCat.facing,moving:benchCat.moving,mode:benchCat.mode,jump:benchCat.jump||0,stride:benchCat.moving?Math.sin(time/120)*1.5:0},benchCatActive:benchCat.mode!=='home',dog:{...point(dog),facing:dog.facing,moving:dog.moving,mode:dog.mode,stride:dog.moving?Math.sin(time/95)*2:0},dogActive:dog.mode!=='home',catActive:activeCat,covered:{dog:sheltered(dog.x,dog.y),cat:sheltered(cat.x,cat.y)},clock};
+  if(activeCat){life.visitor=null;life.cat={...life.cat,x:cat.x,y:cat.y-(cat.jump||0),groundY:cat.y,facing:cat.facing,dir:cat.facing==='left'?-1:1,pounce:false,paw:cat.pondPaw||0,pondPaw:cat.mode==='pondWatch',aim:0,wiggle:0,burst:0,searching:false,running:cat.moving,stride:cat.moving?Math.sin(time/90)*2.5:0,sit:cat.moving||cat.mode==='pondWatch'||cat.mode==='pondStartle'?0:1,lie:0,phase:cat.mode,rainAlert:wet&&cat.mode==='shelter'&&!cat.moving,shake:wet&&!cat.moving?cg.shake:0,groom:wet&&!cat.moving?cg.groom:0};}
+  return {life,pondContact:cat.mode==='pondStartle'?{x:269,y:459,progress:Math.min(1,(pondHop?.age||0)/.6)}:null,pondFish:cat.mode==='pondWatch'?pondLife(time,reduced).map(point):null,benchCat:{...point(benchCat),rainAlert:wet&&benchCat.mode==='shelter'&&!benchCat.moving,shake:wet&&!benchCat.moving?bg.shake:0,groom:wet&&!benchCat.moving?bg.groom:0,facing:benchCat.facing,moving:benchCat.moving,mode:benchCat.mode,jump:benchCat.jump||0,stride:benchCat.moving?Math.sin(time/120)*1.5:0},benchCatActive:benchCat.mode!=='home',dog:{...point(dog),rainAlert:wet&&dog.mode==='shelter'&&!dog.moving,shake:wet&&!dog.moving?dg.shake:0,groom:wet&&!dog.moving?dg.groom:0,facing:dog.facing,moving:dog.moving,mode:dog.mode,stride:dog.moving?Math.sin(time/95)*2:0},dogActive:dog.mode!=='home',catActive:activeCat,covered:{dog:sheltered(dog.x,dog.y),cat:sheltered(cat.x,cat.y)},clock};
  },get positions(){return{dog:point(dog),cat:point(cat),benchCat:point(benchCat)}}};
 }
 
-// Short quadruped travel pose; the original sleepy dog is restored at home.
+// One beige, floppy-eared dog: same cream muzzle/paws, cocoa flank patch,
+// sage collar and curling tail in nap, four directions, and alert sitting.
+const DOG_PALETTE={C:'#bda285',D:'#927455',L:'#e4cfaf',E:'#655442',N:'#514b40',B:'#698879',W:'#f7ebd4'};
+const DOG_SIDE=[
+'.....CCCCCC.......................',
+'....CCCCCDDD......................',
+'...CCCCCCDDDD.....................',
+'...CCEWCCDDDD.....................',
+'.LLLCCCCCDDDD....CCCCCCCCCCC.......',
+'NLLLLCCCCDDDD..CCCCCDDDDDDCCCC.....',
+'LLLLLCCCCDDDDBCCCCCDDDDDDDCCCCC....',
+'.LLLLLCCCCCCBBCCCCCDDDDDDCCCCCCC...',
+'...CCCCCCCCCBCCCCCCCCCCCCCCCCCCC..',
+'.....CCCCCCCCCCCCCCCCCCCCCCCCCCC..',
+'......CCCCCCCCCCCCCCCCCCCCCCCCC...',
+'.......CCCCCCCCCCCCCCCCCCCCCCC....',
+'........CCCC...........CCCC.......',
+'........CCCC...........CCCC.......',
+'........CCCC...........CCCC.......',
+'........LLLL...........LLLL.......'];
+const DOG_FRONT=[
+'.....CCCCCCCC.....','...CCCCCCCCCCCC...','..DDCCCCCCCCCCDD..',
+'..DDDCCCCCCCCDDD..','..DDDCEWCCWECDDD..','..DDDCCCCCCCCDDD..',
+'..DDDLLLLLLLLDDD..','...DDLLLNNLLLDD...','.....LLLLLLLL.....',
+'.....CBBBBBBC.....','....CCCCCCCCCC....','....CCCCCCCCCC....',
+'....CCCCCCCCCC....','....CCCCCCCCCC....','.....CCCCCCCC.....',
+'.....CC..CC.......','.....CC..CC.......','.....LL..LL.......'];
+const DOG_BACK=[
+'.....CCCCCCCC.....','...CCCCCCCCCCCC...','..DDCCCCCCCCCCDD..',
+'..DDDCCCCCCCCDDD..','..DDDCCCCCCCCDDD..','..DDDCCCCCCCCDDD..',
+'...DDCCCCCCCCDD...','.....CCCCCCCC.....','.....CBBBBBBC.....',
+'....CCCCCCCCCC....','....CCDDDDDDCC....','....CCDDDDDDCC....',
+'....CCCCCCCCCC....','....CCCCCCCCCC....','.....CCCCCCCC.....',
+'.....CC..CC.......','.....CC..CC.......','.....LL..LL.......'];
+export function dogPosePixels(facing='left',moving=false,stride=0,alert=false){
+ const vertical=facing==='up'||facing==='down',rows=vertical?(facing==='up'?DOG_BACK:DOG_FRONT):DOG_SIDE,w=rows[0].length,h=rows.length,pixels=new Map();
+ rows.forEach((row,y)=>[...row].forEach((k,x)=>{if(k!=='.')pixels.set(x+','+y,k)}));
+ // Tail attaches at the rump, independent of paw motion.
+ const tail=vertical?[[12,13],[13,12],[14,11],[15,10],[15,9]]:[[30,9],[31,9],[32,8],[33,7],[33,6],[32,5]];
+ for(const[x,y]of tail)pixels.set(x+','+y,'C');
+ if(moving){const top=vertical?14:11,legs=vertical?[[5,2],[9,2]]:[[8,2],[10,2],[23,2],[25,2]];for(const[legIndex,[x,width]]of legs.entries()){const lift=Math.max(0,Math.round((legIndex%2?stride:-stride)*.65));for(let yy=top;yy<h;yy++)for(let xx=x;xx<x+width;xx++)pixels.delete(xx+','+yy);for(let yy=top;yy<h-lift;yy++)for(let xx=x;xx<x+width;xx++)pixels.set(xx+','+yy,yy===h-lift-1?'L':'C');}}
+ if(alert&&vertical){for(let y=12;y<h-1;y++){pixels.set('4,'+y,'C');pixels.set('12,'+y,'C');}pixels.set('4,'+(h-1),'L');pixels.set('12,'+(h-1),'L');}
+ return {pixels,w,h,vertical};
+}
 export function drawRainDog(g,d){
- if(!d.moving){g.save();g.translate(d.x,d.y);if(d.facing==='right')g.scale(-1,1);if(d.mode==='dryStretch')g.scale(1.08,.93);g.translate(-240,-245);drawBenchLife(g,0,true,{benchCatActive:true});g.restore();return;}
- const vertical=d.facing==='up'||d.facing==='down',back=d.facing==='up',moving=d.moving;
- const rows=vertical?[
- '...DDDDDD...', '...DCCCCD...', '...DCCCCD...', back?'...DCCCCD...':'...DCEECD...',back?'....CCCC....':'....CLLC....',back?'....CCCC....':'....LNNL....', '....CCCC....','...CCCCCC...','...CCCCCC...','...CCCCCC...','....CCCC....','....C..C....','....L..L....']:[
- '...DDDD....................','..CCCCDD...................','..CECCDD...................', '.LLLCCDD...CCCCCCCCCC......','NLLLCCCCCCCCCCCCCCCCC.....','..CCCCCCCCCCCCCCCCCCCC....','....CCCCCCCCCCCCCCCCCCC...','.....CCCCCCCCCCCCCCCC.....','......CC..........CC......','......LL..........LL......'];
- g.save();g.translate(Math.round(d.x),Math.round(d.y));g.fillStyle='#4f583329';g.beginPath();g.ellipse(0,3,vertical?9:20,2.5,0,0,Math.PI*2);g.fill();if(!vertical&&d.facing==='right')g.scale(-1,1);g.scale(1.5,1.5);g.translate(-rows[0].length/2,-rows.length+1);
- const palette={C:'#bda285',D:'#927455',L:'#e4cfaf',E:'#655442',N:'#514b40'};for(let y=0;y<rows.length;y++)for(let x=0;x<rows[y].length;x++){const k=rows[y][x];if(k==='.')continue;let py=y;if(moving&&y>=rows.length-2)py+=Math.round(d.stride*(x<rows[0].length/2?1:-1)*.4);g.fillStyle='#79634d';g.fillRect(x-.35,py-.35,1.7,1.7);g.fillStyle=palette[k];g.fillRect(x,py,1,1);}g.restore();
+ if(!d.moving&&!d.rainAlert){g.save();g.translate(d.x,d.y);if(d.facing==='right')g.scale(-1,1);if(d.mode==='dryStretch')g.scale(1.08,.93);g.translate(-240,-245);drawBenchLife(g,0,true,{benchCatActive:true});g.restore();return;}
+ const {pixels,w,h,vertical}=dogPosePixels(d.facing,d.moving,d.stride,d.rainAlert);
+ if(d.rainAlert&&d.groom>.3){pixels.set('6,'+(8-Math.round(d.groom*2)),'L');pixels.set('6,9','L');}
+ g.save();g.translate(Math.round(d.x)+(d.shake||0),Math.round(d.y));g.fillStyle='#4f583329';g.beginPath();g.ellipse(0,3,vertical?12:22,2.5,0,0,Math.PI*2);g.fill();if(!vertical&&d.facing==='right')g.scale(-1,1);g.scale(1.5,1.5);g.translate(-w/2,-h+1);
+ g.fillStyle='#79634d';for(const id of pixels.keys()){const[x,y]=id.split(',').map(Number);for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]])if(!pixels.has((x+dx)+','+(y+dy)))g.fillRect(x+dx,y+dy,1,1);}
+ for(const[id,k]of pixels){const[x,y]=id.split(',').map(Number);g.fillStyle=DOG_PALETTE[k];g.fillRect(x,y,1,1);}g.restore();if(d.rainAlert&&Math.abs(d.shake||0)>.5)drawPetShake(g,d.x,d.y,d.shake);
 }
 
-export function drawRainBenchCat(g,c){drawGardenCat(g,{...c,calico:true,groundY:c.y,y:c.y-(c.jump||0),dir:c.facing==='left'?-1:1,lie:c.mode==='dryRest'||c.mode==='shelter'?1:0,sit:0,pounce:c.mode==='stretch',paw:c.mode==='stretch'?4:0,tail:0,palette:{W:'#fff0cb',I:'#b9854a',H:'#cd955d',O:'#ead4ae',L:'#f5e2c1',S:'#665b50',E:'#6b5944',N:'#ad7f71'}});}
+export function drawRainBenchCat(g,c){drawGardenCat(g,{...c,calico:true,groundY:c.y,y:c.y-(c.jump||0),dir:c.facing==='left'?-1:1,lie:c.mode==='dryRest'?1:0,sit:c.rainAlert?1:0,pounce:c.mode==='stretch',paw:c.mode==='stretch'?4:0,tail:0,palette:{W:'#fff0cb',I:'#b9854a',H:'#cd955d',O:'#ead4ae',L:'#f5e2c1',S:'#665b50',E:'#6b5944',N:'#ad7f71'}});}
 
 // Local pet splash only; does not create or wet a soil cell or alter fish.
 export function drawPetPondContact(g,contact){if(!contact)return;const u=contact.progress;g.save();g.globalAlpha=(1-u)*.55;g.strokeStyle='#dce9df';g.lineWidth=1;g.beginPath();g.ellipse(contact.x,contact.y,2+u*8,1+u*3,0,0,Math.PI*2);g.stroke();g.restore();}
+
+function drawPetShake(g,x,y,shake){g.save();g.fillStyle='#b6d7d4';for(let i=0;i<4;i++){const side=i%2?1:-1;g.fillRect(x+side*(12+i*2+Math.abs(shake)*2),y-12-i*3,2,2);}g.restore();}

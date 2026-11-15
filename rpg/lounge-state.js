@@ -1,8 +1,8 @@
 // Ephemeral scene choreography: never reads or writes quests, records or storage.
 export function createLounge({navigation,seat={x:560,y:232},approach={x:577,y:250},seats=null,random=Math.random}){
  const choices=seats||[{x:460,y:232,facing:'right',approach:{x:443,y:250}},{...seat,facing:'left',approach}];let seatIndex=1;
- let clock=0,mode='idle',origin=null,pose=null,path=[],wait=12,rest=0,chatSent=false;
- const snapshot=()=>({mode,seatIndex,borrowed:mode!=='idle',pose:pose&&{...pose},reading:mode==='seated'&&rest>.8,chat:false});
+ let clock=0,mode='idle',origin=null,pose=null,path=[],wait=12,rest=0,chatSent=false,sharedSeat=false;
+ const snapshot=()=>({mode,seatIndex,borrowed:mode!=='idle',pose:pose&&{...pose},reading:mode==='seated'&&!sharedSeat&&rest>.8,chat:false});
  function route(to,next){const p=navigation.findPath(pose,to);if(!p)return false;path=p;mode=next;return true;}
  function update(dt,{teacher,player=null,playerSeated=false,playerSeatIndex=playerSeated?0:null,practice=false,dialog=false,questApproach=false,rain=false,reduced=false}={}){
   dt=Number.isFinite(dt)?Math.max(0,Math.min(.05,dt)):0;
@@ -26,9 +26,10 @@ export function createLounge({navigation,seat={x:560,y:232},approach={x:577,y:25
   }
   let chat=false;
   if(mode==='seated'){
+   if(sharedSeat!==playerSeated){sharedSeat=playerSeated;rest=0;chatSent=false;}
    rest+=dt;pose.walking=false;pose.facing=seat.facing;
    if(playerSeated&&!chatSent&&rest>1.2){chat=true;chatSent=true;}
-   if(rest>(playerSeated?22:14)){pose={...pose,...approach};route(origin,'return');}
+   if(rest>(playerSeated?22:50)){pose={...pose,...approach};route(origin,'return');}
   }
   if(mode==='approach'||mode==='return'){
    let remaining=32*dt;pose.walking=false;
@@ -36,7 +37,7 @@ export function createLounge({navigation,seat={x:560,y:232},approach={x:577,y:25
     if(d>.0001){const next={x:pose.x+dx/d*step,y:pose.y+dy/d*step};if(!navigation.lineClear(pose,next))break;pose={...pose,...next,walking:true,facing:Math.abs(dx)>Math.abs(dy)?dx<0?'left':'right':dy<0?'back':'front'};remaining-=step;}
     if(d<=step+.0001)path.shift();else break;
    }
-   if(!path.length){if(mode==='return'){mode='idle';pose=null;origin=null;wait=playerSeated?32:48;}else{mode='seated';pose={...pose,...seat,facing:seat.facing,walking:false};rest=0;}}
+   if(!path.length){if(mode==='return'){mode='idle';pose=null;origin=null;wait=playerSeated?32:48;}else{mode='seated';pose={...pose,...seat,facing:seat.facing,walking:false};sharedSeat=playerSeated;rest=0;}}
   }
   return {...snapshot(),chat,t:clock*1000};
  }

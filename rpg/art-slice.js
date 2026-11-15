@@ -1,4 +1,5 @@
-import {treeLeaves,leafOutline} from './rain-geometry.js?v=30';
+import {MUSIC_ROOM_APPROACH} from './music-room-art.js?v=32';
+import {treeLeaves,leafOutline} from './rain-geometry.js?v=32';
 // Private art-direction study. Original vector pixels, no image assets or filters.
 // These caches affect drawing only: world anchors and gameplay stay in app.js.
 export function createTownArt(makeCanvas,trees){
@@ -54,20 +55,25 @@ export function createTownArt(makeCanvas,trees){
   for(let i=0;i<count;i++){
    const angle=i*2.399+seed*.7,r=.35+.65*((i*7+seed)%13)/13;
    const x=Math.round(cx+Math.cos(angle)*rx*r),y=Math.round(cy+Math.sin(angle)*ry*r);
-   const h=3+(i+seed)%4,dark=seed%2?'#658a56':'#719451';
-   rect(g,x,y-h,2,h,dark);rect(g,x-2,y-h+1,2,Math.max(2,h-2),dark);
+   const h=3+(i+seed)%7,dark=['#658a56','#719451','#6c8c63'][seed%3];
+   rect(g,x,y-h,1+(i%2),h,dark);
+   if((i+seed)%3===0){rect(g,x-3,y-h+3,3,2,dark);rect(g,x+1,y-3,4,2,'#87a569');}
+   else rect(g,x-2,y-h+1,2,Math.max(2,h-2),dark);
    if(i%3!==0)rect(g,x+3,y-h-1,2,h-1,'#93b468');
    rect(g,x,y-h,1,2,i%2?'#b2ca7b':'#bdce87');
   }
  });
- // Three small wildflower pockets, never a collectible or a replacement for
- // the existing earned flower bed. Small four-pixel petals, no new geometry.
+ // Small bouquets keep coherent local palettes, with buds, daisies and bells
+ // at different stem heights. Same meadow pockets, never the earned garden.
  [[302,443],[374,232],[638,438]].forEach(([cx,cy],seed)=>{
-  for(let i=0;i<4;i++){
-   const x=cx+(i*13+seed*5)%29-14,y=cy+(i*7)%13-6;
-   rect(g,x,y-3,1,5,'#658a56');
-   rect(g,x-2,y-5,5,2,i%3?'#f2edd3':'#dfb9be');
-   rect(g,x,y-7,1,6,i%3?'#f2edd3':'#dfb9be');rect(g,x,y-5,1,1,'#d8c680');
+  const petals=['#f2edd3','#dfbbc2','#d9dcb9'][seed],centres=['#d8bc76','#b38d93','#bcb579'][seed];
+  for(let i=0;i<6;i++){
+   const x=cx+(i*13+seed*5)%29-14,y=cy+(i*7)%13-6,h=5+(i+seed)%5;
+   rect(g,x,y-h,1,h,'#658a56');rect(g,x+(i%2?-2:1),y-3,2,1,'#87a36c');
+   const top=y-h;
+   if(i%3===0){rect(g,x-1,top-2,3,3,petals);rect(g,x,top-3,1,1,centres);}
+   else if(i%3===1){rect(g,x-2,top-1,5,2,petals);rect(g,x-1,top-3,3,5,petals);rect(g,x,top-1,1,1,centres);}
+   else {rect(g,x-2,top-2,4,2,petals);rect(g,x-1,top,2,1,centres);}
   }
  });
  // Small planted edges are clustered by objects, never sprinkled as map noise.
@@ -83,16 +89,17 @@ export function createTownArt(makeCanvas,trees){
  poly(g,[[180,220],[324,220],[340,233],[330,245],[191,245],[176,234]],'#6f805449');
  poly(g,[[735,507],[907,507],[919,520],[911,527],[742,525]],'#6b765244');
  // Preserve the approved old road raster above all new ground decoration.
- rect(g,170,298,620,72,'#d0c298');rect(g,428,300,72,260,'#d0c298');rect(g,620,220,75,110,'#d0c298');for(let i=0;i<20;i++){const x=190+i*29;rect(g,x,326+(i%3)*9,12,3,'#beae83');}for(let i=0;i<7;i++)rect(g,449+(i%2)*18,390+i*22,14,3,'#beae83');
+ rect(g,170,298,620,72,'#d0c298');rect(g,428,300,72,260,'#d0c298');rect(g,MUSIC_ROOM_APPROACH.soil.x,MUSIC_ROOM_APPROACH.soil.y,MUSIC_ROOM_APPROACH.soil.w,MUSIC_ROOM_APPROACH.soil.h,'#d0c298');for(let i=0;i<20;i++){const x=190+i*29;rect(g,x,326+(i%3)*9,12,3,'#beae83');}for(let i=0;i<7;i++)rect(g,449+(i%2)*18,390+i*22,14,3,'#beae83');
 // Feather the original soil footprint into the meadow with little stepped
 // banks. The soil core and walking bounds stay put; outlying flecks are
 // stationary edge art, never sampled as newly wet terrain.
+const branch=MUSIC_ROOM_APPROACH.soil;
 const banks=[
- [170,298,620,298,0,-1],[695,298,790,298,0,-1],
+ [170,298,branch.x,298,0,-1],[branch.x+branch.w,298,790,298,0,-1],
  [170,370,428,370,0,1],[500,370,790,370,0,1],
  [170,298,170,370,-1,0],[790,298,790,370,1,0],
- [620,220,620,298,-1,0],[695,220,695,298,1,0],
- [620,220,695,220,0,-1],[428,370,428,560,-1,0],[500,370,500,560,1,0],
+ [branch.x,branch.y,branch.x,298,-1,0],[branch.x+branch.w,branch.y,branch.x+branch.w,298,1,0],
+ [branch.x,branch.y,branch.x+branch.w,branch.y,0,-1],[428,370,428,560,-1,0],[500,370,500,560,1,0],
 ];
 banks.forEach(([x0,y0,x1,y1,nx,ny],seed)=>{
  const horiz=ny!==0,span=horiz?x1-x0:y1-y0;
@@ -116,26 +123,54 @@ banks.forEach(([x0,y0,x1,y1,nx,ny],seed)=>{
  }
 });
 // Surface detail follows existing path shapes, never modifies walkability.
-for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[620,220,75,78]]){for(let i=0;i<Math.floor(pw*ph/750);i++){const gx=px+8+(i*47)%(pw-16),gy=py+8+(i*31)%(ph-16);rect(g,gx,gy,2+i%2,1,i%2?'#e3d5ae':'#b4a57c');}}
+for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[branch.x,branch.y,branch.w,branch.h]]){for(let i=0;i<Math.floor(pw*ph/750);i++){const gx=px+8+(i*47)%(pw-16),gy=py+8+(i*31)%(ph-16);rect(g,gx,gy,2+i%2,1,i%2?'#e3d5ae':'#b4a57c');}}
+
+
+ // Warm-grey threshold: two short staggered courses, not a replacement for
+ // the earthen road. Its shared bounds are deliberately outside the wet-soil mask.
+ const stone=MUSIC_ROOM_APPROACH.stone;
+ rect(g,stone.x,stone.y,stone.w,stone.h,'#8d8e80');
+ for(const[x,y,w,h]of [[0,0,31,8],[33,0,31,8],[0,10,20,8],[22,10,20,8],[44,10,20,8]]){
+  const xx=stone.x+x,yy=stone.y+y;
+  poly(g,[[xx+2,yy],[xx+w-2,yy],[xx+w,yy+2],[xx+w,yy+h-2],[xx+w-2,yy+h],[xx+2,yy+h],[xx,yy+h-2],[xx,yy+2]],y?'#b5b1a1':'#bfbaaa');
+  rect(g,xx+3,yy+1,w-6,1,'#d9d2be');rect(g,xx+2,yy+h-2,w-4,1,'#9c9d8d');
+ }
 
  const sprites=trees.map((_,index)=>{
   const scale=trees[index][2],c=make(Math.ceil(64*scale),Math.ceil(88*scale)),p=c.getContext('2d'),seed=index+1;p.scale(scale,scale);p.translate(32,40);
   // Warm lit left edge of the trunk, cool brown right plane, two roots.
   poly(p,[[-5,18],[5,18],[5,42],[10,46],[-9,46],[-5,41]],'#79634d');
   rect(p,-4,19,3,23,'#b29867');rect(p,-1,29,2,12,'#937d57');rect(p,3,26,2,16,'#685944');
-  for(const [x,y,w,h,color] of treeLeaves(seed))poly(p,leafOutline(x,y,w,h),color);
-  // Per-placement deterministic accents, baked once. Light remains upper-left;
-  // no new canvases, per-frame randomness or silhouette changes.
-  const variants=[
-   [[-14,-31,6,2],[-20,-17,4,3],[-14,-6,6,2],[5,-24,4,2]],
-   [[-11,-30,4,3],[-18,-20,7,2],[-19,-8,4,3],[3,-23,3,2]],
-   [[-15,-29,5,2],[-21,-16,3,2],[-12,-5,5,3],[7,-26,3,2]],
-   [[-12,-32,5,2],[-17,-19,4,3],[-21,-7,6,2],[4,-22,4,2]]
+  // Each crown has a coherent orchard/sage/olive palette and its own broad
+  // foliage masses, not a shared crown with shuffled sparkling dots.
+  const palettes=[
+   ['#476b50','#557b55','#3f634b','#718e60','#829d6c','#96ac78','#acbd88','#90a973','#77945f','#5c8056','#668b58'],
+   ['#4c6d48','#5f7f50','#446442','#7c9258','#8c9f65','#a5b477','#bbca8c','#9dad70','#83975c','#657f4d','#728c54'],
+   ['#476b55','#557e5e','#3d624f','#6b8c65','#7f9b75','#8fa87e','#a6ba91','#8aa67b','#739267','#587d5c','#648968'],
+   ['#506b4c','#617c53','#456244','#7a915e','#8fa16b','#a0b078','#b9c58b','#96a671','#80955f','#647e50','#6d8959'],
+   ['#436b4d','#537b51','#3b6046','#6d8c58','#809c62','#93aa70','#abba82','#8ba76a','#74935a','#587e50','#638b55']
   ];
-  const accents=variants[(seed-1)%variants.length];
-  const placement=Math.floor(trees[index][0]/30)+Math.floor(trees[index][1]/30);
-  accents.forEach(([x,y,w,h],i)=>rect(p,x+(placement+i)%3-1,y+(Math.floor(placement/3)+i)%2,w,h,["#c0c98b","#b0bd7f","#b7c485","#a5b776"][i]));
-  rect(p,7+seed%3,3+seed%2,4,2,"#94a86b");rect(p,-3+seed%4,16,4,2,"#8ca264");
+  const profile=index%palettes.length,colors=palettes[profile],leaves=treeLeaves(seed);
+  leaves.forEach(([x,y,w,h],i)=>poly(p,leafOutline(x,y,w,h),colors[i]));
+  // Clip internal masses to the exact existing union: the visible rain-catching
+  // perimeter and every canopy/collision coordinate stay unchanged.
+  p.save();p.beginPath();
+  for(const [x,y,w,h]of leaves){leafOutline(x,y,w,h).forEach(([px,py],i)=>i?p.lineTo(px,py):p.moveTo(px,py));p.closePath();}p.clip();
+  const masses=[
+   [[-21,-25,24,12,5],[-24,-6,23,12,4],[-4,-19,18,15,3],[3,6,17,13,1]],
+   [[-17,-30,20,16,5],[-25,-13,16,16,4],[-7,-3,23,12,3],[8,-17,17,15,1]],
+   [[-22,-22,29,10,5],[-20,-10,19,16,4],[0,-25,15,15,3],[-7,10,21,12,1]],
+   [[-19,-29,17,13,5],[-23,-15,27,11,4],[-9,-3,20,17,3],[10,-12,15,16,1]],
+   [[-19,-28,24,10,5],[-24,-12,15,18,4],[-8,-12,24,13,3],[2,7,21,12,1]]
+  ];
+  for(const[x,y,w,h,tone]of masses[profile]){
+   poly(p,leafOutline(x,y,w,h),colors[tone]);
+   // A short upper-left lit lip, then a darker lower-right fold: light direction
+   // stays consistent while tier widths and offsets differ between trees.
+   rect(p,x+4,y+1,Math.max(4,w-12),2,colors[Math.min(6,tone+1)]);
+   rect(p,x+w-8,y+h-3,5,2,colors[Math.max(0,tone-1)]);
+  }
+  p.restore();
   return c;
  });
  return {
@@ -156,23 +191,15 @@ for(const [px,py,pw,ph] of [[170,298,620,72],[428,370,72,190],[620,220,75,78]]){
  };
 }
 
-// Drawing-only finish for the existing rear fence. Its original 6x29 posts,
-// 29x5 rail segments and 28px spacing stay inside the same occupied pixels.
+// Identical end-post silhouettes with equal15px margins. The rail terminates
+// behind the two posts instead of protruding beyond the right canvas edge.
+export const BACK_FENCE_LAYOUT=Object.freeze({startX:15,postCount:34,spacing:28,postWidth:6,top:32,postHeight:29});
 export function drawBackFence(ctx){
- const rect=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(x,y,w,h);};
- // The rail runs behind the posts, with one warm top plane and a narrow shadow.
- for(let x=20,i=0;x<960;x+=28,i++){
-  rect(x-2,38,29,5,i%3===1?'#ad956b':'#b29a70');
-  rect(x-2,38,29,1,'#d0ba8c');rect(x-2,42,29,1,'#917a58');
-  rect(x+8,40,7+i%3,1,i%2?'#c3aa7e':'#a28b65');
+ const rect=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(x,y,w,h);},f=BACK_FENCE_LAYOUT;
+ for(let i=0;i<f.postCount-1;i++){const x=f.startX+i*f.spacing+f.postWidth,w=f.spacing-f.postWidth;
+  rect(x,38,w,5,i%3===1?'#ad956b':'#b29a70');rect(x,38,w,1,'#d0ba8c');rect(x,42,w,1,'#917a58');rect(x+3,40,7+i%3,1,i%2?'#c3aa7e':'#a28b65');
  }
- // Front-facing posts retain the old silhouette. Small fixed grain differences
- // avoid a stamped pattern; no randomness, animation, new assets or state.
- for(let x=20,i=0;x<960;x+=28,i++){
-  rect(x,32,6,29,i%3===2?'#b09a70':'#b6a078');
-  rect(x,32,1,28,'#d1bc90');rect(x+5,33,1,28,'#8f7958');
-  rect(x,32,6,2,'#d5bf91');rect(x+1,59,4,2,'#9d865f');
-  rect(x+2+i%2,46+i%3,1,7,'#a18a63');
-  rect(x+2,39,1,1,'#806d52');
+ for(let i=0;i<f.postCount;i++){const x=f.startX+i*f.spacing;
+  rect(x,32,6,29,i%3===2?'#b09a70':'#b6a078');rect(x,32,1,28,'#d1bc90');rect(x+5,33,1,28,'#8f7958');rect(x,32,6,2,'#d5bf91');rect(x+1,59,4,2,'#9d865f');rect(x+2+i%2,46+i%3,1,7,'#a18a63');rect(x+2,39,1,1,'#806d52');
  }
 }

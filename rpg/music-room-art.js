@@ -1,6 +1,9 @@
 // Original music-room identity recovered from pre-8d8b4b4 town art.
 // Narrowed beside the new lounge; no entry action, navigation or saved data here.
 export const MUSIC_ROOM=Object.freeze({x:580,y:126,w:196,h:113,depth:239});
+export const MUSIC_ROOM_DOOR=Object.freeze({x:MUSIC_ROOM.x+73,y:MUSIC_ROOM.y+43,w:46,h:63});
+const doorCenter=MUSIC_ROOM_DOOR.x+MUSIC_ROOM_DOOR.w/2;
+export const MUSIC_ROOM_APPROACH=Object.freeze({centerX:doorCenter,stone:Object.freeze({x:doorCenter-32,y:MUSIC_ROOM.depth+4,w:64,h:20}),soil:Object.freeze({x:doorCenter-38,y:MUSIC_ROOM.depth+24,w:76,h:298-(MUSIC_ROOM.depth+24)})});
 const ROOF_BANDS=[[560,114,236,12,'#526c5b'],[572,100,211,14,'#62806a'],[587,86,181,14,'#759175'],[603,73,150,13,'#89a17f'],[620,62,116,11,'#9db18c'],[618,60,120,3,'#c0c69b']];
 export function musicRoomRainCanopy(){const columns=new Float32Array(236);columns.fill(Infinity);for(const[x,y,w]of ROOF_BANDS)for(let k=x;k<x+w;k++)columns[k-560]=Math.min(columns[k-560],y);for(let x=714;x<745;x++)columns[x-560]=40;return {kind:'roof',left:560,columns,groundMin:126,groundMax:239};}
 export function roomBlocks(x,y){return x>=580&&x<=776&&y>=126&&y<=239;}
@@ -21,9 +24,9 @@ export function drawMusicRoom(g){
  r(g,718,45,23,39,'#a48e70');r(g,718,45,5,39,'#c1a987');r(g,714,40,31,6,'#dec9a2');
  r(g,726,53,15,2,'#8f7c63');r(g,718,65,14,2,'#8f7c63');r(g,732,73,9,2,'#8f7c63');
  // Door is scenery only; the outdoor stand remains the sole practice trigger.
- r(g,653,169,46,63,'#8e7858');r(g,658,174,36,58,'#536d58');
+ const d=MUSIC_ROOM_DOOR;r(g,d.x,d.y,d.w,d.h,'#8e7858');r(g,d.x+5,d.y+5,d.w-10,d.h-5,'#536d58');
  r(g,660,176,2,53,'#819475');r(g,665,183,24,17,'#607b63');r(g,665,207,24,20,'#4b6553');
- r(g,687,203,3,3,'#e0bb6f');r(g,651,232,50,5,'#d3bd90');
+ r(g,687,203,3,3,'#e0bb6f');r(g,d.x-2,d.y+d.h,d.w+4,5,'#d3bd90');
  for(const x of[601,720]){
   r(g,x,158,34,42,'#8e7b5d');r(g,x+3,161,28,34,'#92b5a5');r(g,x+4,162,12,15,'#b8cfb9');r(g,x+20,183,9,10,'#7b9e90');
   r(g,x+15,160,3,36,'#ecdfb9');r(g,x+2,177,30,3,'#ecdfb9');r(g,x-3,199,40,5,'#b49a70');r(g,x-3,199,40,1,'#e0c79a');

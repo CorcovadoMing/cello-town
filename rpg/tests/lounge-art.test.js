@@ -15,9 +15,9 @@ test('reading book belongs to teacher only, not an always-present table prop',()
 });
 
 test('large table book appears only when reading and never in rain',()=>{
- const calls=[];const g={save(){},restore(){},translate(){},fillRect(...r){calls.push([this.fillStyle,...r])}};
- drawLoungeTable(g,{reading:true});assert.ok(calls.some(([c,x,y,w,h])=>c==='#48695a'&&w===32&&h===14));
- calls.length=0;drawLoungeTable(g,{reading:true,rain:true});assert.ok(!calls.some(c=>c[0]==='#48695a'));
+ const calls=[];const g={save(){},restore(){},translate(...a){calls.push(['translate',...a])},rotate(a){calls.push(['rotate',a])},scale(){},fillRect(...r){calls.push([this.fillStyle,...r])}};
+ for(const [readingSide,dx,angle] of [['left',-17,Math.PI/2],['right',17,-Math.PI/2]]){calls.length=0;drawLoungeTable(g,{readingSide});assert.ok(calls.some(([c,x,y,w,h])=>c==='#48695a'&&w===32&&h===26));assert.deepEqual(calls.filter(c=>c[0]==='translate').at(-1),['translate',dx,-5]);assert.deepEqual(calls.filter(c=>c[0]==='rotate'),[['rotate',angle]]);}
+ calls.length=0;drawLoungeTable(g,{readingSide:'right',rain:true});assert.ok(!calls.some(c=>c[0]==='#48695a'));
 });
 test('teacher umbrella is white-grey with a distinct round scalloped silhouette',()=>{
  function draw(kind){const r=[];const g={save(){},restore(){},translate(){},scale(){},fillRect(...a){r.push([this.fillStyle,...a])}};drawRainUmbrella(g,{x:0,y:0,kind},1);return r;}

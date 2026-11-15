@@ -1,21 +1,22 @@
-import {createTerrainArt} from './terrain-art.js?v=30';
-import {createRainSystem} from './rain-system.js?v=30';
-import {treeRainCanopies,umbrellaPose} from './rain-geometry.js?v=30';
-import {MUSIC_ROOM,roomBlocks,drawMusicRoom,musicRoomRainCanopy} from './music-room-art.js?v=30';
-import {createLounge} from './lounge-state.js?v=30';
-import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella} from './lounge-art.js?v=30';
-import {createWetSoil,drawWetSoil} from './wet-soil.js?v=30';
+import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,createDoorApproach} from './room-door.js?v=32';
+import {createTerrainArt} from './terrain-art.js?v=32';
+import {createRainSystem} from './rain-system.js?v=32';
+import {treeRainCanopies,umbrellaPose} from './rain-geometry.js?v=32';
+import {MUSIC_ROOM,roomBlocks,drawMusicRoom,musicRoomRainCanopy} from './music-room-art.js?v=32';
+import {createLounge} from './lounge-state.js?v=32';
+import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella} from './lounge-art.js?v=32';
+import {createWetSoil,drawWetSoil} from './wet-soil.js?v=32';
 const RAIN_EXCLUSIONS=Object.freeze([{x:410,y:175,w:160,h:95}]);
 const wetSoil=createWetSoil({excludeRects:RAIN_EXCLUSIONS});
-import {createTownArt,drawBackFence} from './art-slice.js?v=30';
+import {createTownArt,drawBackFence} from './art-slice.js?v=32';
 import {createNavigation} from './navigation.js?v=24';
-import {createTeacher,drawTeacher} from './teacher.js?v=30';
-import {facingForMotion,drawPlayer} from './avatar.js?v=30';
+import {createTeacher,drawTeacher} from './teacher.js?v=32';
+import {facingForMotion,drawPlayer} from './avatar.js?v=32';
 import {resumeFromTap,requestPlaybackSession,clockStalled} from './audio-start.js?v=23';
 import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=23';
 import {installPullToRefreshGuard} from './scroll-guard.js?v=23';
-import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife,drawRainFrame,createRainPets,drawRainDog,drawRainBenchCat,drawPetPondContact} from './ambience.js?v=30';
-import {gardenScene,gardenPlants,townPlantPosition,drawPreparedSoil,weatherAt} from './garden.js?v=30';
+import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife,drawRainFrame,createRainPets,petTrunkBlocked,drawRainDog,drawRainBenchCat,drawPetPondContact} from './ambience.js?v=32';
+import {gardenScene,gardenPlants,townPlantPosition,drawPreparedSoil,weatherAt} from './garden.js?v=32';
 import {DEV_TOOLS} from './config.js?v=23';
 import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,clearStoredRecords,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=23';
 installPullToRefreshGuard();
@@ -24,6 +25,14 @@ const townFish=fishVariants(Math.floor(Math.random()*4294967296));
 const $=id=>document.getElementById(id), canvas=$('world'),g=canvas.getContext('2d'),dlg=$('dialog'),KEY='cello-town-rpg-v1';
 let state=fresh(),storeOK=true;try{const raw=localStorage.getItem(KEY);if(raw)state=normalize(JSON.parse(raw));}catch{storeOK=false;}
 const player={x:460,y:425,dir:1,facing:'front',walking:false};const npc={x:303,y:290,kind:'teacher'},stand={x:615,y:404},garden={x:710,y:460};let keys=new Set(),target=null,last=0,near=null,task='listen',revealed=false,demoDone=false,practiced=false,context,timer,mode=null,voices=new Set(),step=0,next=0,generation=0,demoUntil=0,releaseSession=()=>{},clockTime=0,clockSeen=0,audioNode=null,workletAck=null;
+const returnURL=roomReturnURL(window.location.href),doorApproach=createDoorApproach(Boolean(returnURL));
+if(returnURL){Object.assign(player,ROOM_RETURN);history.replaceState(history.state,'',returnURL.href);}
+let enteringRoom=false;
+function enterRoom(){
+ if(enteringRoom||dlg.open)return;
+ enteringRoom=true;doorApproach.disarm();target=null;keys.clear();player.walking=false;
+ window.location.assign(new URL('./3D/?from=town',window.location.href).href);
+}
 const TREE_LAYOUT=[[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1.6],[870,103,1.8],[930,178,1.4],[65,250,1.8],[139,279,1.2],[848,281,1.4],[919,356,1.2],[340,476,1.2],[585,495,1.3],[690,500,1]];
 const LOUNGE_SOLIDS=[LOUNGE_LAYOUT.table.solid,...LOUNGE_LAYOUT.seats.map(c=>c.solid)];
 const navigation=createNavigation({trees:TREE_LAYOUT.map(([x,y,s])=>({x:x+.5*s,y:y+32*s})),blocked});
@@ -40,7 +49,8 @@ const townArt=createTownArt(()=>document.createElement('canvas'),TREE_LAYOUT);
 const terrainArt=createTerrainArt(()=>document.createElement('canvas'));
 const rainCanopies=treeRainCanopies(TREE_LAYOUT);
 const petNavigation=createNavigation({trees:TREE_LAYOUT.map(([x,y,s])=>({x:x+.5*s,y:y+32*s})),blocked:(x,y)=>blocked(x,y,true)});
-const rainPets=createRainPets({navigation:petNavigation,canopies:rainCanopies,trees:TREE_LAYOUT});
+const petRainNavigation=createNavigation({tileSize:15,blocked:(x,y)=>blocked(x,y,true)||petTrunkBlocked(TREE_LAYOUT,x,y)});
+const rainPets=createRainPets({navigation:petNavigation,rainNavigation:petRainNavigation,canopies:rainCanopies,trees:TREE_LAYOUT});
 const rainSystem=createRainSystem({canopies:[...rainCanopies,musicRoomRainCanopy(),{kind:'table',left:LOUNGE_LAYOUT.table.solid.x,columns:new Float32Array(LOUNGE_LAYOUT.table.solid.w).fill(202),groundMin:LOUNGE_LAYOUT.table.solid.y,groundMax:LOUNGE_LAYOUT.table.depth}],excludeRects:[...RAIN_EXCLUSIONS,{x:560,y:40,w:236,h:199}]});
 function walkTo(destination,kind=null){
  standUp();
@@ -152,6 +162,16 @@ function drawQuestMarker(t){
   }
   g.restore();
 }
+function drawStandMarker(t){
+ if(state.phase!=='active'||state.steps.length===3)return;
+ const x=stand.x,y=stand.y+(reducedMotion.matches?0:Math.sin(t/600)*2);
+ label('來這裡練習',x,stand.y-85,'#f4db91');
+ g.save();g.translate(x,y);g.beginPath();
+ g.moveTo(-6,-72);g.lineTo(6,-72);g.lineTo(6,-62);g.lineTo(13,-62);
+ g.lineTo(0,-48);g.lineTo(-13,-62);g.lineTo(-6,-62);g.closePath();
+ g.fillStyle='#ffd66d';g.fill();g.lineJoin='round';g.lineWidth=3;g.strokeStyle='#60491f';g.stroke();
+ g.fillStyle='#fff0b7';g.fillRect(-3,-69,6,3);g.restore();
+}
 function drawPracticeStand(){
  const {x,y}=stand;
  rect(x-16,y,34,3,'#79745050');rect(x-8,y+3,26,2,'#79745034');
@@ -180,7 +200,14 @@ for(let i=0;i<18;i++){const x=370+(i*71)%400,y=395+(i*37)%110;
 drawBenchLife(g,t,reducedMotion.matches,petFrame);
 if(gameWeather.key!=='rain')drawTownWeather(g,t,gameWeather.key,reducedMotion.matches,RAIN_EXCLUSIONS);
 // Ground anchors order visible silhouettes; collision footprints remain separate.
-let entities=[{y:petFrame.life.cat.groundY,draw:()=>drawGardenLife(g,t,reducedMotion.matches,petFrame)},...(petFrame.dogActive?[{y:petFrame.dog.y,draw:()=>drawRainDog(g,petFrame.dog)}]:[]),...(petFrame.benchCatActive?[{y:petFrame.benchCat.y,draw:()=>drawRainBenchCat(g,petFrame.benchCat)}]:[]),{y:stand.y,draw:drawPracticeStand},{y:MUSIC_ROOM.depth,draw:()=>drawMusicRoom(g)},{y:231,draw:()=>{chairs.forEach(chair=>drawLoungeChair(g,chair));}},{y:245,draw:()=>drawLoungeTable(g,{rain:gameWeather.key==='rain',reading:loungePose.mode==='seated'&&loungePose.reading&&!playerSeated&&!dlg.open})},...[player,npc].flatMap((actor,i)=>rainFrame.actorStage[i]!=='closed'?[{y:actor.y+21,draw:()=>drawRainUmbrella(g,{...actor,kind:i===1?'teacher':'player'},rainFrame.actorOpen[i],rainFrame.actorStage[i])}]:[]),...TREE_LAYOUT.map((a,i)=>({y:a[1]+46*a[2],draw:()=>tree(...a,t,i+1)})),{y:npc.y,draw:()=>person(npc.x,npc.y,t,{teacher:true})},{y:player.y,draw:()=>person(player.x,player.y,t,player)}];entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());if(gameWeather.key==='rain')drawRainFrame(g,rainFrame);label('老師',npc.x,npc.y+24);drawQuestMarker(t);if(state.phase==='active'){label('來這裡練習',stand.x,stand.y-65,'#f4db91');}if(near&&!['chair','seated'].includes(near)){g.strokeStyle='#fff2c3';g.lineWidth=2;g.beginPath();g.ellipse(near==='npc'?npc.x:near==='garden'?garden.x:stand.x,near==='npc'?npc.y:near==='garden'?garden.y:stand.y,24,10,0,0,Math.PI*2);g.stroke();}}
+let entities=[{y:petFrame.life.cat.groundY,draw:()=>drawGardenLife(g,t,reducedMotion.matches,petFrame)},...(petFrame.dogActive?[{y:petFrame.dog.y,draw:()=>drawRainDog(g,petFrame.dog)}]:[]),...(petFrame.benchCatActive?[{y:petFrame.benchCat.y,draw:()=>drawRainBenchCat(g,petFrame.benchCat)}]:[]),{y:stand.y,draw:drawPracticeStand},{y:MUSIC_ROOM.depth,draw:()=>drawMusicRoom(g)},{y:231,draw:()=>{chairs.forEach(chair=>drawLoungeChair(g,chair));}},{y:245,draw:()=>drawLoungeTable(g,{rain:gameWeather.key==='rain',readingSide:loungePose.reading&&!dlg.open?chairs[loungePose.seatIndex].id:null})},...[player,npc].flatMap((actor,i)=>rainFrame.actorStage[i]!=='closed'?[{y:actor.y+21,draw:()=>drawRainUmbrella(g,{...actor,kind:i===1?'teacher':'player'},rainFrame.actorOpen[i],rainFrame.actorStage[i])}]:[]),...TREE_LAYOUT.map((a,i)=>({y:a[1]+46*a[2],draw:()=>tree(...a,t,i+1)})),{y:npc.y,draw:()=>person(npc.x,npc.y,t,{teacher:true})},{y:player.y,draw:()=>person(player.x,player.y,t,player)}];entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());if(gameWeather.key==='rain')drawRainFrame(g,rainFrame);label('老師',npc.x,npc.y+24);drawQuestMarker(t);drawStandMarker(t);if(near&&!['chair','seated'].includes(near)){g.strokeStyle='#fff2c3';g.lineWidth=2;g.beginPath();g.ellipse(near==='npc'?npc.x:near==='garden'?garden.x:stand.x,near==='npc'?npc.y:near==='garden'?garden.y:stand.y,24,10,0,0,Math.PI*2);g.stroke();}}
+function teacherWithinReach(){return Math.hypot(player.x-npc.x,player.y-npc.y)<65;}
+function arriveAtTarget(){
+ const kind=target.kind;target=null;
+ if(kind==='chair')sitDown();
+ else if(kind==='npc'&&teacherWithinReach()){player.walking=false;talk();}
+ else if(kind==='room'){enterRoom();return;}
+}
 function blocked(x,y,allowGarden=false){return roomBlocks(x,y)||(Math.abs(x-stand.x)<=14&&Math.abs(y-stand.y)<=4)||LOUNGE_SOLIDS.some(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)||x<30||x>930||y<130||y>542||(x<275&&y>380)||(!allowGarden&&x>730&&x<910&&y>395)||(x>174&&x<330&&y>170&&y<240);}
 function update(dt){
  const teacher=teacherActor.update(dt,{practiceActive:practiceOpen&&dlg.open,dialogOpen:dlg.open,holdForInteraction:lounge.state.borrowed||target?.kind==='npc',reducedMotion:reducedMotion.matches,player});
@@ -199,20 +226,21 @@ function update(dt){
  }else if(target){
   while(target&&speed>0){
    const point=target.path[0],distance=Math.hypot(point.x-player.x,point.y-player.y);
-   if(distance<.001){target.path.shift();if(!target.path.length){const seating=target.kind==='chair';target=null;if(seating)sitDown();}continue;}
+   if(distance<.001){target.path.shift();if(!target.path.length)arriveAtTarget();continue;}
    const step=Math.min(speed,distance),next={x:player.x+(point.x-player.x)/distance*step,y:player.y+(point.y-player.y)/distance*step};
    if(!navigation.lineClear(player,next)){target=null;break;}
    player.x=next.x;player.y=next.y;speed-=step;
-   if(step===distance){target.path.shift();if(!target.path.length){const seating=target.kind==='chair';target=null;if(seating)sitDown();}}
+   if(step===distance){target.path.shift();if(!target.path.length)arriveAtTarget();}
   }
  }
+ if(doorApproach.step({x:oldX,y:oldY},player,dy<0&&keys.has('up'))){enterRoom();return;}
  player.walking=Math.hypot(player.x-oldX,player.y-oldY)>.00001;
  player.facing=facingForMotion(player.facing,player.x-oldX,player.y-oldY);if(player.x!==oldX)player.dir=player.x>oldX?1:-1;if(playerSeated){player.facing=chairs[selectedChair].facing;player.walking=false;}
- near=playerSeated?'seated':Math.hypot(player.x-stand.x,player.y-stand.y)<48?'stand':Math.hypot(player.x-npc.x,player.y-npc.y)<65?'npc':Math.hypot(player.x-garden.x,player.y-garden.y)<55?'garden':chairs.some(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y)<38)?'chair':null;
+ near=playerSeated?'seated':Math.hypot(player.x-stand.x,player.y-stand.y)<48?'stand':teacherWithinReach()?'npc':Math.hypot(player.x-garden.x,player.y-garden.y)<55?'garden':chairs.some(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y)<38)?'chair':null;
  $('location').textContent=near==='npc'?'老師身旁':near==='stand'?'戶外譜架前':near==='garden'?'花園入口':'晨光小徑';
 }
 function interact(){if(dlg.open)return;if(playerSeated){standUp();return;}if(near==='chair'){const index=chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y)).indexOf(Math.min(...chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y))));requestChair(index);return;}if(near==='npc')talk();else if(near==='stand')practice();else if(near==='garden')openGarden();else toast('再靠近老師、戶外譜架或花園入口一點。');}
-const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open)return;if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;});canvas.onpointerdown=e=>{if(dlg.open)return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(near==='stand')practice();else{if(walkTo(standApproach,'stand'))toast('走近後，再點譜架練習。');}}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(near==='npc')talk();else{if(walkTo({x:npc.x,y:npc.y+35},'npc'))toast('走近後，再點老師交談。');}}else if(x>730&&x<910&&y>395&&y<525){if(near==='garden')openGarden();else{if(walkTo({x:garden.x,y:garden.y},'garden'))toast('走到花園入口後，再點花園查看收藏。');}}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{if(document.hidden){pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});function loop(t){const dt=Math.min((t-last)/1000,.04);last=t;if(!document.hidden){update(dt);draw(t);}requestAnimationFrame(loop);}render();requestAnimationFrame(loop);setTimeout(()=>$('toast').style.opacity=0,6000);
+const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open)return;if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;});canvas.onpointerdown=e=>{if(dlg.open)return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){walkTo(ROOM_ENTRY,'room');}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(near==='stand')practice();else{if(walkTo(standApproach,'stand'))toast('走近後，再點譜架練習。');}}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(near==='garden')openGarden();else{if(walkTo({x:garden.x,y:garden.y},'garden'))toast('走到花園入口後，再點花園查看收藏。');}}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{if(document.hidden){pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});function loop(t){const dt=Math.min((t-last)/1000,.04);last=t;if(!document.hidden){update(dt);draw(t);}requestAnimationFrame(loop);}render();requestAnimationFrame(loop);setTimeout(()=>$('toast').style.opacity=0,6000);
 
 
 setInterval(()=>{const nextWeather=weatherAt();if(nextWeather.key===gameWeather.key)return;gameWeather=nextWeather;document.querySelector('.topline span').textContent=gameWeather.name+' · 練琴日';if(dlg.open&&$('garden-view'))$('garden-view').innerHTML=gardenScene(state,gameWeather);},1000);
