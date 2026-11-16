@@ -84,8 +84,6 @@ function render(){
   $('quest-count').textContent=quest.count+'/3';
   $('quest-count').setAttribute('aria-label','三項練習已完成 '+quest.count+' 項');
   $('quest-status').textContent=quest.ready?'回老師身旁交付':({listen:'聽一次 D 大調',rhythm:'跟節拍器練習',memory:'不看提示拉一遍'}[quest.next]||'到戶外譜架開始練習。');
-  $('quest-status').setAttribute('aria-label',$('quest-status').textContent);
-  $('quest-status').textContent='D大調邀請';
   $('quest-return').hidden=!quest.ready;
   document.querySelectorAll('[data-step]').forEach(li=>{
     const done=state.steps.includes(li.dataset.step);

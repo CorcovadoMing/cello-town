@@ -181,7 +181,7 @@ body,body *{font-family:var(--town-font)!important}
 .map-stage .quest-sign .quest-return small{font-size:var(--town-detail-size);line-height:1.35}
 
 /* 042: quieter tracking, with a separate usable disclosure hit target. */
-.map-stage .quest-sign{width:16%;max-width:78px}
+.map-stage .quest-sign{left:clamp(9px,2.8%,14px);top:11px;width:16%;max-width:78px}
 .map-stage .quest-sign summary{min-height:13px;gap:1px;position:relative}
 .map-stage .quest-sign summary::after{content:"";position:absolute;inset:-4px -2px;min-height:24px}
 .map-stage .quest-sign #quest-status{font-size:8px;line-height:1.3;letter-spacing:-.3px}
@@ -190,3 +190,8 @@ body,body *{font-family:var(--town-font)!important}
 .map-stage .quest-sign li b{width:4px}
 .map-stage .quest-sign .quest-return,.map-stage .quest-sign .quest-return small{font-size:7px;line-height:1.3}
 .map-stage .quest-sign .quest-return b{font-size:12px}
+
+/* 043 preview: static objective text, with additional upper-left breathing room. */
+.map-stage .quest-sign .quest-sign-heading{display:flex;align-items:center;gap:3px;min-height:13px}
+.map-stage .quest-sign #quest-title{margin:0;color:#ffd66d;font-size:8px;line-height:1.3;font-weight:400;letter-spacing:-.3px;white-space:nowrap}
+.map-stage .quest-sign .quest-sign-content{pointer-events:none}
