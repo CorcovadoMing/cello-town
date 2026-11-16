@@ -160,7 +160,30 @@ roomExit.traverse(o=>{if(o.isMesh)o.userData.station='exit';});
 const cameFromTown=new URL(location.href).searchParams.get('from')==='town';
 if(cameFromTown){const u=new URL(location.href);u.searchParams.delete('from');history.replaceState(history.state,'',u);}
 let exitArmed=!cameFromTown,exitNavigating=false;
-function leaveRoom(){if(exitNavigating)return;exitNavigating=true;location.replace('../?from=room');}
+// Door-only visual bridge. No history entries, storage or input interception.
+function doorSceneTransition(incoming,onReset){
+ let travelTimer=0,recoveryTimer=0,revealTimer=0,generation=0;
+ const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const clear=()=>{generation++;clearTimeout(travelTimer);clearTimeout(recoveryTimer);clearTimeout(revealTimer);document.body.classList.remove('door-scene-dark');};
+ const reset=()=>{clear();onReset();};
+ window.addEventListener('pagehide',reset);
+ window.addEventListener('pageshow',e=>{if(e.persisted)reset();});
+ if(incoming&&!reduced()){
+  document.body.classList.add('door-scene-dark');const token=generation;
+  const reveal=()=>{if(token===generation)document.body.classList.remove('door-scene-dark');};
+  requestAnimationFrame(()=>requestAnimationFrame(reveal));revealTimer=setTimeout(reveal,220);
+ }
+ return navigate=>{
+  clear();const run=()=>{try{navigate();}catch{reset();}};
+  recoveryTimer=setTimeout(reset,2000);
+  if(reduced()){run();return;}
+  document.body.classList.add('door-scene-dark');
+  travelTimer=setTimeout(run,180);
+  // If a browser rejects/cancels navigation without pagehide, never leave a veil.
+ };
+}
+const transferDoor=doorSceneTransition(cameFromTown,()=>{exitNavigating=false;exitArmed=false;});
+function leaveRoom(){if(exitNavigating)return;exitNavigating=true;transferDoor(()=>location.replace('../?from=room'));}
 // Window: one local coordinate system and a shared arched aperture.
 const windowGroup=new T.Group();windowGroup.position.set(-1.25,1.1,-2.12);scene.add(windowGroup);
 const WINDOW_APERTURE={half:.76,spring:.93,outerHalf:.87,sill:.025};
