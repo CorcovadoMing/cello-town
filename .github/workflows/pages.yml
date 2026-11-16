@@ -56,7 +56,7 @@ jobs:
       - name: Verify WebGL performance and room return
         if: github.ref == 'refs/heads/3d'
         timeout-minutes: 7
-        run: CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-browser-smoke" node .preview-3d/3D/tests/browser-smoke.cjs _site
+        run: CELLO_SMOKE_ENTRANCE_EVIDENCE=1 CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-browser-smoke" node .preview-3d/3D/tests/browser-smoke.cjs _site
       - name: Save browser verification evidence
         if: always() && github.ref == 'refs/heads/3d'
         uses: actions/upload-artifact@v4

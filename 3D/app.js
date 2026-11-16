@@ -1204,11 +1204,12 @@ function articulatePerformanceArms(){
  return arms;
 }
 function seatPerformance(){
- if(!celloPerformance)beginPerformanceApproach();release();tap=null;previewMode='performance';celloPerformance.phase='seating';celloPerformance.elapsed=0;celloPerformance.arms=articulatePerformanceArms();beginPerformancePresentation();celloPerformance.fromHeading=heading;celloPerformance.seatPosition={...pos};
+ if(!celloPerformance)beginPerformanceApproach();release();tap=null;previewMode='performance';celloPerformance.phase='seating';celloPerformance.elapsed=0;celloPerformance.arms=articulatePerformanceArms();celloPerformance.fromHeading=heading;celloPerformance.seatPosition={...pos};
+ avatar.updateMatrixWorld(true);celloPerformance.restHands=celloPerformance.arms.map(r=>{const hand=r.moved.find(m=>m.child.isMesh&&m.child.geometry?.type==='SphereGeometry')?.child;return hand?hand.getWorldPosition(new T.Vector3()):r.arm.localToWorld(new T.Vector3(0,-.3,0));});celloPerformance.restHandLocal=celloPerformance.restHands.map(v=>avatar.worldToLocal(v.clone()));
  const a=performanceParts();cello.visible=false;celloShadowBridge.visible=false;pinContact.visible=false;a.instrument.visible=a.bow.visible=true;
 }
 function aimPerformanceArm(rig,hand,bend){
- const shoulder=rig.arm.position.clone(),target=hand.clone(),distance=target.distanceTo(shoulder),l1=.30,l2=Math.max(.30,distance-l1+.025);
+ const shoulder=rig.arm.position.clone(),target=hand.clone(),distance=target.distanceTo(shoulder),l1=rig.lengths?.[0]??.30,l2=rig.lengths?.[1]??.30;
  // Keep original outfit sleeve/cuff materials and a connected, relaxed forearm.
  if(!rig.hand){
    rig.hand=rig.elbow.children.find(o=>o.isMesh&&o.geometry?.type==='SphereGeometry');
@@ -1229,55 +1230,108 @@ function aimPerformanceArm(rig,hand,bend){
  const localHand=target.sub(shoulder).applyQuaternion(rig.arm.quaternion.clone().invert()).sub(rig.elbow.position);
  rig.elbow.quaternion.setFromUnitVectors(new T.Vector3(0,-1,0),localHand.normalize());
 }
-function finishPerformance(){if(celloPerformance?.phase!=='playing')return;celloPerformance.phase='returning';celloPerformance.elapsed=0;performanceParts().back.hidden=true;pressed.clear();}
+function finishPerformance(){if(celloPerformance?.phase!=='playing')return;celloPerformance.returnStroke=reduced.matches?0:Math.sin(celloPerformance.elapsed*.0016)*.075*T.MathUtils.smoothstep(celloPerformance.elapsed,0,650);celloPerformance.phase='returning';celloPerformance.elapsed=0;performanceParts().back.hidden=true;pressed.clear();}
 window.addEventListener('pagehide',()=>{
  performanceKeys.clear();performancePointers.clear();
  if(!celloPerformance)return;
  const p=celloPerformance;
  if(!p.arms){const a=performanceParts();a.stool.visible=false;celloPerformance=null;release();document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;}
- else{p.phase='returning';p.elapsed=1500;tickPerformance(0,performance.now());}
+ else{p.phase='returning';p.elapsed=4000;tickPerformance(0,performance.now());}
  cameraMotion=null;camera.position.copy(p.home.position);camera.quaternion.copy(p.home.quaternion);camera.zoom=p.home.zoom;camera.updateProjectionMatrix();
 });
 function performancePose(amount,t){
  upperBody.position.set(0,-.07*amount,0);upperBody.rotation.set(.025*amount,0,(reduced.matches?0:Math.sin(t*.00125)*.010)*amount);
  for(const[leg,sign]of[[leftLeg,-1],[rightLeg,1]]){leg.position.set(sign*(.135+.065*amount),.53-.07*amount,0);const seatedAngle=Math.acos(Math.cos(1.18)+.08/(.195*Math.cos(.08)));leg.rotation.set(-seatedAngle*amount,0,-sign*.08*amount);leg.getObjectByName('leg-knee').rotation.x=seatedAngle*amount;leg.getObjectByName('leg-foot').rotation.x=0;leg.getObjectByName('leg-foot').position.y=-.195+.02359*amount;}
 }
+// One timeline, reversed on return: release only after the prop is back in its stand.
+const PERFORMANCE_TRANSITION_MS=3550;
+function performanceTransition(ms){
+ const smooth=(start,end)=>{const x=T.MathUtils.clamp((ms-start)/(end-start),0,1);return x*x*(3-2*x);};
+ return{step:smooth(0,450),face:smooth(0,350),reach:smooth(350,1000),carry:smooth(1000,2200),sit:smooth(2200,3050),bow:smooth(3050,3550),stage:ms<350?'face-step':ms<1000?'reach':ms<2200?'carry-turn':ms<3050?'sit':ms<3550?'bow-settle':'ready'};
+}
 function tickPerformance(dt,t){
  if(!celloPerformance||celloPerformance.phase==='approach')return;
- const p=celloPerformance,a=performanceParts(),ease=u=>{u=Math.max(0,Math.min(1,u));return u*u*(3-2*u);};
- p.elapsed+=dt*1000;const returning=p.phase==='returning',u=(reduced.matches||p.phase==='playing')?1:ease(p.elapsed/(returning?950:1600)),sit=returning?1-u:u;
- if(returning&&p.elapsed>=850&&!p.returnCameraStarted){p.returnCameraStarted=true;animateRoomCamera(p.home.position,p.home.zoom,true,p.home.quaternion,reduced.matches?0:650);}
- if(returning){const step=reduced.matches?1:ease((p.elapsed-950)/550);pos={x:p.seatPosition.x+.60*step,z:p.seatPosition.z+.35*step};}
- heading=p.fromHeading+Math.atan2(Math.sin(PERFORMANCE_YAW-p.fromHeading),Math.cos(PERFORMANCE_YAW-p.fromHeading))*sit;avatar.rotation.y=heading;avatar.position.set(pos.x,standY(pos),pos.z);
+ const p=celloPerformance,a=performanceParts();
+ p.elapsed+=dt*1000;const returning=p.phase==='returning',playing=p.phase==='playing';
+ const clock=reduced.matches?(returning?0:PERFORMANCE_TRANSITION_MS):playing?PERFORMANCE_TRANSITION_MS:returning?PERFORMANCE_TRANSITION_MS-p.elapsed:p.elapsed;
+ const phase=performanceTransition(clock),sit=phase.sit,carry=phase.carry;p.transitionStage=phase.stage;
+ // Framing-only relocation is hidden at a brief match-cut, never shown as skating.
+ let cut=false;
+ if(clock>=3050&&!performancePresentation){beginPerformancePresentation();cut=true;}
+ if(clock<3050&&performancePresentation){endPerformancePresentation();cut=true;}
+ if(cut&&!reduced.matches)p.cutPending=true;
+ p.frameOpacity=reduced.matches?1:p.cutPending?0:clock<2925||clock>3175?1:Math.abs(clock-3050)/125;
+ const pickupYaw=Math.atan2(p.celloPosition.x-pos.x,p.celloPosition.z-pos.z),facing=p.fromHeading+Math.atan2(Math.sin(pickupYaw-p.fromHeading),Math.cos(pickupYaw-p.fromHeading))*phase.face;
+ heading=facing+Math.atan2(Math.sin(PERFORMANCE_YAW-facing),Math.cos(PERFORMANCE_YAW-facing))*carry;
+ avatar.rotation.y=heading;avatar.position.set(pos.x,standY(pos),pos.z);
+ const pickupStep=new T.Vector3(p.celloPosition.x-pos.x,0,p.celloPosition.z-pos.z).normalize().multiplyScalar(.32*phase.step*(1-carry));avatar.position.add(pickupStep);
  walkPose(0,false);animateIdle(t,true);performancePose(sit,t);head.rotation.y=-.12*sit;
- performanceVisualAmount=sit;avatar.position.addScaledVector(PERFORMANCE_OFFSET,sit);
+ const footstep=(Math.sin(Math.PI*phase.step)*(1-phase.reach)+Math.sin(Math.PI*2*carry)*.65)*(1-sit);
+ leftLeg.rotation.x+=.20*footstep;rightLeg.rotation.x-=.26*footstep;
+ leftLeg.getObjectByName('leg-foot').rotation.x=.12*footstep;rightLeg.getObjectByName('leg-foot').rotation.x=-.12*footstep;
+ const lean=p.celloPosition.clone().sub(avatar.position);lean.y=0;lean.normalize().applyAxisAngle(performanceUp,-heading).multiplyScalar(.06*phase.reach*(1-carry));upperBody.position.add(lean);
+ performanceVisualAmount=performancePresentation?1:0;avatar.position.addScaledVector(PERFORMANCE_OFFSET,performanceVisualAmount);
  const SCALE=.82,lap=performanceFramePoint(-.11,.132753,.353);
- a.instrument.position.lerpVectors(p.celloPosition,lap,sit);a.instrument.scale.setScalar(1-(1-SCALE)*sit);
- a.instrument.rotation.set(-.10*sit,PERFORMANCE_YAW*sit,-.48*sit+p.celloRotation.z*(1-sit),'YXZ');
- const stroke=reduced.matches?0:Math.sin(t*.0016)*.075,playing=p.phase==='playing',motion=playing?stroke:0;
+ // Secure neck and bow first; lift with the torso, then lower as the knees bend.
+ if(performancePresentation){
+  a.instrument.position.copy(lap);a.instrument.scale.setScalar(SCALE);a.instrument.rotation.set(-.10,PERFORMANCE_YAW,-.48,'YXZ');
+ }else{
+  a.instrument.scale.setScalar(1);
+  const turn=Math.atan2(Math.sin(heading-pickupYaw),Math.cos(heading-pickupYaw));
+  a.instrument.quaternion.setFromAxisAngle(performanceUp,turn*carry).multiply(new T.Quaternion().setFromEuler(p.celloRotation));
+  const neckLocal=new T.Vector3(-.018,.95,.192).applyQuaternion(a.instrument.quaternion);
+  const heldNeck=new T.Vector3(.22,1.02-.07*sit,.20).applyAxisAngle(performanceUp,heading).add(avatar.position);
+  a.instrument.position.lerpVectors(p.celloPosition,heldNeck.sub(neckLocal),carry);
+  a.instrument.position.y+=Math.sin(Math.PI*carry)*.025;
+ }
+ // Continuously ground the endpin correction, no threshold snap at 99%.
+ a.instrument.updateMatrixWorld(true);
+ const finalBox=new T.Box3().setFromObject(a.instrument);
+ a.instrument.position.y+=(.015-finalBox.min.y)*sit;a.instrument.updateMatrixWorld(true);
+ const ramp=T.MathUtils.smoothstep(p.elapsed,0,650);
+ const stroke=reduced.matches?0:Math.sin(p.elapsed*.0016)*.075*ramp,motion=playing?stroke:returning?(p.returnStroke||0)*phase.bow:0;
  // Calibrated contact: actual string segment, between bridge and fingerboard.
- a.instrument.updateMatrixWorld(true);if(sit>.99){const bounds=new T.Box3().setFromObject(a.instrument);a.instrument.position.y+=.015-bounds.min.y;a.instrument.updateMatrixWorld(true);}
+ a.instrument.updateMatrixWorld(true);
  const stringY=.785,stringZ=.216+(.177-.216)*(stringY-.706)/(1.648-.706);
  const contact=new T.Vector3(0,stringY,stringZ).applyMatrix4(a.instrument.matrixWorld);
  const bowQ=a.instrument.quaternion.clone().multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),-Math.PI/2)).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),-Math.PI/2));
  const bowScale=.68;
  const contactOnHair=new T.Vector3(-.010,.38+motion/bowScale,0).multiplyScalar(bowScale).applyQuaternion(bowQ);
  const bowHand=contact.clone().sub(contactOnHair);
- a.bow.position.copy(bowHand);a.bow.quaternion.copy(bowQ);a.bow.scale.setScalar(bowScale);
- a.grip.visible=sit>.95;a.grip.position.copy(bowHand);a.grip.quaternion.copy(bowQ);
- if(sit>.01&&p.arms){
+ const carriedBow=new T.Vector3(.399,.208,.047).applyMatrix4(a.instrument.matrixWorld);
+ const relaxedBow=new T.Vector3(-.30,.20,.28).applyAxisAngle(performanceUp,heading).add(avatar.position);carriedBow.lerp(relaxedBow,carry);
+ const carryBowQ=a.instrument.quaternion.clone().slerp(new T.Quaternion().setFromAxisAngle(performanceUp,heading),carry);
+ bowHand.lerpVectors(carriedBow,bowHand.clone(),phase.bow);
+ a.bow.position.copy(bowHand);a.bow.quaternion.copy(carryBowQ).slerp(bowQ,phase.bow);a.bow.scale.setScalar(T.MathUtils.lerp(a.instrument.scale.x,bowScale,phase.bow));
+ const bowGrip=bowHand.clone().add(new T.Vector3(0,.42*(1-phase.bow),0).multiplyScalar(a.bow.scale.x).applyQuaternion(a.bow.quaternion));
+ a.grip.visible=phase.reach>.99;a.grip.position.copy(bowGrip);a.grip.quaternion.copy(a.bow.quaternion);
+ if(p.arms){
    avatar.updateMatrixWorld(true);upperBody.updateMatrixWorld(true);
-   const leftTarget=upperBody.worldToLocal(bowHand.clone());
-   const fingerTarget=new T.Vector3(-.018,1.38,.192).applyMatrix4(a.instrument.matrixWorld);
+   const leftWorld=avatar.localToWorld(p.restHandLocal[0].clone()).lerp(bowGrip,phase.reach);
+   const fingerTarget=new T.Vector3(-.018,T.MathUtils.lerp(.95,1.38,phase.bow),.192).applyMatrix4(a.instrument.matrixWorld);
+   const rightWorld=avatar.localToWorld(p.restHandLocal[1].clone()).lerp(fingerTarget,phase.reach);
+   const lengths=performancePresentation?[.30,.30]:[.22,.18];for(const rig of p.arms)rig.lengths=lengths;
+   // Move the shoulder girdle into the intersection of the two reach spheres.
+   // No limb length is derived from target distance.
+   const reach=lengths[0]+lengths[1]-.006;
+   const torsoBefore=upperBody.position.clone();
+   for(let pass=0;pass<12;pass++){
+    upperBody.updateWorldMatrix(true,true);
+    for(const[rig,target]of[[p.arms[0],leftWorld],[p.arms[1],rightWorld]]){
+     const shoulder=upperBody.localToWorld(rig.arm.position.clone()),delta=target.clone().sub(shoulder),d=delta.length();
+     if(d>reach){delta.multiplyScalar((d-reach)/d);const parentQ=upperBody.parent.getWorldQuaternion(new T.Quaternion());upperBody.position.add(delta.applyQuaternion(parentQ.invert()));upperBody.updateWorldMatrix(true,true);}
+    }
+   }
+   p.shoulderCorrection=upperBody.position.distanceTo(torsoBefore);
+   const leftTarget=upperBody.worldToLocal(leftWorld);
    aimPerformanceArm(p.arms[0],leftTarget,-1);
-   aimPerformanceArm(p.arms[1],upperBody.worldToLocal(fingerTarget),1);
+   aimPerformanceArm(p.arms[1],upperBody.worldToLocal(rightWorld),1);
  }
  if(p.phase==='playing'&&!reduced.matches)head.rotation.z=Math.sin(t*.0010)*.012;
- if(returning&&p.elapsed>950&&!reduced.matches){avatar.rotation.y=Math.atan2(.60,.35);walkPose(Math.sin(p.elapsed*.014)*.48,true);}
- if(!returning&&p.phase==='seating'&&u===1){p.phase='playing';p.elapsed=0;$('scene-status').textContent='大提琴演奏畫面，不記錄練習資料。可返回琴房。';a.back.hidden=false;a.back.focus({preventScroll:true});}
- if(returning&&(p.elapsed>=1500||reduced.matches)){
+ if(!returning&&p.phase==='seating'&&clock>=PERFORMANCE_TRANSITION_MS){p.phase='playing';p.elapsed=0;$('scene-status').textContent='大提琴演奏畫面，不記錄練習資料。可返回琴房。';a.back.hidden=false;a.back.focus({preventScroll:true});}
+ if(returning&&(p.elapsed>=PERFORMANCE_TRANSITION_MS||reduced.matches)){
   for(const{arm,elbow,moved,snapshots}of p.arms){for(const{child,original}of moved){elbow.remove(child);arm.add(child);child.position.copy(original);}arm.remove(elbow);for(const saved of snapshots){saved.child.position.copy(saved.position);saved.child.scale.copy(saved.scale);saved.child.quaternion.copy(saved.quaternion);saved.child.name=saved.name;}for(const child of elbow.children){if(!moved.some(m=>m.child===child))child.geometry?.dispose();}arm.rotation.set(0,0,arm===leftArm?-.12:.12);}
-  endPerformancePresentation();a.instrument.visible=a.bow.visible=a.stool.visible=a.grip.visible=false;cello.visible=celloShadowBridge.visible=pinContact.visible=true;previewMode=null;celloPerformance=null;release();walkPose(0,false);upperBody.position.set(0,0,0);head.rotation.y=0;document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;
+  endPerformancePresentation();a.instrument.visible=a.bow.visible=a.stool.visible=a.grip.visible=false;cello.visible=celloShadowBridge.visible=pinContact.visible=true;previewMode=null;celloPerformance=null;release();walkPose(0,false);upperBody.position.set(0,0,0);head.rotation.y=0;renderer.domElement.style.opacity='1';document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;
   if(!p.returnCameraStarted)animateRoomCamera(p.home.position,p.home.zoom,true,p.home.quaternion,0);area.focus({preventScroll:true});
  }
 }
@@ -1310,11 +1364,14 @@ function endPerformancePresentation(){
  if(!software){renderer.setViewport(0,0,area.clientWidth,area.clientHeight);renderer.setScissorTest(false);}
 }
 function renderPerformanceView(t){
- if(!performancePresentation){renderer.render(scene,camera);return;}
+ // Consume only at an actual draw; SVG can skip intermediate animation ticks.
+ if(celloPerformance?.cutPending)celloPerformance.frameOpacity=0;
+ renderer.domElement.style.opacity=String(celloPerformance?.frameOpacity??1);
+ if(!performancePresentation){renderer.render(scene,camera);if(celloPerformance)celloPerformance.cutPending=false;return;}
  const ready=!software&&!!previewLandscape.userData.ready;previewLandscape.visible=ready;livingLandscape.group.visible=ready;for(const{o}of performancePresentation.sky)o.visible=!ready;livingLandscape.tick(t*.001,reduced.matches);
  const w=area.clientWidth,h=area.clientHeight,viewW=Math.min(w,h*4/3),viewH=viewW*3/4;
  if(!software){renderer.setScissorTest(false);renderer.setClearColor(0xf1ebda,1);renderer.clear();renderer.setViewport((w-viewW)/2,(h-viewH)/2,viewW,viewH);renderer.setScissor((w-viewW)/2,(h-viewH)/2,viewW,viewH);renderer.setScissorTest(true);}
- renderer.render(scene,concertCamera);
+ renderer.render(scene,concertCamera);if(celloPerformance)celloPerformance.cutPending=false;
  if(!software){renderer.setScissorTest(false);renderer.setViewport(0,0,w,h);renderer.setClearColor(0x000000,0);}
 }
 
