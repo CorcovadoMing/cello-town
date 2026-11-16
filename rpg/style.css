@@ -125,3 +125,19 @@ html{overscroll-behavior-y:none}
 .quest-sign .quest-sign-title{font-size:13px;margin:0 0 6px;font-weight:600}
 .quest-sign-content{margin-left:37px}
 @media(max-width:620px){.quest-sign summary{min-height:36px;padding:5px 11px;gap:7px}.quest-sign #quest-status{font-size:12px}.quest-sign-content{margin-left:33px}}
+
+/* 038 preview: optional, soft upper-left overlay; the world never changes size. */
+.map-stage .quest-sign{position:absolute;z-index:1;top:8px;left:8px;width:184px;max-width:52%;border:0;background:#f7efd633;color:#35442c;pointer-events:none;border-radius:2px;text-shadow:0 1px 1px #fff9}
+.map-stage .quest-sign summary{pointer-events:auto;min-height:30px;padding:4px 6px;gap:5px;background:transparent}
+.map-stage .quest-sign .quest-sign-mark{display:none}
+.map-stage .quest-sign #quest-status{font:12px/1.5 "Songti TC","Noto Serif CJK TC","PMingLiU",serif;color:#35442c;white-space:nowrap}
+.map-stage .quest-sign #quest-count{font-size:10px;color:#455035}
+.map-stage .quest-sign .quest-toggle{font-size:12px}
+.map-stage .quest-sign[open]{background:#f7efd6b8}
+.map-stage .quest-sign-content{margin:0 6px 6px;padding-top:5px;border-top:1px solid #89936b66;pointer-events:auto}
+.map-stage .quest-sign .quest-sign-title{font-size:12px;margin:0 0 4px}
+.map-stage .quest-sign ol{display:block}
+.map-stage .quest-sign li{font-size:11px;line-height:1.5;gap:4px}
+.map-stage .quest-sign .quest-return{font-size:11px;line-height:1.5;gap:5px;margin-top:5px}
+.map-stage .quest-sign .quest-return small{font-size:10px}
+@media(max-width:620px){.map-stage .quest-sign{top:5px;left:5px;width:174px;max-width:54%}.map-stage .quest-sign summary{min-height:28px}.map-stage .quest-sign #quest-status{font-size:11px}}
