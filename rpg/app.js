@@ -37,25 +37,45 @@ townBrand?.addEventListener('click',e=>{
  e.preventDefault();location.replace(url.href);
 });
 let enteringRoom=false;
-// Push the view toward the doorway, not a veil over the surrounding page.
+// Wait for the actual last camera frame before handing off to the 3D doorway.
 function doorSceneTransition(stage,incoming,onReset){
- let travelTimer=0,recoveryTimer=0,revealTimer=0,generation=0;
+ const world=stage.querySelector('canvas');
+ let safety=0,revealTimer=0,frame=0,generation=0,endShot=null;
  const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
- const clear=()=>{generation++;clearTimeout(travelTimer);clearTimeout(recoveryTimer);clearTimeout(revealTimer);stage.classList.remove('door-shot-moving','door-shot-near');};
+ const clear=()=>{
+  generation++;clearTimeout(safety);clearTimeout(revealTimer);cancelAnimationFrame(frame);
+  if(endShot)world.removeEventListener('transitionend',endShot);endShot=null;
+  stage.classList.remove('door-shot-moving','door-shot-near','door-shot-arriving');
+ };
  const reset=()=>{clear();onReset();};
  window.addEventListener('pagehide',reset);
  window.addEventListener('pageshow',e=>{if(e.persisted)reset();});
  if(incoming&&!reduced()){
-  stage.classList.add('door-shot-near');const token=generation;
-  const reveal=()=>{if(token!==generation||!stage.classList.contains('door-shot-near'))return;stage.classList.add('door-shot-moving');stage.classList.remove('door-shot-near');clearTimeout(revealTimer);revealTimer=setTimeout(()=>stage.classList.remove('door-shot-moving'),360);};
-  requestAnimationFrame(()=>requestAnimationFrame(reveal));revealTimer=setTimeout(reveal,120);
+  stage.classList.add('door-shot-near','door-shot-arriving');const token=generation;
+  const reveal=()=>{
+   if(token!==generation||!stage.classList.contains('door-shot-near'))return;
+   stage.classList.add('door-shot-moving');stage.classList.remove('door-shot-near');
+   clearTimeout(revealTimer);
+   revealTimer=setTimeout(()=>stage.classList.remove('door-shot-moving','door-shot-arriving'),440);
+  };
+  frame=requestAnimationFrame(()=>{frame=requestAnimationFrame(reveal);});
+  revealTimer=setTimeout(reveal,120);
  }
  return navigate=>{
-  clear();const run=()=>{try{navigate();}catch{reset();}};
-  recoveryTimer=setTimeout(reset,2000);
+  clear();const token=generation;let sent=false;
+  const run=()=>{
+   if(sent||token!==generation)return;
+   sent=true;clearTimeout(safety);
+   if(endShot)world.removeEventListener('transitionend',endShot);endShot=null;
+   safety=setTimeout(reset,2000);
+   try{navigate();}catch{reset();}
+  };
   if(reduced()){run();return;}
+  endShot=e=>{if(e.target===world&&e.propertyName==='transform')run();};
+  world.addEventListener('transitionend',endShot);
   stage.classList.add('door-shot-moving','door-shot-near');
-  travelTimer=setTimeout(run,300);
+  // Fallback for a suspended tab or a browser that did not paint the transition.
+  safety=setTimeout(run,650);
  };
 }
 const doorStage=canvas.parentElement;
@@ -67,7 +87,7 @@ for(const axis of ['x','y']){
 const transferDoor=doorSceneTransition(doorStage,Boolean(returnURL),()=>{enteringRoom=false;doorApproach.disarm();target=null;keys.clear();});
 function enterRoom(){
  if(enteringRoom||dlg.open)return;
- enteringRoom=true;doorApproach.disarm();target=null;keys.clear();player.walking=false;
+ enteringRoom=true;doorApproach.disarm();target=null;keys.clear();player.walking=false;player.facing='back';
  transferDoor(()=>window.location.replace(new URL('./3D/?from=town',window.location.href).href));
 }
 const TREE_LAYOUT=[[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1.6],[870,103,1.8],[930,178,1.4],[65,250,1.8],[139,279,1.2],[848,281,1.4],[919,356,1.2],[340,476,1.2],[585,495,1.3],[690,500,1]];
@@ -318,7 +338,7 @@ function update(dt){
 }
 const approachRoom=()=>{if(!dlg.open)walkTo(ROOM_ENTRY,'room');};
 function interact(){if(dlg.open)return;if(!playerSeated&&roomDoorNearby(player)){approachRoom();return;}if(playerSeated){standUp();return;}if(near==='chair'){const index=chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y)).indexOf(Math.min(...chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y))));requestChair(index);return;}if(near==='npc')talk();else if(near==='stand')practice();else if(near==='garden')openGarden();else toast('再靠近老師、戶外譜架或花園入口一點。');}
-const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open)return;if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;});canvas.onpointerdown=e=>{if(dlg.open)return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{if(document.hidden){pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});function loop(t){const dt=Math.min((t-last)/1000,.04);last=t;if(!document.hidden){update(dt);draw(t);}requestAnimationFrame(loop);}render();requestAnimationFrame(loop);setTimeout(()=>$('toast').style.opacity=0,6000);
+const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open||enteringRoom)return;if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;});canvas.onpointerdown=e=>{if(dlg.open||enteringRoom)return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{if(document.hidden){pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});function loop(t){const dt=Math.min((t-last)/1000,.04);last=t;if(!document.hidden){update(dt);draw(t);}requestAnimationFrame(loop);}render();requestAnimationFrame(loop);setTimeout(()=>$('toast').style.opacity=0,6000);
 
 
 setInterval(()=>{const nextWeather=weatherAt();if(nextWeather.key===gameWeather.key)return;gameWeather=nextWeather;document.querySelector('.topline span').textContent=gameWeather.name+' · 練琴日';if(dlg.open&&$('garden-view'))$('garden-view').innerHTML=gardenScene(state,gameWeather);},1000);

@@ -217,6 +217,7 @@ body,body *{font-family:var(--town-font)!important}
 /* Only the town canvas and its world-aligned symbols track the door shot. */
 .map-stage{overflow:hidden}
 .map-stage>canvas,.map-stage>.teacher-marker-layer{transform-origin:var(--door-origin-x,70.417%) var(--door-origin-y,35.804%)}
-.map-stage.door-shot-moving>canvas,.map-stage.door-shot-moving>.teacher-marker-layer{transition:transform 300ms cubic-bezier(.22,.65,.24,1)}
-.map-stage.door-shot-near>canvas,.map-stage.door-shot-near>.teacher-marker-layer{transform:translate(var(--door-shift-x,-20.417%),var(--door-shift-y,14.196%)) scale(1.74)}
+.map-stage.door-shot-moving>canvas,.map-stage.door-shot-moving>.teacher-marker-layer{transition:transform 460ms cubic-bezier(.42,0,.26,1)}
+.map-stage.door-shot-near>canvas,.map-stage.door-shot-near>.teacher-marker-layer{transform:translate(var(--door-shift-x,-20.417%),var(--door-shift-y,14.196%)) scale(1.82)}
+.map-stage.door-shot-arriving.door-shot-moving>canvas,.map-stage.door-shot-arriving.door-shot-moving>.teacher-marker-layer{transition-duration:400ms}
 @media(prefers-reduced-motion:reduce){.map-stage.door-shot-moving>canvas,.map-stage.door-shot-moving>.teacher-marker-layer{transition:none}.map-stage.door-shot-near>canvas,.map-stage.door-shot-near>.teacher-marker-layer{transform:none}}
