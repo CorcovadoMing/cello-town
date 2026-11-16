@@ -6,6 +6,7 @@ const HAIR_ACCESSORY={bow:'#c88f83',beret:'#718f83',tie:'#d9b77d'};
 const labels={faceShape:'臉型',face:'神情',hair:'髮型',skin:'膚色',hairColor:'髮色',outfit:'衣服',upper:'上身',lower:'下身',shoes:'鞋子',lowerColor:'下身顏色',color:'上身顏色',hat:'頭飾',accessory:'小配件'},colorNames={skin:['奶油蜜桃','溫暖杏色','焦糖棕','可可棕'],hairColor:['栗子棕','蜂蜜金','午夜黑','紅茶棕'],color:['森林綠','珊瑚粉','丁香紫','暖陽黃'],lowerColor:['森林綠','珊瑚粉','丁香紫','暖陽黃','鼠尾草灰','燕麥棕','暖石灰','奶油米']};
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));status.textContent='穿搭已自動保存在這個瀏覽器。';}catch{status.textContent='這次穿搭尚未儲存；瀏覽器不允許本機儲存。';}}
 const categories=[['faceShape','skin'],['face'],['hair','hairColor'],['upper','color'],['lower','lowerColor'],['shoes'],['hat'],['accessory']];
+let celloPerformance=null;
 let activeCategory=0,previewMode=null,previewYaw=0,roomSnapshot=null;
 const visibleCategories=()=>previewMode==='wardrobe'?[3,4,5,6,7]:[0,1,2];
 // Original flat silhouettes: only the room avatar uses the 3D renderer.
@@ -888,7 +889,7 @@ rebuild();
 let destination=null,pendingStation=null,watchingCat=false,catPose=0,catPoseMotion=null,catSnapshot=null;const stationSpots={exit:{x:0,z:1.9},wardrobe:{x:2.2,z:-.8},vanity:{x:.65,z:-.75},cello:{x:-1.85,z:-.70},cat:{x:-1.03,z:-.72}};const pressed=new Set();function release(){if(watchingCat)endCatView();pressed.clear();destination=null;pendingStation=null;watchingCat=false;}const keyMap={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(previewMode)return;if(e.target.closest('button,input,select,textarea')&&e.target!==$('cat-view-back'))return;const d=keyMap[e.key];if(d){e.preventDefault();destination=null;pendingStation=null;if(watchingCat)endCatView();watchingCat=false;pressed.add(d);}});window.addEventListener('keyup',e=>pressed.delete(keyMap[e.key]));window.addEventListener('blur',release);document.addEventListener('visibilitychange',release);for(const b of document.querySelectorAll('[data-dir]')){b.onpointerdown=e=>{if(previewMode)return;e.preventDefault();destination=null;pendingStation=null;b.setPointerCapture(e.pointerId);pressed.add(b.dataset.dir);};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>pressed.delete(b.dataset.dir);}
 window.addEventListener('pageshow',e=>{if(e.persisted){exitNavigating=false;exitArmed=pos.z<1.4;release();}});
 const targetMarker=ring(0,.085,0,.16,.018,'#fff5cd');targetMarker.rotation.x=-Math.PI/2;targetMarker.visible=false;const raycaster=new T.Raycaster(),floorPlane=new T.Plane(new T.Vector3(0,1,0),0);let tap=null;
-function approachStation(mode){if(!stationSpots[mode])return;if(mode==='exit')exitArmed=true;if(previewMode)exitPreview();release();pendingStation=mode;destination={...stationSpots[mode]};$('scene-status').textContent=mode==='exit'?'正在走向小鎮出口':mode==='wardrobe'?'正在走向衣櫃':mode==='cello'?'正在走向大提琴':mode==='cat'?'正在走到貓咪旁邊':'正在走向梳妝台';area.focus({preventScroll:true});}
+function approachStation(mode){if(!stationSpots[mode]||celloPerformance)return;if(mode==='exit')exitArmed=true;if(previewMode)exitPreview();release();pendingStation=mode;destination={...stationSpots[mode]};if(mode==='cello')beginPerformanceApproach();$('scene-status').textContent=mode==='exit'?'正在走向小鎮出口':mode==='wardrobe'?'正在走向衣櫃':mode==='cello'?'正在走向大提琴':mode==='cat'?'正在走到貓咪旁邊':'正在走向梳妝台';area.focus({preventScroll:true});}
 let cameraMotion=null;
 function animateRoomCamera(position,zoom,restoring=false,orientation=null,duration=520){
  cameraMotion={from:camera.position.clone(),to:position.clone(),fromZoom:camera.zoom,toZoom:zoom,start:performance.now(),restoring,duration,fromQuaternion:camera.quaternion.clone(),toQuaternion:orientation?.clone()||camera.quaternion.clone()};
@@ -903,7 +904,7 @@ function previewCameraTarget(){
  probe.position.addScaledVector(right,(projected.x-desiredX)*(probe.right-probe.left)/(2*zoom));probe.position.addScaledVector(up,(projected.y-desiredY)*height/(2*zoom));
  return{position:probe.position,zoom};
 }
-function anchorEditor(){if(!previewMode||previewMode==='records')return;camera.updateMatrixWorld(true);const panel=document.querySelector('aside'),r=area.getBoundingClientRect(),m=document.querySelector('main').getBoundingClientRect();
+function anchorEditor(){if(!previewMode||previewMode==='records'||previewMode==='performance')return;camera.updateMatrixWorld(true);const panel=document.querySelector('aside'),r=area.getBoundingClientRect(),m=document.querySelector('main').getBoundingClientRect();
  const project=(x,y,z)=>{const v=new T.Vector3(x,y,z).project(camera);return{x:r.left+(v.x+1)*r.width/2,y:r.top+(1-v.y)*r.height/2}};
  const points=[];for(const x of[-.52,.52])for(const y of[.02,2.05])for(const z of[-.35,.35])points.push(project(pos.x+x,y,pos.z+z));
  const left=Math.min(...points.map(v=>v.x)),right=Math.max(...points.map(v=>v.x)),top=Math.min(...points.map(v=>v.y)),bottom=Math.max(...points.map(v=>v.y));
@@ -936,20 +937,111 @@ function endCatView(){
 function enterPreview(mode){
  if(mode==='exit'){leaveRoom();return;}
  if(mode==='cat'){beginCatView();return;}
- if(mode==='cello'){openPracticeMock();return;}
+ if(mode==='cello'){seatPerformance();return;}
  if(previewMode)exitPreview();
  roomSnapshot={rotation:avatar.rotation.clone(),heading,cameraPosition:cameraMotion?.restoring?cameraMotion.to.clone():camera.position.clone(),cameraQuaternion:camera.quaternion.clone(),cameraZoom:cameraMotion?.restoring?cameraMotion.toZoom:camera.zoom,focus:area};
  release();tap=null;previewMode=mode;previewYaw=Math.atan2(camera.position.x-pos.x,camera.position.z-pos.z);activeCategory=mode==='wardrobe'?3:0;
  area.setAttribute('aria-label','房間內角色試穿，左右拖曳或方向鍵轉動');document.body.classList.add('preview-open');document.body.dataset.editor=mode;const panel=document.querySelector('aside');panel.setAttribute('role','region');panel.setAttribute('aria-label',mode==='wardrobe'?'衣櫃試穿':'梳妝台');panel.hidden=false;$('preview-close').hidden=false;controls();const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);anchorEditor();$('preview-close').focus({preventScroll:true});
 }
-function exitPreview(){if(previewMode==='records'){closePracticeMock();return;}if(!previewMode)return;const old=roomSnapshot;release();if(tap&&area.hasPointerCapture(tap.id))area.releasePointerCapture(tap.id);tap=null;previewMode=null;heading=old.heading;avatar.rotation.copy(old.rotation);camera.quaternion.copy(old.cameraQuaternion);animateRoomCamera(old.cameraPosition,old.cameraZoom,true);area.setAttribute('aria-label','3D房間，點衣櫃或梳妝台走近更換外觀，點地板行走');document.body.classList.remove('preview-open');delete document.body.dataset.editor;const panel=document.querySelector('aside');panel.removeAttribute('role');panel.removeAttribute('aria-label');panel.removeAttribute('style');panel.hidden=true;$('preview-close').hidden=true;old.focus?.focus({preventScroll:true});roomSnapshot=null;}
+function exitPreview(){if(celloPerformance)return;if(!previewMode)return;const old=roomSnapshot;release();if(tap&&area.hasPointerCapture(tap.id))area.releasePointerCapture(tap.id);tap=null;previewMode=null;heading=old.heading;avatar.rotation.copy(old.rotation);camera.quaternion.copy(old.cameraQuaternion);animateRoomCamera(old.cameraPosition,old.cameraZoom,true);area.setAttribute('aria-label','3D房間，點衣櫃或梳妝台走近更換外觀，點地板行走');document.body.classList.remove('preview-open');delete document.body.dataset.editor;const panel=document.querySelector('aside');panel.removeAttribute('role');panel.removeAttribute('aria-label');panel.removeAttribute('style');panel.hidden=true;$('preview-close').hidden=true;old.focus?.focus({preventScroll:true});roomSnapshot=null;}
 $('cat-watch-access').onclick=()=>approachStation('cat');
 $('cat-view-back').onclick=endCatView;
 $('wardrobe-open').onclick=()=>approachStation('wardrobe');$('vanity-open').onclick=()=>approachStation('vanity');$('preview-close').onclick=exitPreview;
-function openPracticeMock(){release();previewMode='records';document.querySelector('.stage').inert=true;$('practice-mock').hidden=false;$('practice-close').focus({preventScroll:true});}
-function closePracticeMock(){release();previewMode=null;document.querySelector('.stage').inert=false;$('practice-mock').hidden=true;area.focus({preventScroll:true});}
-$('practice-close').onclick=closePracticeMock;
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&watchingCat){e.preventDefault();endCatView();return;}if(!previewMode)return;if(previewMode==='records'&&e.key==='Tab'){e.preventDefault();$('practice-close').focus();return;}if(e.key==='Escape'){e.preventDefault();exitPreview();return;}if(previewMode!=='records'&&e.target===area&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();previewYaw+=(e.key==='ArrowLeft'?-1:1)*Math.PI/12;}});
+// One reversible performance state: no practice records, scores or audio capture.
+let performanceAssets=null;
+function performanceParts(){
+ if(performanceAssets)return performanceAssets;
+ const instrument=new T.Group(),bow=new T.Group();instrument.name='performance-cello';bow.name='performance-bow';
+ for(const source of cello.children){
+  const buckets=new Map();
+  for(const part of source.userData.parts||[]){const parent=part.name.startsWith('bow-')?bow:instrument,values=buckets.get(parent)||{position:[],normal:[]};for(const key of['position','normal'])values[key].push(...source.geometry.attributes[key].array.slice(part.start*3,(part.start+part.count)*3));buckets.set(parent,values);}
+  for(const[parent,values]of buckets){const g=new T.BufferGeometry();for(const key of['position','normal'])g.setAttribute(key,new T.Float32BufferAttribute(values[key],3));const mesh=new T.Mesh(g,source.material);mesh.castShadow=source.castShadow;mesh.receiveShadow=true;mesh.raycast=()=>{};parent.add(mesh);}
+ }
+ for(const child of bow.children)child.geometry.translate(-.399,-.208,-.047);
+ const stool=new T.Group();stool.name='performance-stool';for(const x of[-.17,.17])for(const z of[-.13,.13])box(x,.17,z,.045,.32,.045,'#967650',stool);box(0,.345,0,.48,.06,.40,'#b99a6c',stool);
+ const grip=new T.Group();grip.name='bow-thumb-index-grip';const skin=OPTIONS.skin[state.skin];ball(-.018,.012,.018,.030,.023,.026,skin,grip);ball(.014,-.017,.006,.025,.028,.022,skin,grip);scene.add(instrument,bow,stool,grip);instrument.visible=bow.visible=stool.visible=grip.visible=false;
+ const back=document.createElement('button');back.id='performance-back';back.textContent='返回琴房';back.hidden=true;back.style.cssText='position:absolute;left:18px;top:18px;z-index:6;border:1px solid #d5c8a4;border-radius:22px;background:#fff8e8;color:#68583f;padding:11px 18px;font:inherit;box-shadow:0 3px 12px #463b2520';document.querySelector('.stage').append(back);back.onclick=finishPerformance;
+ return performanceAssets={instrument,bow,stool,grip,back};
+}
+function performanceCamera(){
+ const focus=new T.Vector3(stationSpots.cello.x,1.45,stationSpots.cello.z+.1),probe=camera.clone();probe.position.copy(focus).add(new T.Vector3(2.5,1.6,5));probe.lookAt(focus);
+ return{position:probe.position,quaternion:probe.quaternion,zoom:Math.min((camera.right-camera.left)/1.9,(camera.top-camera.bottom)/2.4)};
+}
+function beginPerformanceApproach(){
+ const a=performanceParts();celloPerformance={phase:'approach',elapsed:0,home:{position:camera.position.clone(),quaternion:camera.quaternion.clone(),zoom:camera.zoom},celloPosition:cello.position.clone(),celloRotation:cello.rotation.clone(),arms:null};
+ a.grip.children.forEach(o=>o.material=mat(OPTIONS.skin[state.skin]));a.stool.position.set(stationSpots.cello.x,0,stationSpots.cello.z-.04);a.stool.visible=true;
+ document.querySelector('.station-controls').hidden=true;$('cat-watch-access').hidden=true;
+ const view=performanceCamera();animateRoomCamera(view.position,view.zoom,false,view.quaternion,reduced.matches?0:1200);
+}
+function watchPerformanceApproach(dt){
+ const p=celloPerformance;if(p?.phase!=='approach')return;
+ const distance=Math.hypot(pos.x-stationSpots.cello.x,pos.z-stationSpots.cello.z);
+ if(distance<.01||catPose>.001){p.stalled=0;return;}
+ p.stalled=distance<(p.distance??Infinity)-.0001?0:(p.stalled||0)+dt;p.distance=distance;
+ if(p.stalled<1.5)return;
+ performanceParts().stool.visible=false;celloPerformance=null;release();document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;
+ animateRoomCamera(p.home.position,p.home.zoom,true,p.home.quaternion,reduced.matches?0:450);$('scene-status').textContent='目前無法走到大提琴旁，已回到琴房操作。';
+}
+function articulatePerformanceArms(){
+ const arms=[];
+ for(const arm of[leftArm,rightArm]){const elbow=new T.Group();elbow.name='performance-elbow';elbow.position.y=-.20;const moved=[];for(const child of[...arm.children])if(child.position.y<-.215){const original=child.position.clone();arm.remove(child);elbow.add(child);child.position.y+=.20;moved.push({child,original});}arm.add(elbow);arms.push({arm,elbow,moved});}
+ return arms;
+}
+function seatPerformance(){
+ if(!celloPerformance)beginPerformanceApproach();release();tap=null;previewMode='performance';celloPerformance.phase='seating';celloPerformance.elapsed=0;celloPerformance.arms=articulatePerformanceArms();celloPerformance.fromHeading=heading;celloPerformance.seatPosition={...pos};
+ const a=performanceParts();cello.visible=false;celloShadowBridge.visible=false;pinContact.visible=false;a.instrument.visible=a.bow.visible=true;
+}
+function aimPerformanceArm(rig,hand,bend){
+ const shoulder=rig.arm.position.clone(),target=hand.clone(),distance=target.distanceTo(shoulder),l1=.20,l2=.20;
+ const direction=target.clone().sub(shoulder).normalize(),mid=shoulder.clone().addScaledVector(direction,Math.min(distance,.395)*.5),side=new T.Vector3(bend,0,-.25).projectOnPlane(direction).normalize();
+ const elbowPoint=mid.addScaledVector(side,Math.sqrt(Math.max(.0001,l1*l1-Math.min(distance,.395)**2/4)));
+ rig.arm.quaternion.setFromUnitVectors(new T.Vector3(0,-1,0),elbowPoint.clone().sub(shoulder).normalize());
+ const localHand=target.sub(shoulder).applyQuaternion(rig.arm.quaternion.clone().invert()).sub(rig.elbow.position);rig.elbow.quaternion.setFromUnitVectors(new T.Vector3(0,-1,0),localHand.normalize());
+}
+function finishPerformance(){if(celloPerformance?.phase!=='playing')return;celloPerformance.phase='returning';celloPerformance.elapsed=0;performanceParts().back.hidden=true;pressed.clear();}
+window.addEventListener('pagehide',()=>{
+ performanceKeys.clear();performancePointers.clear();
+ if(!celloPerformance)return;
+ const p=celloPerformance;
+ if(!p.arms){const a=performanceParts();a.stool.visible=false;celloPerformance=null;release();document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;}
+ else{p.phase='returning';p.elapsed=1500;tickPerformance(0,performance.now());}
+ cameraMotion=null;camera.position.copy(p.home.position);camera.quaternion.copy(p.home.quaternion);camera.zoom=p.home.zoom;camera.updateProjectionMatrix();
+});
+function performancePose(amount,t){
+ upperBody.position.set(0,-.15*amount,0);upperBody.rotation.set(.035*amount,0,(reduced.matches?0:Math.sin(t*.0017)*.018)*amount);
+ for(const[leg,sign]of[[leftLeg,-1],[rightLeg,1]]){leg.position.set(sign*(.135+.065*amount),.53-.15*amount,0);leg.rotation.set(-1.18*amount,0,-sign*.08*amount);leg.getObjectByName('leg-knee').rotation.x=1.18*amount;leg.getObjectByName('leg-foot').rotation.x=0;}
+}
+function tickPerformance(dt,t){
+ if(!celloPerformance||celloPerformance.phase==='approach')return;
+ const p=celloPerformance,a=performanceParts(),ease=u=>{u=Math.max(0,Math.min(1,u));return u*u*(3-2*u);};
+ p.elapsed+=dt*1000;const returning=p.phase==='returning',u=(reduced.matches||p.phase==='playing')?1:ease(p.elapsed/(returning?950:1600)),sit=returning?1-u:u;
+ if(returning&&p.elapsed>=850&&!p.returnCameraStarted){p.returnCameraStarted=true;animateRoomCamera(p.home.position,p.home.zoom,true,p.home.quaternion,reduced.matches?0:650);}
+ if(returning){const step=reduced.matches?1:ease((p.elapsed-950)/550);pos={x:p.seatPosition.x+.60*step,z:p.seatPosition.z+.35*step};}
+ heading=p.fromHeading+(0-p.fromHeading)*sit;avatar.rotation.y=heading;avatar.position.set(pos.x,standY(pos),pos.z);
+ walkPose(0,false);animateIdle(t,true);performancePose(sit,t);
+ const lap=new T.Vector3(pos.x,.145,pos.z+.19);a.instrument.position.lerpVectors(p.celloPosition,lap,sit);a.instrument.scale.setScalar(1-.40*sit);a.instrument.rotation.set(0,0,p.celloRotation.z*(1-sit));
+ const stroke=reduced.matches?0:Math.sin(t*.0024)*.13,playing=p.phase==='playing',motion=playing?stroke:0;
+ const bowHand=new T.Vector3(pos.x+.25+motion,.65,pos.z+.33);
+ const originalBow=new T.Vector3(.399,.208,.047).applyEuler(p.celloRotation).add(p.celloPosition);
+ a.bow.position.lerpVectors(originalBow,bowHand,sit);a.bow.rotation.set(0,0,p.celloRotation.z+(Math.PI/2-p.celloRotation.z)*sit);a.bow.scale.setScalar(1-.40*sit);a.grip.visible=sit>.95;a.grip.position.copy(bowHand);
+ if(sit>.01&&p.arms){aimPerformanceArm(p.arms[0],new T.Vector3(-.035,1.14+(reduced.matches?0:Math.sin(t*.0018)*.012),.28),-1);aimPerformanceArm(p.arms[1],new T.Vector3(.25+motion,.80,.33),1);}
+ if(p.phase==='playing'&&!reduced.matches)head.rotation.z=Math.sin(t*.0013)*.025;
+ if(returning&&p.elapsed>950&&!reduced.matches){avatar.rotation.y=Math.atan2(.60,.35);walkPose(Math.sin(p.elapsed*.014)*.48,true);}
+ if(!returning&&p.phase==='seating'&&u===1){p.phase='playing';p.elapsed=0;$('scene-status').textContent='大提琴演奏畫面，不記錄練習資料。可返回琴房。';a.back.hidden=false;a.back.focus({preventScroll:true});}
+ if(returning&&(p.elapsed>=1500||reduced.matches)){
+  for(const{arm,elbow,moved}of p.arms){for(const{child,original}of moved){elbow.remove(child);arm.add(child);child.position.copy(original);}arm.remove(elbow);arm.rotation.set(0,0,arm===leftArm?-.12:.12);}
+  a.instrument.visible=a.bow.visible=a.stool.visible=a.grip.visible=false;cello.visible=celloShadowBridge.visible=pinContact.visible=true;previewMode=null;celloPerformance=null;release();walkPose(0,false);upperBody.position.set(0,0,0);document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;
+  if(!p.returnCameraStarted)animateRoomCamera(p.home.position,p.home.zoom,true,p.home.quaternion,0);area.focus({preventScroll:true});
+ }
+}
+const performanceKeys=new Set(),performancePointers=new Set();
+window.addEventListener('keydown',e=>{if(!celloPerformance&&!performanceKeys.has(e.key))return;if(!keyMap[e.key]&&!['Enter',' ','Escape','e','E'].includes(e.key))return;if(celloPerformance?.phase==='playing'&&e.target===performanceAssets?.back&&['Enter',' '].includes(e.key))return;performanceKeys.add(e.key);e.preventDefault();e.stopImmediatePropagation();},{capture:true});
+window.addEventListener('keyup',e=>performanceKeys.delete(e.key),{capture:true});
+window.addEventListener('pointerdown',e=>{if(!celloPerformance||e.target===performanceAssets?.back)return;if(!e.target.closest?.('.stage,aside'))return;performancePointers.add(e.pointerId);e.preventDefault();e.stopImmediatePropagation();},{capture:true});
+window.addEventListener('pointerup',e=>{if(performancePointers.delete(e.pointerId)){e.preventDefault();e.stopImmediatePropagation();}},{capture:true});
+window.addEventListener('click',e=>{if(celloPerformance&&e.target!==performanceAssets?.back&&e.target.closest?.('.stage,aside')){e.preventDefault();e.stopImmediatePropagation();}},{capture:true});
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&watchingCat){e.preventDefault();endCatView();return;}if(!previewMode)return;if(e.key==='Escape'){e.preventDefault();exitPreview();return;}if(previewMode!=='records'&&e.target===area&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();previewYaw+=(e.key==='ArrowLeft'?-1:1)*Math.PI/12;}});
 area.addEventListener('pointerdown',e=>{if(!e.isPrimary){tap=null;return;}if(e.button!==0)return;if(!previewMode&&!watchingCat)release();tap={id:e.pointerId,x:e.clientX,y:e.clientY,yaw:previewYaw};if(previewMode)area.setPointerCapture(e.pointerId);});
 area.addEventListener('pointermove',e=>{if(previewMode&&previewMode!=='records'&&tap?.id===e.pointerId)previewYaw=tap.yaw+(e.clientX-tap.x)*.012;});
 area.addEventListener('pointercancel',()=>tap=null);area.addEventListener('lostpointercapture',()=>tap=null);
@@ -975,12 +1067,18 @@ function catThroughAvatar(ray,hits){
  const point=ray.intersectBox(catHitBounds,new T.Vector3());
  return !!point&&(!nearest||nearest.distance+.025>=point.distanceTo(ray.origin));
 }
-area.addEventListener('pointerup',e=>{if(!tap||tap.id!==e.pointerId)return;const start=tap;tap=null;if(previewMode)return;if(Math.hypot(e.clientX-start.x,e.clientY-start.y)>12)return;const r=area.getBoundingClientRect();camera.updateMatrixWorld();raycaster.setFromCamera(new T.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),camera);scene.updateMatrixWorld(true);const blockers=raycaster.intersectObjects(scene.children,true).filter(h=>h.object!==targetMarker);const catBehindPlayer=catThroughAvatar(raycaster.ray,blockers);if(watchingCat){if(!catBehindPlayer&&blockers[0]?.object.userData.pet!=='cat'&&forgivingRoomHit(raycaster.ray,blockers[0])!=='cat')endCatView();return;}if(catBehindPlayer){approachStation('cat');return;}if(blockers[0]?.object.userData.station){approachStation(blockers[0].object.userData.station);return;}if(blockers[0]?.object.userData.pet==='cat'){approachStation('cat');return;}
+// An avatar may cover the instrument after standing up; real furniture still occludes.
+function celloThroughAvatar(hits){
+ const isPlayer=o=>{for(let p=o;p;p=p.parent)if(p===avatar)return true;return false;};
+ if(!hits.length||!isPlayer(hits[0].object))return false;
+ return hits.find(h=>!isPlayer(h.object))?.object.userData.station==='cello';
+}
+area.addEventListener('pointerup',e=>{if(!tap||tap.id!==e.pointerId)return;const start=tap;tap=null;if(previewMode)return;if(Math.hypot(e.clientX-start.x,e.clientY-start.y)>12)return;const r=area.getBoundingClientRect();camera.updateMatrixWorld();raycaster.setFromCamera(new T.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),camera);scene.updateMatrixWorld(true);const blockers=raycaster.intersectObjects(scene.children,true).filter(h=>h.object!==targetMarker);if(!watchingCat&&celloThroughAvatar(blockers)){approachStation('cello');return;}const catBehindPlayer=catThroughAvatar(raycaster.ray,blockers);if(watchingCat){if(!catBehindPlayer&&blockers[0]?.object.userData.pet!=='cat'&&forgivingRoomHit(raycaster.ray,blockers[0])!=='cat')endCatView();return;}if(catBehindPlayer){approachStation('cat');return;}if(blockers[0]?.object.userData.station){approachStation(blockers[0].object.userData.station);return;}if(blockers[0]?.object.userData.pet==='cat'){approachStation('cat');return;}
 // Padded physical boxes, not screen-wide shortcuts. Any nearer solid surface
 // still wins; exact wardrobe/vanity/cello mesh hits were handled above.
 const hitIntent=forgivingRoomHit(raycaster.ray,blockers[0]);if(hitIntent){approachStation(hitIntent);return;}
 if(blockers[0]&&blockers[0].point.y>.11)return;const hit=new T.Vector3();if(!raycaster.ray.intersectPlane(floorPlane,hit)||Math.abs(hit.x)>3.05||hit.z< -2.35||hit.z>2.35)return;pendingStation=null;destination={x:Math.max(-2.2,Math.min(2.2,hit.x)),z:Math.max(-.8,Math.min(1.9,hit.z))};area.focus({preventScroll:true});});
-function resize(){const w=area.clientWidth,h=area.clientHeight;renderer.setSize(w,h);const phone=w<600,size=Math.max(3.75,(phone?3.6:3.9)*h/w),lift=phone?size*.13:0;camera.left=-size*w/h;camera.right=size*w/h;camera.top=size-lift;camera.bottom=-size-lift;camera.updateProjectionMatrix();if(watchingCat){const view=catCameraTarget();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(previewMode&&previewMode!=='records'&&roomSnapshot){const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);}}new ResizeObserver(resize).observe(area);resize();controls();const reduced=matchMedia('(prefers-reduced-motion: reduce)');let last=0,lastDraw=0;
+function resize(){const w=area.clientWidth,h=area.clientHeight;renderer.setSize(w,h);const phone=w<600,size=Math.max(3.75,(phone?3.6:3.9)*h/w),lift=phone?size*.13:0;camera.left=-size*w/h;camera.right=size*w/h;camera.top=size-lift;camera.bottom=-size-lift;camera.updateProjectionMatrix();if(watchingCat){const view=catCameraTarget();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(previewMode&&previewMode!=='records'&&previewMode!=='performance'&&roomSnapshot){const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);}}new ResizeObserver(resize).observe(area);resize();controls();const reduced=matchMedia('(prefers-reduced-motion: reduce)');let last=0,lastDraw=0;
 // A real doorway arrival: the saved outfit walks inward while the view opens.
 // Only the consumed town arrival parameter opts in; direct visits never replay.
 let doorArrival=null;
@@ -1062,5 +1160,5 @@ function animateIdle(t,moving){
  faceRig.mouth.scale.set(fm.mouthX,fm.mouthY,1);head.rotation.z+=fm.tilt;
 
 }
-function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;tickDoorArrival(t);tickDoorCutaway(dt);tickRoomCamera(t);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}requestAnimationFrame(frame);
+function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;watchPerformanceApproach(dt);if(celloPerformance?.phase==='approach'&&!destination){destination={...stationSpots.cello};pendingStation='cello';}tickDoorArrival(t);tickDoorCutaway(dt);tickRoomCamera(t);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode==='performance'){tickPerformance(dt,t);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}requestAnimationFrame(frame);
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();release();$('scene-status').textContent='3D 畫面暫停，請重新整理恢復。';status.textContent='3D 顯示中斷，穿搭設定仍保留。請重新整理。';});
