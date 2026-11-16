@@ -7,11 +7,15 @@ export function decoratePerformanceRoom(T, scene) {
   // altering their original material. Vertical UVs continue at world density.
   for(const name of ['rear-wall-grounded','side-wall-grounded']){
     const source=scene.getObjectByName(name),p=source?.geometry?.parameters;if(!p)continue;
-    const g=new T.BoxGeometry(p.width,1,p.depth),wall=new T.Mesh(g,source.material);
-    wall.name=name+'-performance-extension';wall.position.copy(source.position);
-    wall.receiveShadow=source.receiveShadow;wall.castShadow=false;wall.raycast=()=>{};
-    wall.renderOrder=source.renderOrder;architecture.add(wall);
-    extensions.push({wall,base:source.position.y+p.height/2,bottom:source.position.y-p.height/2,originalHeight:p.height});
+    const rear=source.userData.permanentRearSegment;
+    const spans=rear?[{min:source.position.z-p.depth/2,max:rear.maxZ,base:rear.top},{min:rear.maxZ,max:source.position.z+p.depth/2,base:source.position.y+p.height/2}]:[{min:source.position.z-p.depth/2,max:source.position.z+p.depth/2,base:source.position.y+p.height/2}];
+    spans.forEach((span,index)=>{
+      const g=new T.BoxGeometry(p.width,1,span.max-span.min),wall=new T.Mesh(g,source.material);
+      wall.name=name+'-performance-extension'+(rear?(index?'':'-rear-cap'):'');wall.position.copy(source.position);wall.position.z=(span.min+span.max)/2;
+      if(rear){const uv=g.attributes.uv,pos=g.attributes.position;for(let i=0;i<8;i++){const z=pos.getZ(i)+wall.position.z;uv.setX(i,i<4?(source.position.z+p.depth/2-z)/p.depth:(z-source.position.z+p.depth/2)/p.depth);}}
+      wall.receiveShadow=source.receiveShadow;wall.castShadow=false;wall.raycast=()=>{};wall.renderOrder=source.renderOrder;architecture.add(wall);
+      extensions.push({wall,base:span.base,bottom:source.position.y-p.height/2,originalHeight:p.height});
+    });
   }
   const mountMaterial=new T.MeshStandardMaterial({color:0xb6a17b,metalness:.48,roughness:.42,transparent:true,opacity:0});
   const mounts=new T.Group();mounts.name='curtain-wall-mounts';group.add(mounts);
@@ -83,4 +87,27 @@ export function decoratePerformanceRoom(T, scene) {
   function dispose(){for(const[o,old,tmp]of replaced){o.material=old;for(const m of(Array.isArray(tmp)?tmp:[tmp]))m.dispose();}
     group.traverse(o=>{if(o.isMesh){o.geometry?.dispose();}});scene.remove(group);brass.dispose();mountMaterial.dispose();mat.dispose();tex.dispose();};
   dispose.updatePresentation=updatePresentation;return dispose;
+}
+
+/** Permanent rear west-wall joinery. Same objects in room and close-up. */
+export function installWestRoomDetail(T,scene){
+ const source=scene.getObjectByName('side-wall-grounded');if(!source)return null;
+ const p=source.geometry.parameters,minZ=-2.35,maxZ=-1.15,top=3.115,base=source.position.y+p.height/2;
+ source.userData.permanentRearSegment={minZ,maxZ,top};
+ const group=new T.Group();group.name='west-wall-clock-nook';scene.add(group);
+ const geo=new T.BoxGeometry(p.width,top-base,maxZ-minZ),pos=geo.attributes.position,uv=geo.attributes.uv;
+ for(let i=0;i<pos.count;i++){const face=Math.floor(i/4),z=pos.getZ(i)+(minZ+maxZ)/2;if([0,1,4,5].includes(face))uv.setY(i,(base+pos.getY(i)+(top-base)/2-(source.position.y-p.height/2))/p.height);if(face===0)uv.setX(i,(source.position.z+p.depth/2-z)/p.depth);if(face===1)uv.setX(i,(z-(source.position.z-p.depth/2))/p.depth);}
+ const wall=new T.Mesh(geo,source.material);wall.name='west-rear-permanent-high-wall';wall.position.set(source.position.x,(base+top)/2,(minZ+maxZ)/2);wall.castShadow=false;wall.receiveShadow=source.receiveShadow;wall.raycast=()=>{};group.add(wall);
+ const clock=new T.Group();clock.name='west-dark-wood-pendulum-clock';clock.position.set(-2.9915,2.32,-1.73);clock.rotation.y=Math.PI/2;group.add(clock);
+ const wood=new T.MeshStandardMaterial({color:'#503525',roughness:.7}),edge=new T.MeshStandardMaterial({color:'#755039',roughness:.66}),ivory=new T.MeshStandardMaterial({color:'#efe2bc',roughness:.82}),brass=new T.MeshStandardMaterial({color:'#b7a16c',roughness:.44,metalness:.35}),ink=new T.MeshStandardMaterial({color:'#302b24',roughness:.8});
+ function add(g,m,x,y,z,name){const o=new T.Mesh(g,m);o.position.set(x,y,z);o.name=name;o.castShadow=false;o.receiveShadow=true;o.raycast=()=>{};clock.add(o);return o;}
+ function box(w,h,d,x,y,z,m,name){return add(new T.BoxGeometry(w,h,d),m,x,y,z,name);}
+ box(.39,.66,.105,0,0,.054,wood,'clock-walnut-case');box(.44,.045,.125,0,.335,.064,edge,'clock-crown');box(.42,.04,.125,0,-.335,.064,edge,'clock-base');
+ box(.29,.27,.006,0,-.157,.11,ink,'clock-pendulum-recess');box(.014,.22,.015,0,-.128,.125,brass,'clock-pendulum-stem');add(new T.SphereGeometry(.058,20,12),brass,0,-.229,.126,'clock-pendulum-bob').scale.z=.25;
+ add(new T.CircleGeometry(.143,48),brass,0,.145,.112,'clock-dial-rim');add(new T.CircleGeometry(.130,48),ivory,0,.145,.114,'clock-ivory-dial');
+ for(let n=0;n<12;n++){const a=n*Math.PI/6,m=box(.008,n%3===0?.023:.014,.002,Math.sin(a)*.111,.145+Math.cos(a)*.111,.117,ink,'clock-hour-marker-'+n);m.rotation.z=-a;}
+ const hour=box(.012,.072,.003,-.016,.169,.12,ink,'clock-hour-hand');hour.rotation.z=.65;const minute=box(.007,.099,.003,.030,.184,.122,ink,'clock-minute-hand');minute.rotation.z=-.65;
+ add(new T.SphereGeometry(.011,12,8),brass,0,.145,.125,'clock-spindle');
+ group.userData.wallSegment={minZ,maxZ,base,top};clock.userData.wallBackX=-2.990;clock.userData.permanent=true;
+ return {group,clock,wall};
 }
