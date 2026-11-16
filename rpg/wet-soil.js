@@ -1,6 +1,6 @@
 import {MUSIC_ROOM_APPROACH} from './music-room-art.js?v=35';
 // Visual moisture only. No garden/reward/store dependency; dry means no overlay.
-import {rainLandings} from './ambience.js?v=35';
+import {rainLandings} from './ambience.js?v=45';
 // Exact existing dry-road rectangles, followed by the exposed bed interior.
 export const WET_SURFACES=Object.freeze([
  {kind:'road',x:170,y:298,w:620,h:72},{kind:'road',x:428,y:370,w:72,h:190},
