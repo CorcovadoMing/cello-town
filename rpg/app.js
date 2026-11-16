@@ -85,7 +85,7 @@ function render(){
   $('quest-count').setAttribute('aria-label','三項練習已完成 '+quest.count+' 項');
   $('quest-status').textContent=quest.ready?'回老師身旁交付':({listen:'聽一次 D 大調',rhythm:'跟節拍器練習',memory:'不看提示拉一遍'}[quest.next]||'到戶外譜架開始練習。');
   $('quest-status').setAttribute('aria-label',$('quest-status').textContent);
-  $('quest-status').textContent=quest.ready?'交付':({listen:'聽音',rhythm:'跟拍',memory:'記憶'}[quest.next]||'練習');
+  $('quest-status').textContent='D大調邀請';
   $('quest-return').hidden=!quest.ready;
   document.querySelectorAll('[data-step]').forEach(li=>{
     const done=state.steps.includes(li.dataset.step);
@@ -93,7 +93,7 @@ function render(){
     const current=li.dataset.step===quest.next;
     li.classList.toggle('current',current);
     if(current)li.setAttribute('aria-current','step');else li.removeAttribute('aria-current');
-    li.querySelector('b').textContent=done?'✓':current?'›':'○';
+    li.querySelector('b').textContent='•';
     li.setAttribute('aria-label',li.querySelector('span').textContent+(done?'，已完成':'，待完成'));
   });
   $('flower-count').textContent=bloomCount(state);

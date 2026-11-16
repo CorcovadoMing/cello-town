@@ -163,3 +163,19 @@ html{overscroll-behavior-y:none}
 :root{--town-font:system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif}
 body,body *{font-family:var(--town-font)!important}
 #quest-count,.release-badge{font-variant-numeric:tabular-nums}
+
+/* 041: the tracker follows the same two sizes as the town footer. */
+:root{--town-caption-size:10px;--town-detail-size:9px}
+.world-bottom #location{font-size:var(--town-caption-size);line-height:1.35}
+.world-bottom .map-input-hint{font-size:var(--town-detail-size);line-height:1.35}
+.map-stage .quest-sign summary{min-height:17px;padding:0;gap:1px}
+.map-stage .quest-sign #quest-status{font-size:var(--town-caption-size);line-height:1.35;font-weight:400;letter-spacing:-.2px}
+.map-stage .quest-sign #quest-count,.map-stage .quest-sign .quest-toggle{font-size:8px;line-height:1.35}
+.map-stage .quest-sign-content{padding:1px 0;margin:0;border:0}
+.map-stage .quest-sign ol{margin:0;padding:0}
+.map-stage .quest-sign li{font-size:var(--town-detail-size);line-height:1.35;gap:2px;margin:0;padding:0;font-weight:400}
+.map-stage .quest-sign li b{width:5px;font-size:var(--town-detail-size);line-height:1.35;font-weight:400}
+.map-stage .quest-sign li.done span,.map-stage .quest-sign li.done b{color:#b6b6ad;text-decoration-color:#b6b6ad}
+.map-stage .quest-sign li.done span{text-decoration:line-through}
+.map-stage .quest-sign .quest-return{margin-top:2px;font-size:var(--town-detail-size);line-height:1.35}
+.map-stage .quest-sign .quest-return small{font-size:var(--town-detail-size);line-height:1.35}
