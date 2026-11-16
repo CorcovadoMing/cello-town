@@ -65,3 +65,29 @@ html{overscroll-behavior-y:none}
 
 .map-input-hint{font-size:11px;line-height:1.35;text-align:right;color:#deead8}
 @media(max-width:600px){.map-input-hint{font-size:10px}}
+
+/* Keep objectives on the map on every screen; never intercept walking taps. */
+.map-stage .quest-hud{position:absolute;top:10px;left:10px;right:auto;width:185px;max-width:46%;margin:0;padding:9px 11px;color:#f8eed7;background:linear-gradient(90deg,#18281fea,#18281fc9 85%,#18281f00);border:0;border-left:2px solid #d9b263;border-radius:0;box-shadow:none;pointer-events:none}
+.map-stage .quest-hud .eyebrow{color:#f0ce84;letter-spacing:.12em}
+.map-stage .quest-hud h2{color:#ffe2a0}
+.map-stage .quest-hud ol{display:block;margin:5px 0}
+.map-stage .quest-hud li{display:flex;flex-wrap:nowrap;gap:5px;line-height:1.45}
+.map-stage .quest-hud .done span,.map-stage .quest-hud .done b{color:#bdc6b9}
+.map-stage .quest-hud #quest-status{color:#e3d9ba;line-height:1.4}
+.map-stage .quest-hud .quest-return{font-size:11px;line-height:1.4}
+.map-stage .quest-return small{display:block;color:#d3d8cc;margin-left:0}
+@media(max-width:620px){.map-stage .quest-hud{top:6px;left:6px;right:auto;width:151px;max-width:46%;padding:6px 7px}.map-stage .quest-hud .eyebrow{font-size:9px}.map-stage .quest-hud h2{font-size:12px}.map-stage .quest-hud li{font-size:10px;margin:1px 0;padding:0}.map-stage .quest-hud ol{margin:4px 0}.map-stage .quest-hud #quest-status{font-size:9px}.map-stage .quest-hud .quest-return{font-size:10px;margin-top:4px;padding-top:4px}.map-stage .quest-return small{font-size:9px}}
+@media(max-width:620px){
+ .map-stage .quest-hud{padding:5px 7px}
+ .map-stage .quest-hud .eyebrow{display:block;line-height:1.15}
+ .map-stage .quest-hud h2{line-height:1.15}
+ .map-stage .quest-hud ol{margin:3px 0 1px}
+ .map-stage .quest-hud li{min-height:0;height:auto;line-height:1.15}
+ .map-stage .quest-hud li b{height:13px;line-height:1}
+ .map-stage .quest-hud li.current b{font-size:15px}
+ .map-stage .quest-hud #quest-status{margin:2px 0 0}
+ .map-stage .quest-hud.ready #quest-status{display:none}
+ .map-stage .quest-hud .quest-return{margin-top:3px;padding-top:3px;gap:5px}
+ .map-stage .quest-return b{font-size:20px}
+ .map-stage .quest-return small{margin-top:0;font-size:8px}
+}
