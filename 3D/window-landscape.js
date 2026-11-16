@@ -7,14 +7,19 @@ export function createWindowLandscape(T, backdrop) {
    #ifdef USE_MAP
     vec4 land=texture2D(map,vMapUv);
     // Keep the mountain ridge, tree foliage, path and all ground texels stationary.
-    float skyMask=smoothstep(.66,.735,vMapUv.y);
-    float foliage=step(land.r*1.10,land.g)*step(land.b*.96,land.g);
+    float skyMask=smoothstep(.655,.705,vMapUv.y);
+    // Preserve only the actual right-side tree silhouette, not neutral cloud edges.
+    // Land texture is already decoded to linear RGB by Three.js texture sampling.
+    float treeRegion=smoothstep(.69,.75,vMapUv.x)*(1.-smoothstep(.755,.795,vMapUv.y));
+    float leafChroma=smoothstep(.035,.095,land.g-land.b);
+    float yellowGreen=smoothstep(-.065,-.015,land.g-land.r);
+    float foliage=treeRegion*leafChroma*yellowGreen;
     skyMask*=1.-foliage;
     vec3 clearSky=mix(vec3(.36,.66,.68),vec3(.22,.57,.66),smoothstep(.66,1.,vMapUv.y));
     diffuseColor*=vec4(mix(land.rgb,clearSky,skyMask),land.a);
    #endif`);
   };
-  backdrop.material.customProgramCacheKey=()=> 'static-landscape-clear-sky-v8';backdrop.material.needsUpdate=true;
+  backdrop.material.customProgramCacheKey=()=> 'static-landscape-clear-sky-v8-clean-silhouette';backdrop.material.needsUpdate=true;
  }
  const mats=['#647f3c','#84974c','#9daa57','#a7b765'].map(color=>new T.MeshBasicMaterial({color,side:T.DoubleSide}));const petalMats=['#fff0bd','#efbf4a','#bd8fb5'].map(color=>new T.MeshBasicMaterial({color,side:T.DoubleSide}));const pollen=new T.MeshBasicMaterial({color:'#b98832',side:T.DoubleSide});const seedmat=new T.MeshBasicMaterial({color:'#d5c07b',side:T.DoubleSide});
  function blade(h,w,bend,mat){const p=[],ix=[];for(let k=0;k<7;k++){const t=k/6,xx=bend*t*t,ww=w*(1-t)*(.45+.55*Math.sin(Math.PI*t));p.push(xx-ww,h*t,0,xx+ww,h*t,0);if(k<6)ix.push(2*k,2*k+1,2*k+3,2*k,2*k+3,2*k+2);}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setIndex(ix);return new T.Mesh(g,mat);}
