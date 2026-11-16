@@ -1,5 +1,5 @@
 import {createWindowLandscape} from './window-landscape.js?v=22';
-import {decoratePerformanceRoom} from './room-polish.js?v=22';
+import {decoratePerformanceRoom} from './room-polish.js?v=26';
 import * as T from './vendor/three.module.js';
 import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=16';
 const $=id=>document.getElementById(id),area=$('scene'),status=$('save-status');let state=defaults();try{state=normalize(JSON.parse(localStorage.getItem(KEY)));}catch{status.textContent='無法讀取本機設定，仍可自由試穿。';}
@@ -82,7 +82,7 @@ function controls(focusKey=null){
 }
 let renderer,software=false;try{renderer=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});}catch{const{SVGRenderer}=await import('./vendor/SVGRenderer.js');renderer=new SVGRenderer();renderer.setQuality('high');software=true;status.textContent='簡化 3D 模式（此瀏覽器未啟用 WebGL）；穿搭仍可儲存。';const note=document.createElement('span');note.className='render-mode sr-only';note.textContent='簡化 3D · SVG';area.append(note);}
 if(!software){renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.setClearColor(0x000000,0);}area.append(renderer.domElement);$('loading').remove();renderer.domElement.setAttribute('aria-hidden','true');
-const scene=new T.Scene(),camera=new T.OrthographicCamera(-4.5,4.5,4, -4,.1,60);camera.position.set(5.8,5.3,8.2);camera.lookAt(0,1,0);scene.add(new T.HemisphereLight(0xfff9df,0x9cbaaa,software?.65:2.4));const sun=new T.DirectionalLight(0xffefd0,software?.65:3.1);sun.position.set(-1.25,5,-4);sun.target.position.set(.1,.35,1.1);scene.add(sun.target);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.radius=2.75;sun.shadow.camera.left=-5;sun.shadow.camera.right=5;sun.shadow.camera.top=5;sun.shadow.camera.bottom=-5;sun.shadow.bias=-.00005;sun.shadow.normalBias=.002;scene.add(sun);scene.add(new T.AmbientLight(0xf0f0ed,.48));
+const scene=new T.Scene(),camera=new T.OrthographicCamera(-4.5,4.5,4, -4,.1,60);camera.position.set(5.8,5.3,8.2);camera.lookAt(0,1,0);scene.add(new T.HemisphereLight(0xfff9df,0x9cbaaa,software?.65:2.4));const sun=new T.DirectionalLight(0xffefd0,software?.65:3.1);sun.name='window-sunlight';sun.position.set(-2.15,4.38,-5.04);sun.target.position.set(-.65,.38,-.04);scene.add(sun.target);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.radius=2.75;sun.shadow.camera.left=-5;sun.shadow.camera.right=5;sun.shadow.camera.top=5;sun.shadow.camera.bottom=-5;sun.shadow.bias=-.00005;sun.shadow.normalBias=.002;scene.add(sun);scene.add(new T.AmbientLight(0xf0f0ed,.48));
 // Single camera, continuously varying lens. The normalized perspective matrix
 // shares w=1 with the orthographic matrix on the final focus plane.
 let performanceLens=0,performanceLensFov=50.18,performanceLensDistance=2.925;
@@ -1023,6 +1023,12 @@ function performanceCamera(width=area.clientWidth){
  let tangent=Math.tan(T.MathUtils.degToRad(50.18)*.5);
  for(const p of points){p.applyMatrix4(probe.matrixWorldInverse);tangent=Math.max(tangent,Math.max(Math.abs(p.y),Math.abs(p.x)/aspect)/(-p.z)*1.04);}
  const fov=T.MathUtils.radToDeg(2*Math.atan(tangent)),distance=probe.position.distanceTo(focus),zoom=(camera.top-camera.bottom)/(2*distance*tangent);
+ // Translate left in the existing view plane; retain exactly the fitted lens and angle.
+ const clampPoints=points.slice();
+ for(const x of[-2.22,-.28])for(const y of[1.075,1.175])for(const z of[-2.17,-1.81])clampPoints.push(new T.Vector3(x,y,z).applyMatrix4(probe.matrixWorldInverse));
+ for(let i=0;i<=128;i++)for(const z of[-2.08,-2.00]){const a=i*Math.PI/128;clampPoints.push(new T.Vector3(-1.25+.87*Math.cos(a),2.03+.87*Math.sin(a),z).applyMatrix4(probe.matrixWorldInverse));}
+ const leftShift=Math.max(0,Math.min(.12,...clampPoints.map(p=>(-p.z)*tangent*aspect*.99-p.x)));
+ probe.position.add(new T.Vector3(-leftShift,0,0).applyQuaternion(probe.quaternion));
  return{position:probe.position,quaternion:probe.quaternion,zoom,fov,distance,lens:1};
 }
 function animatePerformanceCamera(view,duration,restoring=false){
@@ -1202,7 +1208,7 @@ function endPerformancePresentation(){
 function renderPerformanceView(t){
  const ready=!software&&!!previewLandscape.userData.ready;
  if(performancePresentation){
-  const p=celloPerformance,target=p?.phase==='returning'?Math.max(0,1-p.elapsed/900):Math.min(1,(p?.elapsed||0)/900);
+  const p=celloPerformance,target=p?.phase==='returning'?Math.max(0,1-p.elapsed/900):(p?.cameraStarted?performanceLens:0);
   if(p?.phase==='playing')performancePresentation.amount=1;else performancePresentation.amount=target;
   const amount=performancePresentation.amount;
   previewLandscape.visible=livingLandscape.group.visible=ready&&amount>0;previewLandscape.material.opacity=amount;
@@ -1268,11 +1274,11 @@ const arrivalEase=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);};
 function doorArrivalState(ms){
  const approach=arrivalEase(ms/300),opening=arrivalEase((ms-300)/550);
  // Wait for the actual leaf to finish opening before crossing its plane.
- const entry=arrivalEase((ms-950)/1100),closing=arrivalEase((ms-2250)/550);
- const settle=arrivalEase((ms-3000)/650),view=arrivalEase((ms-2800)/1100);
+ const entry=arrivalEase((ms-950)/1100),closing=arrivalEase((ms-2450)/550);
+ const settle=arrivalEase((ms-3400)/650),view=arrivalEase((ms-3100)/1100),turnBack=arrivalEase((ms-2050)/400),faceRoom=arrivalEase((ms-3000)/400);
  return {x:.10*(1-settle),z:2.98-.10*approach-2.23*entry+.35*settle,
- angle:Math.PI*.49*opening*(1-closing),heading:Math.PI,
- moving:ms<300||(ms>950&&ms<2050)||(ms>3000&&ms<3650),view,done:ms>=3900};
+ angle:Math.PI*.49*opening*(1-closing),heading:Math.PI*(1-turnBack+faceRoom),
+ moving:ms<300||(ms>950&&ms<2050)||(ms>3400&&ms<4050),view,done:ms>=4200};
 }
 // END ARRIVAL CONTRACT
 function startDoorArrival(){

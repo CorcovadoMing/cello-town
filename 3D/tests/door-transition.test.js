@@ -11,8 +11,8 @@ test('real door opens before entry, environment interruption restores safe thres
  for(let t=550;t<=1600;t+=50)vm.runInContext('tickDoorArrival('+t+');',c);
  assert.ok(c.pos.z>.65&&c.pos.z<2.88);assert.equal(c.exitLeaf.rotation.y,Math.PI*.49);
  for(let t=1650;t<=2400;t+=50)vm.runInContext('tickDoorArrival('+t+');poseDoorArrival('+t+');',c);
- assert.equal(c.heading,Math.PI);assert.ok(Math.abs(c.leftArm.rotation.x)<1e-12);assert.ok(c.exitLeaf.rotation.y>0&&c.exitLeaf.rotation.y<1.4);assert.ok(Math.abs(c.pos.z-.65)<1e-9);
- for(let t=2450;t<=3900;t+=50)vm.runInContext('tickDoorArrival('+t+');',c);
+ assert.ok(c.heading<.2);assert.ok(Math.abs(c.leftArm.rotation.x)<1e-12);assert.equal(c.exitLeaf.rotation.y,Math.PI*.49);assert.ok(Math.abs(c.pos.z-.65)<1e-9);
+ for(let t=2450;t<=4200;t+=50)vm.runInContext('tickDoorArrival('+t+');',c);
  assert.equal(c.pos.z,1);assert.equal(c.exitLeaf.rotation.y,0);assert.equal(c.camera.zoom,1);assert.equal(c.heading,Math.PI);
  const interrupted=setup();vm.runInContext('startDoorArrival();cancelDoorArrival();',interrupted);assert.equal(interrupted.pos.z,1);assert.equal(interrupted.exitLeaf.rotation.y,0);assert.equal(interrupted.heading,Math.PI);
  for(const c of[setup(false),setup(true,true)]){vm.runInContext('startDoorArrival()',c);assert.equal(c.pos.z,1.51);assert.equal(c.camera.position.x,5.8);}
@@ -23,5 +23,5 @@ test('019 entrance is unskippable by game input and held directions require rele
  assert.ok(app.includes("arrivalPointers.add(e.pointerId);e.preventDefault();e.stopImmediatePropagation()"));
  assert.ok(app.includes("if(!arrivalPointers.delete(e.pointerId))return"));
  assert.ok(!app.includes("window.addEventListener('pointerdown',cancelDoorArrival"));
- const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');assert.ok(html.includes('app.js?v=25'));assert.ok(html.includes('style.css?v=25'));
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');assert.ok(html.includes('app.js?v=26'));assert.ok(html.includes('style.css?v=26'));
 });
