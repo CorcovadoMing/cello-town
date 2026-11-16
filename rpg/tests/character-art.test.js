@@ -16,3 +16,5 @@ test('short back hair clears the neck while keeping the warm player identity',()
  assert.ok(!frame.some(r=>hairColors.has(r[0])&&r[2]>=-28));
  assert.ok(frame.some(r=>r[0]==='#f4c998'&&r[2]===-28));
 });
+
+test('teacher nose stays compact in each mirrored profile without changing facial identity',()=>{for(const facing of ['left','right']){const frame=commands(drawTeacher,{facing,reduced:true});const nose=frame.find(c=>c[0]==='#493e43'&&c[1]===8&&c[2]===-34);assert.deepEqual(nose,['#493e43',8,-34,2,3]);assert.equal(frame.filter(c=>c[0]==='#e9a29a').length,1);}});
