@@ -179,3 +179,14 @@ body,body *{font-family:var(--town-font)!important}
 .map-stage .quest-sign li.done span{text-decoration:line-through}
 .map-stage .quest-sign .quest-return{margin-top:2px;font-size:var(--town-detail-size);line-height:1.35}
 .map-stage .quest-sign .quest-return small{font-size:var(--town-detail-size);line-height:1.35}
+
+/* 042: quieter tracking, with a separate usable disclosure hit target. */
+.map-stage .quest-sign{width:16%;max-width:78px}
+.map-stage .quest-sign summary{min-height:13px;gap:1px;position:relative}
+.map-stage .quest-sign summary::after{content:"";position:absolute;inset:-4px -2px;min-height:24px}
+.map-stage .quest-sign #quest-status{font-size:8px;line-height:1.3;letter-spacing:-.3px}
+.map-stage .quest-sign #quest-count,.map-stage .quest-sign .quest-toggle{font-size:6px;line-height:1.3}
+.map-stage .quest-sign li,.map-stage .quest-sign li b{font-size:7px;line-height:1.3;gap:1px}
+.map-stage .quest-sign li b{width:4px}
+.map-stage .quest-sign .quest-return,.map-stage .quest-sign .quest-return small{font-size:7px;line-height:1.3}
+.map-stage .quest-sign .quest-return b{font-size:12px}

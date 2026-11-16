@@ -9,3 +9,10 @@ test('player has no cap pixels and sleeves stay within the field-jacket palette'
  assert.ok(frame.some(r=>r[0]==='#80906b'));assert.ok(frame.some(r=>r[0]==='#f4c998'));
  }
 });
+test('short back hair clears the neck while keeping the warm player identity',()=>{
+ const frame=commands(drawPlayer,{facing:'back',reduced:true});
+ const hairColors=new Set(['#503c32','#634a37','#403129','#75563b','#926d46','#a78356']);
+ assert.ok(frame.some(r=>r[0]==='#503c32'));
+ assert.ok(!frame.some(r=>hairColors.has(r[0])&&r[2]>=-28));
+ assert.ok(frame.some(r=>r[0]==='#f4c998'&&r[2]===-28));
+});

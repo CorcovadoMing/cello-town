@@ -13,7 +13,7 @@ test('collapsible task overlay lives inside map without shifting canvas',()=>{
  assert.ok(html.indexOf('<details id="quest-hud"')>html.indexOf('class="map-stage"'));
  assert.ok(html.indexOf('<details id="quest-hud"')<html.indexOf('<canvas id="world"'));
  assert.match(css,/left:1%/);assert.match(css,/width:21%/);assert.match(css,/background:none/);
- assert.match(css,/color:#ffd66d/);assert.match(html,/style.css\?v=41-preview/);
+ assert.match(css,/color:#ffd66d/);assert.match(html,/style.css\?v=42/);
 });
 test('one local font family is shared by town DOM and painted labels',()=>{
  const css=read('style.css'),app=read('app.js');

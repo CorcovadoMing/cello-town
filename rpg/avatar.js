@@ -30,7 +30,7 @@ export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false
   p(-6,-49,7,3,outline);p(-12,-47,22,3,outline);p(-14,-44,27,18,outline);
   p(10,-32,3,3,outline);p(-10,-26,20,3,outline);p(-7,-23,14,2,outline);
   p(-10,-46,18,4,hair);p(-12,-42,21,7,hair);p(-7,-35,18,9,skin);p(10,-31,2,2,skin);p(-7,-27,16,4,skin);
-  p(-12,-37,7,10,hair);p(-4,-35,4,5,'#e5b889');p(7,-35,2,blink?1:4,outline);p(7,-30,3,2,'#e88d87');p(8,-27,2,1,'#945b59');
+  p(-12,-37,5,6,hair);p(-4,-35,4,5,'#e5b889');p(7,-35,2,blink?1:4,outline);p(7,-30,3,2,'#e88d87');p(8,-27,2,1,'#945b59');
   p(-10,-45,6,2,'#9b7851');
  }else if(facing==='back'){
   p(-8,-11,6,10+stride,shade);p(2,-11,6,10-stride,shade);p(-9,-2+stride,7,4,outline);p(2,-2-stride,7,4,outline);
@@ -39,9 +39,9 @@ export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false
   // Paired straps join a plain back yoke; small pocket seams distinguish the rear.
   p(-7,-27,3,9,coat);p(4,-27,3,9,coat);p(-8,-21,16,10,coat);
   p(-7,-21,14,2,shade);p(-1,-19,2,8,shade);p(-6,-17,4,3,seam);p(2,-17,4,3,seam);p(-8,-12,16,2,shade);
-  p(-5,-49,7,3,outline);p(-12,-47,24,3,outline);p(-15,-44,30,18,outline);p(-12,-26,24,3,outline);p(-8,-23,16,2,outline);
-  p(-10,-46,20,4,hair);p(-13,-42,26,16,hair);p(-10,-26,20,3,hair);
-  p(-9,-41,3,10,'#634a37');p(5,-43,3,12,'#634a37');p(-3,-30,6,4,'#403129');
+  p(-5,-49,7,3,outline);p(-12,-47,24,3,outline);p(-14,-44,28,13,outline);p(-10,-31,20,3,outline);p(-5,-28,10,5,skin);
+  p(-10,-46,20,4,hair);p(-12,-42,24,11,hair);p(-9,-32,18,3,hair);
+  p(-9,-41,3,7,'#634a37');p(5,-43,3,9,'#634a37');p(-3,-31,6,2,'#403129');
   p(-7,-46,7,2,'#9b7851');
  }else{
   // Original front face/hair retained; moss shirt and tailored green overalls.
@@ -58,7 +58,7 @@ export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false
  // Face, silhouette and movement remain the original cute character.
  if(facing==='left'||facing==='right'){
   p(-10,-43,4,2,'#75563b');p(-8,-41,5,2,'#926d46');p(-2,-45,6,2,'#634a37');
-  p(-11,-35,2,6,'#634a37');p(-9,-29,3,2,'#403129');
+  p(-11,-35,2,3,'#634a37');
 
   p(-7,-26,6,2,'#a6af80');p(-5,-23,2,6,'#a6af80');p(-4,-18,4,2,'#596e4e');
   p(4,-25,1,3,'#6a9980');p(3,-21,2,1,'#ffe2a0');
@@ -69,8 +69,8 @@ export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false
   // Back uses long ribbon-like hair clusters; front fringe remains recognizable.
   if(facing==='back'){
    p(-9,-43,4,2,'#75563b');p(-5,-42,6,2,'#926d46');p(1,-43,5,2,'#75563b');
-   p(-11,-38,2,6,'#75563b');p(-8,-36,2,7,'#634a37');p(8,-40,2,6,'#634a37');
-   p(-6,-28,4,2,'#403129');p(2,-27,4,2,'#403129');
+   p(-11,-38,2,6,'#75563b');p(-8,-36,2,4,'#634a37');p(8,-40,2,6,'#634a37');
+
    p(-6,-18,3,1,'#97a679');p(3,-18,3,1,'#97a679');
   }else{
    p(-9,-44,5,2,'#75563b');p(-4,-43,5,2,'#926d46');p(3,-44,5,2,'#75563b');
@@ -88,13 +88,13 @@ export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false
  // Larger intentional pixel clusters: clear tailored silhouette, not noise.
  if(facing==='left'||facing==='right'){
   p(-10,-44,4,2,'#926d46');p(-6,-43,5,2,'#a78356');p(-9,-40,3,3,'#75563b');
-  p(-11,-32,3,5,'#403129');p(-6,-27,2,3,'#634a37');
+  p(-11,-33,3,3,'#403129');
   p(2,-26,2,5,'#97a679');p(-5,-17,9,2,'#718664');p(-4,-15,8,2,coat);
   p(-4,-21,2,3,'#596e4e');p(-4,-18,3,1,'#a6af80');p(-6,-12,12,1,'#324b3e');
  }else{
   p(-10,-45,5,2,'#926d46');p(-5,-44,6,2,'#a78356');p(2,-45,5,2,'#75563b');
   if(facing==='back'){
-   p(-10,-38,3,6,'#75563b');p(-7,-35,2,6,'#634a37');p(6,-39,3,7,'#634a37');
+   p(-10,-38,3,5,'#75563b');p(-7,-35,2,3,'#634a37');p(6,-39,3,7,'#634a37');
    p(-6,-25,1,5,'#97a679');p(5,-25,1,5,'#97a679');p(-6,-18,4,1,'#a2b99a');p(2,-18,4,1,'#a2b99a');
   }else{
    p(-11,-37,2,3,'#634a37');p(9,-39,2,3,'#634a37');
