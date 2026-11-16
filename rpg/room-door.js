@@ -1,5 +1,5 @@
 // One fixed same-origin scene bridge. No save, storage, timer or coordinate transfer.
-import {MUSIC_ROOM_DOOR,MUSIC_ROOM_APPROACH} from './music-room-art.js?v=35';
+import {MUSIC_ROOM_DOOR,MUSIC_ROOM_APPROACH} from './music-room-art.js?v=46';
 const {centerX,landing}=MUSIC_ROOM_APPROACH;
 export const ROOM_ENTRY=Object.freeze({x:centerX,y:landing.y+8});
 export const ROOM_RETURN=Object.freeze({x:centerX,y:landing.y+landing.h-4,facing:'front',walking:false});
