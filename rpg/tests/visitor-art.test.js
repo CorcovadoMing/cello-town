@@ -1,0 +1,5 @@
+import test from'node:test';import assert from'node:assert/strict';import{drawGardenVisitor,gardenLife}from'../ambience.js';
+test('authored visitors retain input and wingbeat while having separate detailed palettes',()=>{
+ const signatures=[];for(const kind of['butterfly','bee','bird']){const renders=[];for(const wing of[0,1]){const calls=[],colors=new Set(),v={kind,x:80,y:90,dir:-1,wing},before=JSON.stringify(v);let saves=0;const g=new Proxy({}, {get:(o,k)=>k in o?o[k]:(...a)=>{if(k==='save')saves++;if(k==='restore')saves--;a.filter(x=>typeof x==='number').forEach(x=>assert.ok(Number.isFinite(x)));calls.push([k,...a]);},set:(o,k,v)=>{o[k]=v;if(k==='fillStyle')colors.add(v);return true}});drawGardenVisitor(g,v);assert.equal(JSON.stringify(v),before);assert.equal(saves,0);assert.ok(colors.size>=6);assert.ok(calls.length>=25);renders.push(JSON.stringify(calls));}assert.notEqual(...renders);signatures.push(renders[0]);}assert.equal(new Set(signatures).size,3);
+ assert.deepEqual(gardenLife(0,true),gardenLife(999999,true));
+});

@@ -154,7 +154,44 @@ export function drawGardenCat(g,c){
  g.restore();if(c.rainAlert&&Math.abs(c.shake||0)>.5)drawPetShake(g,c.x,c.groundY??c.y,c.shake);
 }
 export function drawPondLife(g,time,reduced,variants=defaultFish){g.save();g.beginPath();g.rect(48,388,187,135);g.clip();for(const [i,f] of pondLife(time,reduced).entries()){const v=variants[i];g.save();g.translate(f.x,f.y);g.scale(f.dir*v.size*v.length,v.size*v.girth);g.fillStyle=v.color;g.globalAlpha=.92;g.beginPath();g.ellipse(0,0,9,4,0,0,Math.PI*2);g.fill();if(v.fin!=='none'){g.beginPath();g.moveTo(-7,0);if(v.fin==='round'){g.quadraticCurveTo(-20,-9+f.tail,-15,f.tail);g.quadraticCurveTo(-20,9+f.tail,-7,0);}else{g.lineTo(-15,-5+f.tail);g.lineTo(-12,f.tail);g.lineTo(-15,5+f.tail);}g.closePath();g.fill();}g.fillStyle='#fff1c0';g.fillRect(0,-2,4,2);g.fillStyle='#567f79';g.fillRect(6,-1,1.5,1.5);g.restore();if(f.surface!==null){g.globalAlpha=(1-f.surface)*.55;g.strokeStyle='#e2f0d9';g.lineWidth=1.2;g.beginPath();g.ellipse(f.x,f.y,5+f.surface*19,2+f.surface*7,0,0,Math.PI*2);g.stroke();g.globalAlpha=1;}}g.restore();}
-export function drawGardenLife(g,time,reduced,context=null){const {visitor:v,cat:c}=context?.life||gardenLife(time,reduced);g.save();if(v){g.save();g.translate(v.x,v.y);g.scale(v.dir,1);if(v.kind==='butterfly'){g.fillStyle='#f4d28d';for(const side of [-1,1]){g.beginPath();g.ellipse(side*5,0,3+Math.abs(v.wing)*2,6,side*.4,0,Math.PI*2);g.fill();}g.fillStyle='#8e7450';g.fillRect(-1,-4,2,8);g.fillRect(2,-2,3,3);}else if(v.kind==='bee'){g.fillStyle='#fff3d1';g.beginPath();g.ellipse(-3,-4,5,3+Math.abs(v.wing)*2,0,0,Math.PI*2);g.fill();g.fillStyle='#e7b655';g.fillRect(-6,-2,12,6);g.fillStyle='#665743';g.fillRect(-1,-2,3,6);g.fillRect(5,-1,2,2);}else{g.fillStyle='#7596ac';g.beginPath();g.ellipse(0,0,8,5,0,0,Math.PI*2);g.fill();g.fillStyle='#b6cfdb';g.beginPath();g.ellipse(-2,-3,7,2+Math.abs(v.wing)*4,-.4,0,Math.PI*2);g.fill();g.fillStyle='#e7be6f';g.fillRect(7,-2,4,2);}g.restore();}
+// Authored tiny visitors: species-specific markings ride the existing wingbeat.
+// No spawn, trajectory, timing, direction or attention-state changes here.
+export function drawGardenVisitor(g,v){
+ if(!v)return;g.save();g.translate(v.x,v.y);g.scale(v.dir,1);
+ const dot=(x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h);};
+ const oval=(x,y,rx,ry,angle,c)=>{g.fillStyle=c;g.beginPath();g.ellipse(x,y,rx,ry,angle,0,Math.PI*2);g.fill();};
+ const beat=Math.abs(v.wing);
+ if(v.kind==='butterfly'){
+  for(const side of[-1,1]){const x=side*4.2,w=2.4+beat*2;
+   oval(x,-2,w+1,5.4,side*.28,'#a97550');oval(x,-2,w,4.6,side*.28,'#f3ce83');
+   oval(side*3.4,3,w*.83,3.3,-side*.35,'#b58361');oval(side*3.4,2.7,w*.66,2.6,-side*.35,'#eab888');
+   oval(side*4.7,-3.2,Math.max(.7,w*.28),1.5,side*.2,'#fff0c3');
+   oval(side*4.6,.2,.85,1.1,0,'#a16c55');dot(side>0?6:-7,-5,1,1,'#fff5d7');
+  }
+  dot(-1,-3,2,8,'#77634b');dot(-1,-4,2,2,'#514e3e');
+  dot(-3,-6,1,1,'#77634b');dot(-2,-5,1,2,'#77634b');dot(2,-6,1,1,'#77634b');dot(1,-5,1,2,'#77634b');
+ }else if(v.kind==='bee'){
+  oval(-3,-4.5,4.2,2+beat*2,-.4,'#c2d7ce');oval(-2,-4.8,3.1,1.2+beat*1.8,-.4,'#f7f4d8');
+  oval(1,-4.2,3.3,1.8+beat*1.4,.4,'#dce7d6');
+  oval(-1,0,6.3,3.8,0,'#765b3e');oval(-1,-.3,5.7,3.1,0,'#e9b94e');
+  dot(-4,-2.5,1.8,5,'#8b653b');dot(0,-3,1.8,6,'#795a38');dot(-3,-2,2,1,'#ffe299');
+  oval(5.2,-.7,2.7,2.8,0,'#8b6a44');dot(6,-2,1.3,1.6,'#343d32');dot(6,-2, .6,.6,'#fff7db');
+  dot(7,0,1,1,'#e8b986');dot(4,-5,1,2,'#7c6544');dot(-4,3,1,2,'#7c6544');dot(1,3,1,2,'#7c6544');
+ }else{
+  // A blue garden songbird, with cream cheek and layered flight feathers.
+  g.fillStyle='#597b89';g.beginPath();g.moveTo(-6,0);g.lineTo(-12,-3);g.lineTo(-10,3);g.closePath();g.fill();
+  oval(0,0,7.6,4.5,0,'#577a8d');oval(1,1.6,5.5,2.5,0,'#d7d7b7');
+  oval(-2,-2.8,6.2,1.8+beat*3.5,-.4,'#86a9b9');oval(-3,-3.3,4.3,1+beat*2,-.4,'#b9d0cd');
+  dot(-6,-3,2,1,'#e0e4ce');dot(-4,-2,2,1,'#6b90a0');
+  oval(5,-2,3.4,3.5,0,'#789bac');oval(6,-.7,1.8,1.5,0,'#f0e5be');
+  dot(5.3,-3,1.5,1.5,'#354b49');dot(5.3,-3,.6,.6,'#fff7df');
+  g.fillStyle='#cea55f';g.beginPath();g.moveTo(8,-2);g.lineTo(11,-.8);g.lineTo(8,.3);g.closePath();g.fill();
+  dot(3,4,2,1,'#a88a58');dot(5,3,2,1,'#a88a58');
+ }
+ g.restore();
+}
+export function drawGardenLife(g,time,reduced,context=null){const {visitor:v,cat:c}=context?.life||gardenLife(time,reduced);g.save();drawGardenVisitor(g,v);
+
 drawGardenCat(g,c);g.restore();}
 
 // Uses the owning app's single gameWeather snapshot; never a second schedule.
