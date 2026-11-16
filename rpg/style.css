@@ -213,3 +213,8 @@ body,body *{font-family:var(--town-font)!important}
 #teacher-badge [data-icon]{display:none}
 #teacher-badge[data-kind="exclaim"] [data-icon="exclaim"],#teacher-badge[data-kind="question"] [data-icon="question"],#teacher-badge[data-kind="ready"] [data-icon="question"],#teacher-badge[data-kind="ready"] [data-icon="spark"]{display:inline}
 #teacher-badge [data-icon="spark"]{fill:none;stroke:#fff0b0;stroke-width:2.15}
+
+/* A warm, short doorway fade only. It never captures input or traps Back. */
+body::after{content:"";position:fixed;inset:0;z-index:10000;pointer-events:none;background:#30291f;opacity:0;transition:opacity 180ms ease}
+body.door-scene-dark::after{opacity:1}
+@media(prefers-reduced-motion:reduce){body::after{display:none;transition:none}}

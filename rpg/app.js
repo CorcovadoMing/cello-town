@@ -37,10 +37,33 @@ townBrand?.addEventListener('click',e=>{
  e.preventDefault();location.replace(url.href);
 });
 let enteringRoom=false;
+// Door-only visual bridge. No history entries, storage or input interception.
+function doorSceneTransition(incoming,onReset){
+ let travelTimer=0,recoveryTimer=0,revealTimer=0,generation=0;
+ const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const clear=()=>{generation++;clearTimeout(travelTimer);clearTimeout(recoveryTimer);clearTimeout(revealTimer);document.body.classList.remove('door-scene-dark');};
+ const reset=()=>{clear();onReset();};
+ window.addEventListener('pagehide',reset);
+ window.addEventListener('pageshow',e=>{if(e.persisted)reset();});
+ if(incoming&&!reduced()){
+  document.body.classList.add('door-scene-dark');const token=generation;
+  const reveal=()=>{if(token===generation)document.body.classList.remove('door-scene-dark');};
+  requestAnimationFrame(()=>requestAnimationFrame(reveal));revealTimer=setTimeout(reveal,220);
+ }
+ return navigate=>{
+  clear();const run=()=>{try{navigate();}catch{reset();}};
+  recoveryTimer=setTimeout(reset,2000);
+  if(reduced()){run();return;}
+  document.body.classList.add('door-scene-dark');
+  travelTimer=setTimeout(run,180);
+  // If a browser rejects/cancels navigation without pagehide, never leave a veil.
+ };
+}
+const transferDoor=doorSceneTransition(Boolean(returnURL),()=>{enteringRoom=false;doorApproach.disarm();});
 function enterRoom(){
  if(enteringRoom||dlg.open)return;
  enteringRoom=true;doorApproach.disarm();target=null;keys.clear();player.walking=false;
- window.location.replace(new URL('./3D/?from=town',window.location.href).href);
+ transferDoor(()=>window.location.replace(new URL('./3D/?from=town',window.location.href).href));
 }
 const TREE_LAYOUT=[[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1.6],[870,103,1.8],[930,178,1.4],[65,250,1.8],[139,279,1.2],[848,281,1.4],[919,356,1.2],[340,476,1.2],[585,495,1.3],[690,500,1]];
 const LOUNGE_SOLIDS=[LOUNGE_LAYOUT.table.solid,...LOUNGE_LAYOUT.seats.map(c=>c.solid)];
