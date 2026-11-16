@@ -1058,11 +1058,12 @@ function tickPerformance(dt,t){
  const clock=reduced.matches?(returning?0:PERFORMANCE_TRANSITION_MS):playing?PERFORMANCE_TRANSITION_MS:returning?PERFORMANCE_TRANSITION_MS-p.elapsed:p.elapsed;
  const phase=performanceTransition(clock),sit=phase.sit,carry=phase.carry;p.transitionStage=phase.stage;
  if(!returning&&!p.cameraStarted&&(clock>=1750||reduced.matches)){const view=performanceCamera();animateRoomCamera(view.position,view.zoom,false,view.quaternion,reduced.matches?0:1800);if(cameraMotion)cameraMotion.frameTimed=true;p.cameraStarted=true;}
- const pickupYaw=Math.atan2(p.celloPosition.x-pos.x,p.celloPosition.z-pos.z),facing=p.fromHeading+Math.atan2(Math.sin(pickupYaw-p.fromHeading),Math.cos(pickupYaw-p.fromHeading))*phase.face;
+ const pickupMark=new T.Vector3(p.celloPosition.x+.63,0,p.celloPosition.z+.05);
+ const pickupYaw=Math.atan2(p.celloPosition.x-pickupMark.x,p.celloPosition.z-pickupMark.z),facing=p.fromHeading+Math.atan2(Math.sin(pickupYaw-p.fromHeading),Math.cos(pickupYaw-p.fromHeading))*phase.face;
  heading=facing+Math.atan2(Math.sin(PERFORMANCE_YAW-facing),Math.cos(PERFORMANCE_YAW-facing))*carry;
  avatar.rotation.y=heading;avatar.position.set(pos.x,standY(pos),pos.z);
- const pickupStep=new T.Vector3(p.celloPosition.x-pos.x,0,p.celloPosition.z-pos.z).normalize().multiplyScalar(.44*phase.step*(1-carry));avatar.position.add(pickupStep);
- walkPose(0,false);animateIdle(t,true);performancePose(sit,t);head.rotation.y=-.12*sit;
+ const pickupStep=pickupMark.clone().sub(new T.Vector3(pos.x,0,pos.z)).multiplyScalar(phase.step*(1-carry));avatar.position.add(pickupStep);
+ walkPose(0,false);animateIdle(t,true);performancePose(sit,t);head.rotation.y=-.12*sit;head.position.z=-.12*phase.reach*(1-carry);
  const footstep=(Math.sin(Math.PI*phase.step)*(1-phase.reach)+Math.sin(Math.PI*2*carry)*.65)*(1-sit);
  leftLeg.rotation.x+=.20*footstep;rightLeg.rotation.x-=.26*footstep;
  leftLeg.getObjectByName('leg-foot').rotation.x=.12*footstep;rightLeg.getObjectByName('leg-foot').rotation.x=-.12*footstep;
@@ -1125,7 +1126,7 @@ function tickPerformance(dt,t){
  if(!returning&&p.phase==='seating'&&clock>=PERFORMANCE_TRANSITION_MS){p.phase='playing';p.elapsed=0;$('scene-status').textContent='大提琴演奏畫面，不記錄練習資料。可返回琴房。';a.back.hidden=false;a.back.focus({preventScroll:true});}
  if(returning&&(p.elapsed>=PERFORMANCE_TRANSITION_MS||reduced.matches)){
   for(const{arm,elbow,moved,snapshots}of p.arms){for(const{child,original}of moved){elbow.remove(child);arm.add(child);child.position.copy(original);}arm.remove(elbow);for(const saved of snapshots){saved.child.position.copy(saved.position);saved.child.scale.copy(saved.scale);saved.child.quaternion.copy(saved.quaternion);saved.child.name=saved.name;}for(const child of elbow.children){if(!moved.some(m=>m.child===child))child.geometry?.dispose();}arm.rotation.set(0,0,arm===leftArm?-.12:.12);}
-  endPerformancePresentation();a.instrument.visible=a.bow.visible=a.grip.visible=false;a.stool.visible=true;cello.visible=celloShadowBridge.visible=pinContact.visible=true;previewMode=null;celloPerformance=null;release();walkPose(0,false);upperBody.position.set(0,0,0);head.rotation.y=0;document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;
+  endPerformancePresentation();a.instrument.visible=a.bow.visible=a.grip.visible=false;a.stool.visible=true;cello.visible=celloShadowBridge.visible=pinContact.visible=true;previewMode=null;celloPerformance=null;release();walkPose(0,false);upperBody.position.set(0,0,0);head.rotation.y=0;head.position.z=0;document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;
   if(!p.returnCameraStarted)animateRoomCamera(p.home.position,p.home.zoom,true,p.home.quaternion,0);area.focus({preventScroll:true});
  }
 }
