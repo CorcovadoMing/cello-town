@@ -30,3 +30,11 @@ test('teacher dialogue drops stock fillers but preserves the learning instructio
  assert.match(talk,/先聽一遍，再跟著拍子拉，最後把提示收起來試試。/);
  assert.doesNotMatch(app,/老師：慢慢來/);
 });
+test('flowerbed queues one arrival action, with fresh distance and no second tap',()=>{
+ const app=read('app.js'),pointer=app.slice(app.indexOf('canvas.onpointerdown='));
+ assert.match(app,/else if\(kind==='garden'&&gardenWithinReach\(\)\)\{player.walking=false;openGarden\(\);\}/);
+ assert.match(pointer,/if\(gardenWithinReach\(\)\)\{standUp\(\);target=null;openGarden\(\);\}else walkTo\(\{x:garden.x,y:garden.y\},'garden'\)/);
+ assert.doesNotMatch(app,/再點花園/);
+ assert.match(app,/const kind=target.kind;target=null/);
+ assert.match(pointer,/else walkTo\(\{x,y\}\)/);
+});
