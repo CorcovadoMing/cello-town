@@ -923,7 +923,17 @@ function forgivingRoomHit(ray,nearest){
  }
  return result;
 }
-area.addEventListener('pointerup',e=>{if(!tap||tap.id!==e.pointerId)return;const start=tap;tap=null;if(previewMode)return;if(Math.hypot(e.clientX-start.x,e.clientY-start.y)>12)return;const r=area.getBoundingClientRect();camera.updateMatrixWorld();raycaster.setFromCamera(new T.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),camera);scene.updateMatrixWorld(true);const blockers=raycaster.intersectObjects(scene.children,true).filter(h=>h.object!==targetMarker);if(watchingCat){if(blockers[0]?.object.userData.pet!=='cat'&&forgivingRoomHit(raycaster.ray,blockers[0])!=='cat')endCatView();return;}if(blockers[0]?.object.userData.station){approachStation(blockers[0].object.userData.station);return;}if(blockers[0]?.object.userData.pet==='cat'){approachStation('cat');return;}
+// Only cat taps may see through the player's own meshes. Furniture and walls
+// stay blockers, and all other ray-hit/movement rules retain the original list.
+function catThroughAvatar(ray,hits){
+ const isPlayer=o=>{for(let p=o;p;p=p.parent)if(p===avatar)return true;return false;};
+ if(!hits.length||!isPlayer(hits[0].object))return false;
+ const nearest=hits.find(h=>!isPlayer(h.object));
+ if(nearest?.object.userData.pet==='cat')return true;
+ const point=ray.intersectBox(catHitBounds,new T.Vector3());
+ return !!point&&(!nearest||nearest.distance+.025>=point.distanceTo(ray.origin));
+}
+area.addEventListener('pointerup',e=>{if(!tap||tap.id!==e.pointerId)return;const start=tap;tap=null;if(previewMode)return;if(Math.hypot(e.clientX-start.x,e.clientY-start.y)>12)return;const r=area.getBoundingClientRect();camera.updateMatrixWorld();raycaster.setFromCamera(new T.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),camera);scene.updateMatrixWorld(true);const blockers=raycaster.intersectObjects(scene.children,true).filter(h=>h.object!==targetMarker);const catBehindPlayer=catThroughAvatar(raycaster.ray,blockers);if(watchingCat){if(!catBehindPlayer&&blockers[0]?.object.userData.pet!=='cat'&&forgivingRoomHit(raycaster.ray,blockers[0])!=='cat')endCatView();return;}if(catBehindPlayer){approachStation('cat');return;}if(blockers[0]?.object.userData.station){approachStation(blockers[0].object.userData.station);return;}if(blockers[0]?.object.userData.pet==='cat'){approachStation('cat');return;}
 // Padded physical boxes, not screen-wide shortcuts. Any nearer solid surface
 // still wins; exact wardrobe/vanity/cello mesh hits were handled above.
 const hitIntent=forgivingRoomHit(raycaster.ray,blockers[0]);if(hitIntent){approachStation(hitIntent);return;}
