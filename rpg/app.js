@@ -144,10 +144,34 @@ function tick(){if(!mode||mode==='starting')return;const now=performance.now();i
 function rect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),w,h);}function tree(x,y,s=1,t=0,seed=1){townArt.drawTree(g,x,y,s,t,seed);}
 function flower(x,y,color='#e6bf62'){rect(x,y,2,8,'#4a7c45');rect(x-3,y-3,8,6,color);rect(x,y-4,2,8,color);rect(x,y,2,2,'#faf0ba');}
 function gardenBloom(x,y,f){
- rect(x-10,y+9,23,4,'#454e3640');rect(x,y-1,3,13,'#426747');rect(x-6,y+4,6,3,'#a4bd7c');rect(x+3,y+1,5,3,'#89a66d');
- rect(x-7,y-11,17,12,f.shade);rect(x-10,y-8,23,6,f.shade);rect(x-5,y-14,13,19,f.shade);
- rect(x-6,y-10,15,10,f.petal);rect(x-9,y-7,21,4,f.petal);rect(x-4,y-13,11,17,f.petal);
- rect(x-2,y-7,7,7,f.center);rect(x-2,y-7,3,3,'#fff6ca');
+ // Each earned species keeps its original root anchor, but has its own silhouette.
+ const species=f.species,stem='#4c704b',dark='#36563e',leaf='#79975e',light='#a7b57b';
+ const p=(dx,dy,w,h,c)=>rect(x+dx,y+dy,w,h,c);
+ p(-11,9,24,3,'#454e3633');p(-7,7,16,3,'#766347');
+ const height=[19,28,24,17,21,30][species],top=-height;
+ p(0,top+3,2,height+6,dark);p(0,top+5,1,height+3,stem);
+ const leaves=(yy,spread)=>{p(-spread,yy-3,spread,3,dark);p(-spread+1,yy-4,spread-1,2,leaf);p(2,yy+1,spread,3,stem);p(3,yy,spread-1,2,light);};
+ if(species===1){for(const yy of[-15,-6]){p(-8,yy,9,1,stem);p(2,yy-3,8,1,stem);p(-7,yy-3,1,5,leaf);p(-4,yy-2,1,4,leaf);p(5,yy-5,1,5,light);}}
+ else if(species===5){leaves(-15,9);leaves(-5,7);}
+ else{leaves(-2,species===0?8:6);if(species===2)leaves(-10,5);}
+ const bloom=(cx,cy,kind)=>{
+  const q=(dx,dy,w,h,c)=>p(cx+dx,cy+dy,w,h,c);
+  if(kind===3){q(-4,-2,8,5,f.shade);q(-2,-4,4,9,f.shade);q(-4,-1,8,3,f.petal);q(-1,-4,3,8,f.petal);q(-1,-1,2,2,f.center);q(-3,-2,2,1,'#d4edf0');return;}
+  if(kind===5){
+   q(-3,-2,6,7,f.shade);q(-11,-9,5,3,f.shade);q(-8,-7,5,5,f.petal);q(-5,-4,5,5,f.petal);
+   q(6,-9,5,3,f.shade);q(3,-7,6,5,f.petal);q(0,-4,5,5,f.petal);
+   q(-2,-13,5,9,f.shade);q(-1,-12,3,10,f.petal);q(-7,1,5,5,f.petal);q(3,1,5,5,f.petal);
+   q(-2,0,5,4,f.center);q(-6,-5,2,2,'#ad813d');q(5,-5,2,2,'#ad813d');q(0,-8,2,2,'#ad813d');q(-1,-11,1,5,'#fff9db');return;
+  }
+  const petals=kind===0?[[-3,-10,6,7],[-3,4,6,7],[-10,-3,7,6],[4,-3,7,6],[-8,-8,5,5],[4,-8,5,5],[-8,4,5,5],[4,4,5,5]]:
+   kind===1?[[-5,-10,9,7],[-9,-6,7,9],[3,-7,7,9],[-6,2,8,8],[1,2,7,8]]:
+   kind===2?[[-5,-9,10,7],[-10,-4,8,9],[3,-5,8,9],[-5,2,10,8]]:
+   [[-4,-10,8,8],[-10,-4,8,8],[3,-4,8,8],[-4,3,8,8],[-8,-8,5,5],[4,-8,5,5],[-8,4,5,5],[4,4,5,5]];
+  for(const [px,py,w,h]of petals){q(px,py,w,h,f.shade);q(px+1,py,w-2,h-2,f.petal);q(px+1,py,Math.max(1,w-3),1,kind===4?'#ffdfa1':'#fff2d3');}
+  q(-4,-3,8,7,f.shade);q(-3,-3,6,6,kind===2?'#51425e':f.center);q(-2,-2,2,2,kind===2?'#c5adc9':'#f8dfa0');q(1,1,2,2,kind===2?'#a891af':'#b88b44');
+ };
+ if(species===3){p(-6,-15,7,1,stem);p(2,-21,6,1,stem);p(7,-21,1,9,stem);bloom(-6,-17,3);bloom(7,-23,3);bloom(1,-9,3);}
+ else bloom(1,top,species);
 }
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 function person(x,y,t,{teacher=false,walking=false,facing='front'}={}){
@@ -179,11 +203,20 @@ function drawStandMarker(t){
  g.fillStyle='#fff0b7';g.fillRect(-3,-69,6,3);g.restore();
 }
 function drawPracticeStand(){
- const {x,y}=stand;
- rect(x-16,y,34,3,'#79745050');rect(x-8,y+3,26,2,'#79745034');
- rect(x-14,y-2,30,4,'#665d43');rect(x-3,y-27,7,28,'#665d43');
- rect(x-18,y-41,34,22,'#705d42');rect(x-14,y-41,26,17,'#fff3cd');
- rect(x-2,y-41,2,16,'#d8c79d');rect(x-11,y-35,6,2,'#81906a');rect(x+2,y-32,7,2,'#81906a');
+ const {x,y}=stand,p=(dx,dy,w,h,c)=>rect(x+dx,y+dy,w,h,c);
+ // Solid cedar tripod, sliding collar and open score, inside the existing hit area.
+ p(-18,1,37,4,'#4d593433');p(-12,4,27,2,'#4d593422');
+ p(-3,-25,7,25,'#574b39');p(-2,-24,3,24,'#ad8e5f');p(1,-24,2,24,'#806746');
+ p(-5,-16,11,4,'#615741');p(-4,-16,8,1,'#c5a474');p(4,-15,3,2,'#d0b67c');
+ p(-5,-3,4,4,'#70583d');p(-9,-1,5,3,'#70583d');p(-14,1,6,3,'#70583d');p(-13,1,5,1,'#b49a6b');
+ p(3,-3,4,4,'#70583d');p(6,-1,5,3,'#70583d');p(10,1,7,3,'#70583d');p(11,1,5,1,'#b49a6b');p(-1,0,4,5,'#806746');
+ p(-20,-42,39,22,'#584a38');p(-18,-41,35,19,'#9e8154');p(-17,-40,33,2,'#c6aa76');
+ p(-20,-22,39,4,'#665039');p(-19,-22,37,1,'#d3b582');p(-17,-18,33,2,'#95774f');
+ p(-16,-42,14,18,'#d4c39c');p(1,-41,14,18,'#ccb98e');p(-15,-41,12,15,'#f3e7c4');p(2,-40,12,15,'#eadbb3');
+ p(-2,-40,3,16,'#b49c71');p(-1,-40,1,15,'#d9c497');p(-14,-41,10,1,'#fff4d6');p(3,-40,10,1,'#fff1cb');
+ for(const yy of[-37,-34,-31]){p(-13,yy,8,1,'#b7ad86');p(4,yy+1,8,1,'#b2a37c');}
+ for(const [xx,yy]of[[-11,-35],[-7,-32],[5,-34],[10,-31]]){p(xx,yy,2,2,'#657251');p(xx+1,yy-3,1,3,'#657251');}
+ p(11,-25,2,7,'#ad7054');p(-17,-25,2,3,'#c7af79');p(15,-24,2,3,'#c7af79');
 }
 function draw(t){const rainFrame=rainSystem.sample(t,gameWeather.key,[player,npc],reducedMotion.matches);const petFrame=rainPets.update(t,{weather:gameWeather.key,player,playerUmbrella:umbrellaPose(player,rainFrame.actorOpen[0]),reduced:reducedMotion.matches});const moisture=wetSoil.update(t,gameWeather.key,reducedMotion.matches,rainFrame);townArt.drawGround(g);drawWetSoil(g,moisture,'road');
 // water
