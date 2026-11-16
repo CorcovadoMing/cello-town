@@ -1,6 +1,6 @@
 import {umbrellaShape} from './rain-geometry.js?v=35';
 // Original, ephemeral 8-bit scenery. No state, route, timing or storage ownership.
-import {drawPlayer} from './avatar.js?v=32';
+import {drawPlayer,PLAYER_PALETTE} from './avatar.js?v=40-preview';
 import {drawTeacher} from './teacher.js?v=32';
 const freeze=o=>Object.freeze(o);
 export const LOUNGE_LAYOUT=freeze({table:freeze({x:490,y:218,depth:245,solid:freeze({x:458,y:214,w:64,h:31})}),seats:freeze([
@@ -44,7 +44,7 @@ export function drawSeatedResident(g,{x,y,kind='player',facing='right',t=0,reduc
  g.save();g.beginPath();g.rect(-30,-65,60,57);g.clip();
  (teacher?drawTeacher:drawPlayer)(g,{x:0,y:teacher?1:3,t,walking:false,facing:side,reduced});g.restore();
  if(side==='left')g.scale(-1,1);
- const cloth=teacher?'#b7809e':'#3d7164',dark=teacher?'#936681':'#2d574e';
+ const cloth=teacher?'#b7809e':PLAYER_PALETTE.coat,dark=teacher?'#936681':PLAYER_PALETTE.shade;
  rect(g,-5,-8,13,5,dark);rect(g,-5,-8,12,3,cloth);rect(g,6,-5,4,6,teacher?'#f5cfa7':cloth);
  rect(g,5,1,8,3,'#493e43');rect(g,7,1,4,1,'#8c7460');
  rect(g,-6,-3,8,3,dark);rect(g,0,-1,3,3,teacher?'#f5cfa7':dark);rect(g,-1,2,7,2,'#493e43');
