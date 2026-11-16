@@ -965,8 +965,8 @@ function startDoorArrival(){
 function cancelDoorArrival(){
  if(!doorArrival)return;
  const {home}=doorArrival;doorArrival=null;destination=null;pendingStation=null;
- pos={x:0,z:Math.min(pos.z,1.51)};exitLeaf.rotation.y=Math.PI*.49;
- animateRoomCamera(home.position,home.zoom,true,home.quaternion,180);
+ pos={x:0,z:1};heading=Math.PI;avatar.rotation.y=heading;exitLeaf.rotation.y=0;pressed.clear();
+ cameraMotion=null;camera.position.copy(home.position);camera.quaternion.copy(home.quaternion);camera.zoom=home.zoom;camera.updateProjectionMatrix();
 }
 function tickDoorArrival(t){
  if(!doorArrival)return;
@@ -974,18 +974,40 @@ function tickDoorArrival(t){
  const a=doorArrival;a.elapsed+=a.last===null?0:Math.min(50,Math.max(0,t-a.last));a.last=t;
  const elapsed=a.elapsed,ease=u=>{u=Math.max(0,Math.min(1,u));return u*u*(3-2*u);};
  const approach=ease(elapsed/300),opening=ease((elapsed-300)/550),entry=ease((elapsed-750)/850);
- pos={x:.12*(1-entry),z:2.75-.15*approach-1.6*entry};exitLeaf.rotation.y=Math.PI*.49*opening;
- const view=ease((elapsed-650)/950);camera.position.lerpVectors(a.from,a.home.position,view);camera.quaternion.slerpQuaternions(a.fromQuaternion,a.home.quaternion,view);camera.zoom=a.fromZoom+(a.home.zoom-a.fromZoom)*view;camera.updateProjectionMatrix();
- if(elapsed>=1600){pos={x:0,z:1};doorArrival=null;}
+ pos={x:.12-.24*entry,z:2.75-.15*approach-.98*entry};exitLeaf.rotation.y=Math.PI*.49*opening;
+ const turning=ease((elapsed-1600)/350),closing=ease((elapsed-2150)/550),returning=ease((elapsed-2950)/300),settle=ease((elapsed-3250)/450);
+ if(elapsed>=1600){pos={x:-.12*(1-settle),z:1.62-.62*settle};heading=Math.PI*(1-turning+returning);avatar.rotation.y=heading;}
+ exitLeaf.rotation.y*=1-closing;
+ const view=ease((elapsed-2600)/1100);camera.position.lerpVectors(a.from,a.home.position,view);camera.quaternion.slerpQuaternions(a.fromQuaternion,a.home.quaternion,view);camera.zoom=a.fromZoom+(a.home.zoom-a.fromZoom)*view;camera.updateProjectionMatrix();
+ if(elapsed>=3700){pos={x:0,z:1};heading=Math.PI;doorArrival=null;}
 }
 function poseDoorArrival(t){
  if(!doorArrival)return;
  const e=doorArrival.elapsed,reach=Math.max(0,Math.min(1,(e-120)/180))*Math.max(0,Math.min(1,(850-e)/250));
- walkPose(e<300||e>750?Math.sin(e*.014)*.48:0,true);
- leftArm.rotation.x=-1.35*reach;
+ const closingReach=Math.max(0,Math.min(1,(e-1900)/250))*Math.max(0,Math.min(1,(2950-e)/250));
+ walkPose(e<300||(e>750&&e<1600)||e>3250?Math.sin(e*.014)*.48:0,true);
+ leftArm.rotation.x=-1.35*Math.max(reach,closingReach);
 }
-window.addEventListener('pointerdown',cancelDoorArrival,{capture:true});
-window.addEventListener('keydown',cancelDoorArrival,{capture:true});
+// The entrance is one short performance, not a skippable movement command.
+// Capture only in-game input. Native browser Back and unrelated page UI remain native.
+const arrivalHeldKeys=new Set(),arrivalPointers=new Set();
+window.addEventListener('keydown',e=>{
+ const gameKey=!!keyMap[e.key]||['Enter',' ','e','E'].includes(e.key);
+ if(!gameKey)return;
+ if(doorArrival||arrivalHeldKeys.has(e.key)){arrivalHeldKeys.add(e.key);e.preventDefault();e.stopImmediatePropagation();}
+},{capture:true});
+window.addEventListener('keyup',e=>arrivalHeldKeys.delete(e.key),{capture:true});
+window.addEventListener('pointerdown',e=>{
+ if(!doorArrival||!e.target.closest?.('.stage,aside'))return;
+ arrivalPointers.add(e.pointerId);e.preventDefault();e.stopImmediatePropagation();
+},{capture:true});
+window.addEventListener('pointerup',e=>{
+ if(!arrivalPointers.delete(e.pointerId))return;e.preventDefault();e.stopImmediatePropagation();
+},{capture:true});
+window.addEventListener('pointercancel',e=>arrivalPointers.delete(e.pointerId),{capture:true});
+window.addEventListener('click',e=>{if(doorArrival&&e.target.closest?.('.stage,aside')){e.preventDefault();e.stopImmediatePropagation();}},{capture:true});
+window.addEventListener('blur',()=>{arrivalPointers.clear();if(doorArrival)doorArrival.last=null;});
+document.addEventListener('visibilitychange',()=>{if(doorArrival)doorArrival.last=null;});
 window.addEventListener('pagehide',cancelDoorArrival);
 // Time from the first actual animation frame, not module/shader startup.
 startDoorArrival();
@@ -1011,5 +1033,5 @@ function animateIdle(t,moving){
  faceRig.mouth.scale.set(fm.mouthX,fm.mouthY,1);head.rotation.z+=fm.tilt;
 
 }
-function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;tickDoorArrival(t);tickRoomCamera(t);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}requestAnimationFrame(frame);
+function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;tickDoorArrival(t);tickRoomCamera(t);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}requestAnimationFrame(frame);
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();release();$('scene-status').textContent='3D 畫面暫停，請重新整理恢復。';status.textContent='3D 顯示中斷，穿搭設定仍保留。請重新整理。';});
