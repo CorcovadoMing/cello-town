@@ -104,6 +104,23 @@ const CAT_BACK_REST=[
 '...O......O...', '...OOOOOOOO...', '...OOOOOOOO...', '...OOSSSSOO...',
 '....OOOOOO....', '...OOSSSSOO...', '..OOOOOOOOOO..', '..OSSSSSSSSO..',
 '..OOOOOOOOOO..', '...OOOSSOOO...', '....OOSSOO....'];
+// Advance gait by actual ground distance: fast umbrella following cannot skate
+// through the same tiny time-based foot wiggle used for a leisurely stroll.
+export function advancePetGait(p,distance){p.gaitPhase=((p.gaitPhase||0)+distance/24*Math.PI*2)%(Math.PI*2);return p.gaitPhase;}
+export function articulatePaws(pixels,{h,vertical,phase,fur='O',shade='S',anchors=[6,9,19,22]}){
+ const top=h-5;
+ for(const id of [...pixels.keys()])if(Number(id.split(',')[1])>=top)pixels.delete(id);
+ // Diagonal pairs: rear-near + front-far, then rear-far + front-near.
+ const legs=vertical?[{x:5,far:true,p:0},{x:8,far:true,p:Math.PI},{x:4,far:false,p:Math.PI},{x:9,far:false,p:0}]:anchors.map((x,i)=>({x,far:i%2===1,p:[0,Math.PI,Math.PI,0][i]}));
+ for(const leg of legs.sort((a,b)=>Number(b.far)-Number(a.far))){
+  const t=((phase+leg.p)/(Math.PI*2)%1+1)%1;
+  // Paw is planted for half a cycle, travels backward relative to the body,
+  // then lifts and swings forward. Hip stays attached to the same silhouette.
+  const swing=t<.5?1-4*t:-1+4*(t-.5),lift=t<.5?0:Math.sin((t-.5)*Math.PI*2)*2;
+  const dx=vertical?0:Math.round(swing*2),end=h-1-(leg.far?1:0)-Math.round(lift)+(vertical?Math.round(swing):0);
+  for(let y=top;y<=end;y++){const x=leg.x+Math.round(dx*(y-top)/Math.max(1,end-top));for(let k=0;k<2;k++)pixels.set((x+k)+','+y,y===end?'L':leg.far?shade:fur);}
+ }
+}
 export function drawGardenCat(g,c){
  const facing=c.facing||(c.dir<0?'left':'right'),vertical=facing==='up'||facing==='down',back=facing==='up',rest=Math.max(c.lie||0,c.sit||0),playing=!!c.pounce||(c.paw||0)>.1,tucked=!playing&&rest>.6;
  const rows=vertical?(back?(tucked?CAT_BACK_REST:CAT_BACK_WALK):(tucked?CAT_FRONT_REST:CAT_FRONT_WALK)):(tucked?CAT_SIDE_REST:CAT_SIDE_WALK),pixels=new Map(),w=rows[0].length,h=rows.length,put=(x,y,k)=>pixels.set(x+','+y,k);
@@ -111,8 +128,9 @@ export function drawGardenCat(g,c){
  if(back){for(const[x,y]of[[7,h-7],[7,h-6],[8,h-5],[9,h-4],[10,h-3],[11,h-3],[12,h-4],[12,h-5]]){put(x,y,'S');put(x,y+1,'O');}}
  if(c.calico){for(let y=Math.floor(h*.45);y<Math.floor(h*.7);y++)for(let x=Math.floor(w*.48);x<Math.floor(w*.68);x++)if(pixels.get(x+','+y)==='O')put(x,y,'H');}
  if(!vertical&&!tucked){for(const[x,y]of[[23,2],[22,3],[23,3],[24,3],[22,4],[23,4],[24,4],[23,5]])put(x,y,'E');put(22,3,'W');put(23,4,'I');}
- // Separate farther limbs and subtle stride at pixel resolution, never a biped bounce.
- if(!tucked){const shift=Math.round(Math.max(-2,Math.min(2,(c.stride||0)*.5)));if(vertical){for(let y=h-6;y<h-3;y++){put(6,y,'S');put(7,y,'S');}put(5,h-4-shift,'L');put(8,h-4+shift,'L');for(const x of[4,5,8,9])pixels.delete(x+','+(h-1));put(4,h-1+shift,'L');put(5,h-1+shift,'L');put(8,h-1-shift,'L');put(9,h-1-shift,'L');}else{for(let y=h-6;y<h-1;y++){put(9,y,'S');put(22,y,'S');}put(9,h-1-shift,'L');put(22,h-1+shift,'L');}}
+ // Replace the stationary leg pixels, rather than drawing a tiny extra paw
+ // beside them. Resting / reaching / airborne poses retain their own anatomy.
+ if(!tucked&&!playing&&((c.moving??c.running)||Math.abs(c.stride||0)>.01))articulatePaws(pixels,{h,vertical,phase:c.gaitPhase??((c.stride||0)>0?1:4)});
  if(!back){const y=vertical?8:(tucked?4:7);for(let x=vertical?5:10;x<(vertical?9:16);x++)if(pixels.get(x+','+y)==='O')put(x,y,'H');}
  if(!tucked&&(c.aim||0)>.05){const amount=c.aim,compressed=new Map();for(const[id,k]of pixels){const[x,y]=id.split(',').map(Number),ny=Math.round(h-1-(h-1-y)*(1-.28*amount));compressed.set((x+(!vertical&&y>8?Math.round((c.wiggle||0)*.25):0))+','+ny,k);}pixels.clear();for(const[id,k]of compressed)pixels.set(id,k);}
  if(playing){
@@ -260,7 +278,7 @@ export function drawRainFrame(g,frame){
 export function petTrunkBlocked(trees,x,y){return trees.some(([tx,ty,scale])=>x>=tx-9*scale-14&&x<=tx+10*scale+14&&y>=ty+34*scale-7&&y<=ty+46*scale+7);}
 export function rainPetGesture(time,offset=0,reduced=false){const phase=(time/1000+offset)%17;return {shake:reduced?0:phase>2&&phase<2.7?Math.sin((phase-2)*45)*1.1:0,groom:reduced?0:phase>8&&phase<10.3?Math.max(0,Math.sin((phase-8)*6)):0};}
 export function createRainPets({navigation,rainNavigation=navigation,canopies=[],trees=[]}={}){
- let last=null,clock=0,raining=false,rainAge=0,dryAge=0;
+ let last=null,clock=0,raining=false,rainAge=0,dryAge=0,homePrevious=null;const homeGait={};
  const benchCat={x:223,y:211,facing:'left',mode:'home',path:[],moving:false},benchHome={x:223,y:211},benchLanding={x:238,y:247};let benchAge=0,benchJump=null,dogDryDone=false,benchDryDone=false;
  function jumpBench(up){benchJump={from:{x:benchCat.x,y:benchCat.y},to:up?benchHome:benchLanding,age:0,up};benchCat.mode=up?'jumpUp':'jumpDown';benchCat.path=[];}
  const dog={x:240,y:245,facing:'left',mode:'home',path:[],wait:.65},cat={x:820,y:535,facing:'right',mode:'home',path:[],wait:1.45};
@@ -272,7 +290,7 @@ export function createRainPets({navigation,rainNavigation=navigation,canopies=[]
  function chooseShelter(p,avoid=[]){const candidates=[];for(let i=0;i<trees.length;i++){const[x,y,s]=trees[i],c=canopies[i];if(!c)continue;for(const dx of[-(12*s+18),12*s+18])for(const dy of[8,14,-8]){const q={x:x+dx,y:y+46*s+dy};if(rainNavigation.isWalkable(q.x,q.y)&&sheltered(q.x,q.y)&&avoid.every(a=>!a||Math.hypot(a.x-q.x,a.y-q.y)>=46))candidates.push({q,bound:Math.hypot(q.x-p.x,q.y-p.y)});}}candidates.sort((a,b)=>a.bound-b.bound);let best=null;for(const candidate of candidates){if(best&&candidate.bound>=best.d)break;const path=rainNavigation.findPath(p,candidate.q);if(!path)continue;let from=p,d=0;for(const to of path){d+=Math.hypot(to.x-from.x,to.y-from.y);from=to;}if(!best||d<best.d)best={q:candidate.q,path,d};}return best;}
 
  function route(p,q){const path=(p.rainRoute?rainNavigation:navigation).findPath(p,q);if(path){p.path=path;p.goal=point(q);}return !!path;}
- function step(p,dt,speed){let budget=dt*speed,moved=0;while(p.path.length&&budget>0){const q=p.path[0],d=Math.hypot(q.x-p.x,q.y-p.y);if(d<.01){p.path.shift();continue;}const n=Math.min(d,budget),next={x:p.x+(q.x-p.x)/d*n,y:p.y+(q.y-p.y)/d*n};if(!(p.rainRoute?rainNavigation:navigation).lineClear(p,next)){p.path=[];break;}p.facing=catFacing(next.x-p.x,next.y-p.y,p.facing);p.x=next.x;p.y=next.y;budget-=n;moved+=n;if(n===d)p.path.shift();}p.moving=moved>.01;return moved;}
+ function step(p,dt,speed){let budget=dt*speed,moved=0;while(p.path.length&&budget>0){const q=p.path[0],d=Math.hypot(q.x-p.x,q.y-p.y);if(d<.01){p.path.shift();continue;}const n=Math.min(d,budget),next={x:p.x+(q.x-p.x)/d*n,y:p.y+(q.y-p.y)/d*n};if(!(p.rainRoute?rainNavigation:navigation).lineClear(p,next)){p.path=[];break;}p.facing=catFacing(next.x-p.x,next.y-p.y,p.facing);p.x=next.x;p.y=next.y;budget-=n;moved+=n;if(n===d)p.path.shift();}p.moving=moved>.01;if(p.moving)advancePetGait(p,moved);return moved;}
  return {update(time,{weather='sun',player=null,playerUmbrella=null,reduced=false}={}){
   const dt=last===null?0:Math.min(.05,Math.max(0,(time-last)/1000));if(last===null)clock=time;last=time;
   const wet=weather==='rain';
@@ -300,7 +318,7 @@ export function createRainPets({navigation,rainNavigation=navigation,canopies=[]
     cat.pondPaw=attempt>=0&&attempt<3?Math.sin(Math.min(1,phase*2)*Math.PI)*9:0;
     if(pondAge>=8.35){const to={x:cat.x+18,y:cat.y};if(navigation.lineClear(cat,to)){pondHop={from:point(cat),to,age:0};cat.mode='pondStartle';cat.pondPaw=0;}}
    }
-   if(pondHop){pondHop.age+=dt;const u=Math.min(1,pondHop.age/.6);cat.x=pondHop.from.x+(pondHop.to.x-pondHop.from.x)*u;cat.y=pondHop.from.y;cat.jump=Math.sin(u*Math.PI)*8;if(u===1){pondHop=null;cat.jump=0;cat.mode='return';route(cat,returnCat);}}
+   if(pondHop){cat.moving=false;pondHop.age+=dt;const u=Math.min(1,pondHop.age/.6);cat.x=pondHop.from.x+(pondHop.to.x-pondHop.from.x)*u;cat.y=pondHop.from.y;cat.jump=Math.sin(u*Math.PI)*8;if(u===1){pondHop=null;cat.jump=0;cat.mode='return';route(cat,returnCat);}}
    // Dry visits are infrequent and staggered, not a synchronized looping dance.
    if(!wet&&dryAge>34&&!dogDryDone&&dog.mode==='home'){dog.mode='dryStretch';dogDryDone=true;dog.restAge=0;}
    if(dog.mode==='dryStretch'){dog.restAge+=dt;if(dog.restAge>1.5){dog.mode='dryStroll';route(dog,{x:338,y:260});}}
@@ -309,7 +327,7 @@ export function createRainPets({navigation,rainNavigation=navigation,canopies=[]
    if(!wet&&dryAge>18&&!benchDryDone&&benchCat.mode==='home'){benchCat.mode='stretch';benchAge=0;benchDryDone=true;}
    if(benchCat.mode==='stretch'&&benchAge>2){jumpBench(false);benchAge=0;}
    if(wet&&benchCat.mode==='home'){benchCat.mode='stretch';benchAge=0;}
-   if(benchJump){benchJump.age+=dt;const u=Math.min(1,benchJump.age/.8),q=benchJump;benchCat.x=q.from.x+(q.to.x-q.from.x)*u;benchCat.y=q.from.y+(q.to.y-q.from.y)*u;benchCat.jump=Math.sin(u*Math.PI)*14;benchCat.facing=q.up?'up':'down';if(u===1){const up=q.up;benchJump=null;benchCat.jump=0;if(up){benchCat.rainRoute=false;benchCat.mode='home';benchCat.facing='left';}else{benchCat.mode=wet?'shelter':'dryStroll';const place=wet?chooseShelter(benchCat,[dogGoal?.q,catGoal?.q]):null;if(place)benchCat.path=place.path.slice();else route(benchCat,{x:388,y:270});}}}
+   if(benchJump){benchCat.moving=false;benchJump.age+=dt;const u=Math.min(1,benchJump.age/.8),q=benchJump;benchCat.x=q.from.x+(q.to.x-q.from.x)*u;benchCat.y=q.from.y+(q.to.y-q.from.y)*u;benchCat.jump=Math.sin(u*Math.PI)*14;benchCat.facing=q.up?'up':'down';if(u===1){const up=q.up;benchJump=null;benchCat.jump=0;if(up){benchCat.rainRoute=false;benchCat.mode='home';benchCat.facing='left';}else{benchCat.mode=wet?'shelter':'dryStroll';const place=wet?chooseShelter(benchCat,[dogGoal?.q,catGoal?.q]):null;if(place)benchCat.path=place.path.slice();else route(benchCat,{x:388,y:270});}}}
    else if(benchCat.mode==='dryStroll'&&!benchCat.path.length){benchCat.mode='dryRest';benchCat.facing='left';benchAge=0;}
    if(wet&&['dryStroll','dryRest','return'].includes(benchCat.mode)){benchCat.mode='shelter';const place=chooseShelter(benchCat,[dogGoal?.q,catGoal?.q]);benchCat.path=place?place.path.slice():[];}
    if(!wet&&benchCat.mode==='shelter'){benchCat.mode='return';route(benchCat,benchLanding);}
@@ -323,8 +341,9 @@ export function createRainPets({navigation,rainNavigation=navigation,canopies=[]
   if(wet)for(const p of[dog,cat,benchCat])if(p.mode==='shelter'&&!p.moving&&!p.path.length)p.facing='down';
   const dg=rainPetGesture(time,0,reduced),cg=rainPetGesture(time,5,reduced),bg=rainPetGesture(time,11,reduced);
   const life=gardenLife(clock,reduced),activeCat=cat.mode!=='home';
-  if(activeCat){life.visitor=null;life.cat={...life.cat,x:cat.x,y:cat.y-(cat.jump||0),groundY:cat.y,facing:cat.facing,dir:cat.facing==='left'?-1:1,pounce:false,paw:cat.pondPaw||0,pondPaw:cat.mode==='pondWatch',aim:0,wiggle:0,burst:0,searching:false,running:cat.moving,stride:cat.moving?Math.sin(time/90)*2.5:0,sit:cat.moving||cat.mode==='pondWatch'||cat.mode==='pondStartle'?0:1,lie:0,phase:cat.mode,rainAlert:wet&&cat.mode==='shelter'&&!cat.moving,shake:wet&&!cat.moving?cg.shake:0,groom:wet&&!cat.moving?cg.groom:0};}
-  return {life,pondContact:cat.mode==='pondStartle'?{x:269,y:459,progress:Math.min(1,(pondHop?.age||0)/.6)}:null,pondFish:cat.mode==='pondWatch'?pondLife(time,reduced).map(point):null,benchCat:{...point(benchCat),rainAlert:wet&&benchCat.mode==='shelter'&&!benchCat.moving,shake:wet&&!benchCat.moving?bg.shake:0,groom:wet&&!benchCat.moving?bg.groom:0,facing:benchCat.facing,moving:benchCat.moving,mode:benchCat.mode,jump:benchCat.jump||0,stride:benchCat.moving?Math.sin(time/120)*1.5:0},benchCatActive:benchCat.mode!=='home',dog:{...point(dog),rainAlert:wet&&dog.mode==='shelter'&&!dog.moving,shake:wet&&!dog.moving?dg.shake:0,groom:wet&&!dog.moving?dg.groom:0,facing:dog.facing,moving:dog.moving,mode:dog.mode,stride:dog.moving?Math.sin(time/95)*2:0},dogActive:dog.mode!=='home',catActive:activeCat,covered:{dog:sheltered(dog.x,dog.y),cat:sheltered(cat.x,cat.y)},clock};
+  if(activeCat){life.visitor=null;life.cat={...life.cat,x:cat.x,y:cat.y-(cat.jump||0),groundY:cat.y,facing:cat.facing,dir:cat.facing==='left'?-1:1,pounce:false,paw:cat.pondPaw||0,pondPaw:cat.mode==='pondWatch',aim:0,wiggle:0,burst:0,searching:false,running:cat.moving,gaitPhase:cat.gaitPhase||0,moving:cat.moving,stride:cat.moving?Math.sin(cat.gaitPhase||0)*3:0,sit:cat.moving||cat.mode==='follow'||cat.mode==='pondWatch'||cat.mode==='pondStartle'?0:1,lie:0,phase:cat.mode,rainAlert:wet&&cat.mode==='shelter'&&!cat.moving,shake:wet&&!cat.moving?cg.shake:0,groom:wet&&!cat.moving?cg.groom:0};}
+  if(!activeCat){const c=life.cat,dist=homePrevious?Math.hypot(c.x-homePrevious.x,c.groundY-homePrevious.y):0;homePrevious={x:c.x,y:c.groundY};c.moving=!reduced&&dt>0&&dist>.01;c.gaitPhase=advancePetGait(homeGait,c.moving?dist:0);c.stride=c.moving?Math.sin(c.gaitPhase)*3:0;}else homePrevious=null;
+  return {life,pondContact:cat.mode==='pondStartle'?{x:269,y:459,progress:Math.min(1,(pondHop?.age||0)/.6)}:null,pondFish:cat.mode==='pondWatch'?pondLife(time,reduced).map(point):null,benchCat:{...point(benchCat),rainAlert:wet&&benchCat.mode==='shelter'&&!benchCat.moving,shake:wet&&!benchCat.moving?bg.shake:0,groom:wet&&!benchCat.moving?bg.groom:0,facing:benchCat.facing,moving:benchCat.moving,mode:benchCat.mode,jump:benchCat.jump||0,gaitPhase:benchCat.gaitPhase||0,stride:benchCat.moving?Math.sin(benchCat.gaitPhase||0)*3:0},benchCatActive:benchCat.mode!=='home',dog:{...point(dog),rainAlert:wet&&dog.mode==='shelter'&&!dog.moving,shake:wet&&!dog.moving?dg.shake:0,groom:wet&&!dog.moving?dg.groom:0,facing:dog.facing,moving:dog.moving,mode:dog.mode,gaitPhase:dog.gaitPhase||0,stride:dog.moving?Math.sin(dog.gaitPhase||0)*3:0},dogActive:dog.mode!=='home',catActive:activeCat,covered:{dog:sheltered(dog.x,dog.y),cat:sheltered(cat.x,cat.y)},clock};
  },get positions(){return{dog:point(dog),cat:point(cat),benchCat:point(benchCat)}}};
 }
 
@@ -362,19 +381,19 @@ const DOG_BACK=[
 '....CCCCCCCCCC....','....CCDDDDDDCC....','....CCDDDDDDCC....',
 '....CCCCCCCCCC....','....CCCCCCCCCC....','.....CCCCCCCC.....',
 '.....CC..CC.......','.....CC..CC.......','.....LL..LL.......'];
-export function dogPosePixels(facing='left',moving=false,stride=0,alert=false){
+export function dogPosePixels(facing='left',moving=false,stride=0,alert=false,gaitPhase=null){
  const vertical=facing==='up'||facing==='down',rows=vertical?(facing==='up'?DOG_BACK:DOG_FRONT):DOG_SIDE,w=rows[0].length,h=rows.length,pixels=new Map();
  rows.forEach((row,y)=>[...row].forEach((k,x)=>{if(k!=='.')pixels.set(x+','+y,k)}));
  // Tail attaches at the rump, independent of paw motion.
  const tail=vertical?[[12,13],[13,12],[14,11],[15,10],[15,9]]:[[30,9],[31,9],[32,8],[33,7],[33,6],[32,5]];
  for(const[x,y]of tail)pixels.set(x+','+y,'C');
- if(moving){const top=vertical?14:11,legs=vertical?[[5,2],[9,2]]:[[8,2],[10,2],[23,2],[25,2]];for(const[legIndex,[x,width]]of legs.entries()){const lift=Math.max(0,Math.round((legIndex%2?stride:-stride)*.65));for(let yy=top;yy<h;yy++)for(let xx=x;xx<x+width;xx++)pixels.delete(xx+','+yy);for(let yy=top;yy<h-lift;yy++)for(let xx=x;xx<x+width;xx++)pixels.set(xx+','+yy,yy===h-lift-1?'L':'C');}}
+ if(moving)articulatePaws(pixels,{h,vertical,phase:gaitPhase??(stride>0?1:4),fur:'C',shade:'D',anchors:[8,10,23,25]});
  if(alert&&vertical){for(let y=12;y<h-1;y++){pixels.set('4,'+y,'C');pixels.set('12,'+y,'C');}pixels.set('4,'+(h-1),'L');pixels.set('12,'+(h-1),'L');}
  return {pixels,w,h,vertical};
 }
 export function drawRainDog(g,d){
  if(!d.moving&&!d.rainAlert){g.save();g.translate(d.x,d.y);if(d.facing==='right')g.scale(-1,1);if(d.mode==='dryStretch')g.scale(1.08,.93);g.translate(-240,-245);drawBenchLife(g,0,true,{benchCatActive:true});g.restore();return;}
- const {pixels,w,h,vertical}=dogPosePixels(d.facing,d.moving,d.stride,d.rainAlert);
+ const {pixels,w,h,vertical}=dogPosePixels(d.facing,d.moving,d.stride,d.rainAlert,d.gaitPhase);
  if(d.rainAlert&&d.groom>.3){pixels.set('6,'+(8-Math.round(d.groom*2)),'L');pixels.set('6,9','L');}
  g.save();g.translate(Math.round(d.x)+(d.shake||0),Math.round(d.y));g.fillStyle='#4f583329';g.beginPath();g.ellipse(0,3,vertical?12:22,2.5,0,0,Math.PI*2);g.fill();if(!vertical&&d.facing==='right')g.scale(-1,1);g.scale(1.5,1.5);g.translate(-w/2,-h+1);
  g.fillStyle='#79634d';for(const id of pixels.keys()){const[x,y]=id.split(',').map(Number);for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]])if(!pixels.has((x+dx)+','+(y+dy)))g.fillRect(x+dx,y+dy,1,1);}
