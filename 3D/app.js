@@ -1,5 +1,5 @@
 import {createWindowLandscape} from './window-landscape.js?v=22';
-import {decoratePerformanceRoom} from './room-polish.js?v=26';
+import {decoratePerformanceRoom} from './room-polish.js?v=27';
 import * as T from './vendor/three.module.js';
 import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=16';
 const $=id=>document.getElementById(id),area=$('scene'),status=$('save-status');let state=defaults();try{state=normalize(JSON.parse(localStorage.getItem(KEY)));}catch{status.textContent='無法讀取本機設定，仍可自由試穿。';}
@@ -1015,9 +1015,12 @@ function performanceParts(){
 const PERFORMANCE_YAW=Math.PI-.42, performanceUp=new T.Vector3(0,1,0);
 function performanceFramePoint(x,y,z){return new T.Vector3(x,y,z).applyAxisAngle(performanceUp,PERFORMANCE_YAW).add(new T.Vector3(pos.x,standY(pos),pos.z));}
 function performanceCamera(width=area.clientWidth){
- const probe=camera.clone(),focus=new T.Vector3(-1.25,1.68,-2.09);
+ const aspect=(camera.right-camera.left)/(camera.top-camera.bottom);
+ const portrait=T.MathUtils.smoothstep(1.4-aspect,0,.55);
+ // Aspect-based leftward and slightly lower aim includes the nearby player and cello, while fitting the real window.
+ const probe=camera.clone(),focus=new T.Vector3(-1.25-.25*portrait,1.68-.18*portrait,-2.09);
  probe.position.set(-.08,1.67,.59);probe.lookAt(focus);probe.updateMatrixWorld(true);
- const aspect=(camera.right-camera.left)/(camera.top-camera.bottom),points=[];
+ const points=[];
  for(let i=0;i<=32;i++){const a=i*Math.PI/32;points.push(new T.Vector3(-1.25+.87*Math.cos(a),2.03+.87*Math.sin(a),-2.04));}
  for(const x of[-2.22,-.28])for(const y of[1.075,1.175])points.push(new T.Vector3(x,y,-1.98));
  let tangent=Math.tan(T.MathUtils.degToRad(50.18)*.5);
