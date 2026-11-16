@@ -1,5 +1,5 @@
 import {createWindowLandscape} from './window-landscape.js?v=22';
-import {decoratePerformanceRoom,installWestRoomDetail} from './room-polish.js?v=29';
+import {decoratePerformanceRoom,installWestRoomDetail} from './room-polish.js?v=30';
 import * as T from './vendor/three.module.js';
 import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=16';
 const $=id=>document.getElementById(id),area=$('scene'),status=$('save-status');let state=defaults();try{state=normalize(JSON.parse(localStorage.getItem(KEY)));}catch{status.textContent='無法讀取本機設定，仍可自由試穿。';}
@@ -582,7 +582,7 @@ const pinContact=new T.Group();pinContact.name='cello-endpin-contact';pinContact
 if(!software){const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d'),fade=g.createRadialGradient(16,16,0,16,16,16);fade.addColorStop(0,'rgba(63,61,50,.42)');fade.addColorStop(.28,'rgba(63,61,50,.25)');fade.addColorStop(1,'rgba(63,61,50,0)');g.fillStyle=fade;g.fillRect(0,0,32,32);const map=new T.CanvasTexture(c),o=new T.Mesh(new T.PlaneGeometry(.072,.072),new T.MeshBasicMaterial({map,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1}));o.rotation.x=-Math.PI/2;o.raycast=()=>{};pinContact.add(o);}else{for(const[r,opacity]of[[.028,.06],[.013,.12]]){const o=new T.Mesh(new T.CircleGeometry(r,16),new T.MeshBasicMaterial({color:'#565349',transparent:true,opacity,depthWrite:false}));o.rotation.x=-Math.PI/2;o.raycast=()=>{};pinContact.add(o);}}
 
 
-function plant(x,z,variant=0){const start=scene.children.length;const pot=variant?'#ba927e':'#c7b49a';cylinder(x,.27,z,variant?.20:.24,variant?.16:.18,.48,pot);cylinder(x,.51,z,variant?.205:.245,variant?.205:.245,.035,pot);cylinder(x,.53,z,.18,.18,.012,'#776c4d');for(let n=0;n<(variant?8:6);n++){const a=n*2.4,r=variant?.19:.23,y=variant?.84+(n%3)*.13:.78+(n%2)*.10;rod([x,.53,z],[x+Math.cos(a)*r,y,z+Math.sin(a)*r],.012,'#7d946e');const leaf=ball(x+Math.cos(a)*r,y,z+Math.sin(a)*r,variant?.085:.14,variant?.27:.24,.065,n%2?'#839d75':'#a1b58b');leaf.rotation.z=Math.cos(a)*(variant?.5:.7);leaf.rotation.y=-a;}const group=new T.Group();group.position.set(x,0,z);for(const o of scene.children.slice(start)){o.position.x-=x;o.position.z-=z;group.add(o);}scene.add(group);return group;}plant(2.5,.65);const westClockPlant=plant(-2.65,-1.60,1);westClockPlant.name='west-clock-plant';westClockPlant.scale.set(.8,1,.8);cylinder(2.15,.38,1.55,.4,.4,.12,'#b78b61');for(const dx of [-.23,.23])for(const dz of [-.2,.2])rod([2.15+dx,.35,1.55+dz],[2.15+dx*1.2,.01,1.55+dz*1.2],.035,'#a27d57');box(2.15,.48,1.55,.48,.08,.3,'#d6a29a');box(2.12,.54,1.55,.43,.05,.3,'#eee4c9');
+function plant(x,z,variant=0){const start=scene.children.length;const pot=variant?'#ba927e':'#c7b49a';cylinder(x,.27,z,variant?.20:.24,variant?.16:.18,.48,pot);cylinder(x,.51,z,variant?.205:.245,variant?.205:.245,.035,pot);cylinder(x,.53,z,.18,.18,.012,'#776c4d');for(let n=0;n<(variant?8:6);n++){const a=n*2.4,r=variant?.19:.23,y=variant?.84+(n%3)*.13:.78+(n%2)*.10;rod([x,.53,z],[x+Math.cos(a)*r,y,z+Math.sin(a)*r],.012,'#7d946e');const leaf=ball(x+Math.cos(a)*r,y,z+Math.sin(a)*r,variant?.085:.14,variant?.27:.24,.065,n%2?'#839d75':'#a1b58b');leaf.rotation.z=Math.cos(a)*(variant?.5:.7);leaf.rotation.y=-a;}const group=new T.Group();group.position.set(x,0,z);for(const o of scene.children.slice(start)){o.position.x-=x;o.position.z-=z;group.add(o);}scene.add(group);return group;}plant(2.5,.65);const westFloorPlant=plant(-2.6,1.3,1);westFloorPlant.name='west-floor-plant';cylinder(2.15,.38,1.55,.4,.4,.12,'#b78b61');for(const dx of [-.23,.23])for(const dz of [-.2,.2])rod([2.15+dx,.35,1.55+dz],[2.15+dx*1.2,.01,1.55+dz*1.2],.035,'#a27d57');box(2.15,.48,1.55,.48,.08,.3,'#d6a29a');box(2.12,.54,1.55,.43,.05,.3,'#eee4c9');
 // Soft matte avatar assembled from genuine 3D geometry.
 // Standalone original procedural prop for Cello Town 006. No imports or side effects.
 // Paste before scene construction; call after mesh/ball/rod exist. Time is milliseconds.
@@ -933,6 +933,7 @@ function stoolEgress(seat,o=stoolObstacle(),room=ROOM){return clearPoint(seat,o,
 const CELLO_SEAT={x:-1.85,z:-.70},STOOL_CENTER={x:-1.85,z:-.66},STOOL_COLLIDER=stoolObstacle();
 function stoolRouteStep(p,target,dt){const route=routeAroundStool(p,target,STOOL_COLLIDER);if(!route?.length)return {...p};return guardedMove(p,stepToward(p,route[0],dt),STOOL_COLLIDER);}
 
+function sideStoolEgress(from,o){if(from.x>=o.maxX+.005&&!inside(from,o))return {...from};return clearPoint({x:o.maxX+.08,z:Math.max(o.minZ+.05,Math.min(o.maxZ-.05,from.z))},o);}
 function pointAlongPath(from,route,u){let total=0,p=from;const lengths=route.map(q=>{const n=Math.hypot(q.x-p.x,q.z-p.z);p=q;total+=n;return n;});let remaining=Math.max(0,Math.min(1,u))*total;p=from;for(let i=0;i<route.length;i++){const q=route[i],n=lengths[i];if(remaining<=n||i===route.length-1){const f=n?Math.min(1,remaining/n):1;return{x:p.x+(q.x-p.x)*f,z:p.z+(q.z-p.z)*f};}remaining-=n;p=q;}return{...from};}
 let destination=null,pendingStation=null,watchingCat=false,catPose=0,catPoseMotion=null,catSnapshot=null;const stationSpots={exit:{x:0,z:1.9},wardrobe:{x:2.2,z:-.8},vanity:{x:.65,z:-.75},cello:{x:-1.25,z:-.66},cat:{x:-1.03,z:-.72}};const pressed=new Set();function release(){if(watchingCat)endCatView();pressed.clear();destination=null;pendingStation=null;watchingCat=false;}const keyMap={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(previewMode)return;if(e.target.closest('button,input,select,textarea')&&e.target!==$('cat-view-back'))return;const d=keyMap[e.key];if(d){e.preventDefault();destination=null;pendingStation=null;if(watchingCat)endCatView();watchingCat=false;pressed.add(d);}});window.addEventListener('keyup',e=>pressed.delete(keyMap[e.key]));window.addEventListener('blur',release);document.addEventListener('visibilitychange',release);for(const b of document.querySelectorAll('[data-dir]')){b.onpointerdown=e=>{if(previewMode)return;e.preventDefault();destination=null;pendingStation=null;b.setPointerCapture(e.pointerId);pressed.add(b.dataset.dir);};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>pressed.delete(b.dataset.dir);}
 window.addEventListener('pageshow',e=>{if(e.persisted){exitNavigating=false;exitArmed=pos.z<1.4;release();}});
@@ -1113,9 +1114,9 @@ function tickPerformance(dt,t){
  if(!celloPerformance||celloPerformance.phase==='approach')return;
  const p=celloPerformance,a=performanceParts();
  if(p.phase==='egress'){
-  p.elapsed+=dt*1000;const u=reduced.matches||p.forceExit?1:Math.min(1,p.elapsed/650),from={...pos},to=p.egressTo;
-  pos=pointAlongPath(p.egressFrom,p.egressRoute,u);heading=Math.atan2(pos.x-from.x,pos.z-from.z);avatar.position.set(pos.x,standY(pos),pos.z);avatar.rotation.y+=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y))*Math.min(1,dt*12);
-  walkPose(u<1?Math.sin(u*Math.PI*2)*.30:0,u<1);animateIdle(t,true);
+  p.elapsed+=dt*1000;const u=reduced.matches||p.forceExit?1:Math.min(1,p.elapsed/p.egressDuration),from={...pos},to=p.egressTo;
+  pos=pointAlongPath(p.egressFrom,p.egressRoute,u);const stepping=Math.hypot(pos.x-from.x,pos.z-from.z)>1e-6;if(stepping)heading=Math.atan2(pos.x-from.x,pos.z-from.z);avatar.position.set(pos.x,standY(pos),pos.z);avatar.rotation.y+=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y))*Math.min(1,dt*12);
+  walkPose(stepping&&u<1?Math.sin(u*Math.PI*2)*.30:0,stepping&&u<1);animateIdle(t,true);
   if(u===1&&!inside(pos,STOOL_COLLIDER)){previewMode=null;celloPerformance=null;release();walkPose(0,false);document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;area.focus({preventScroll:true});}
   return;
  }
@@ -1193,7 +1194,7 @@ function tickPerformance(dt,t){
  if(!returning&&p.phase==='seating'&&clock>=PERFORMANCE_TRANSITION_MS){p.phase='playing';p.elapsed=0;$('scene-status').textContent='大提琴演奏畫面，不記錄練習資料。可返回琴房。';a.back.hidden=false;a.back.focus({preventScroll:true});}
  if(returning&&(p.elapsed>=PERFORMANCE_TRANSITION_MS||reduced.matches)){
   for(const{arm,elbow,moved,snapshots}of p.arms){for(const{child,original}of moved){elbow.remove(child);arm.add(child);child.position.copy(original);}arm.remove(elbow);for(const saved of snapshots){saved.child.position.copy(saved.position);saved.child.scale.copy(saved.scale);saved.child.quaternion.copy(saved.quaternion);saved.child.name=saved.name;}for(const child of elbow.children){if(!moved.some(m=>m.child===child))child.geometry?.dispose();}arm.rotation.set(0,0,arm===leftArm?-.12:.12);}
-  endPerformancePresentation();a.instrument.visible=a.bow.visible=a.grip.visible=false;a.stool.visible=true;cello.visible=celloShadowBridge.visible=pinContact.visible=true;release();walkPose(0,false);upperBody.position.set(0,0,0);head.rotation.y=0;head.position.z=0;p.phase='egress';p.transitionStage='step-clear';p.elapsed=0;p.egressFrom={x:avatar.position.x,z:avatar.position.z};p.egressTo=clearPoint({x:STOOL_CENTER.x,z:STOOL_COLLIDER.maxZ+.22},STOOL_COLLIDER);p.egressRoute=routeAroundStool(p.egressFrom,p.egressTo,STOOL_COLLIDER)||[p.egressTo];pos={...p.egressFrom};
+  endPerformancePresentation();a.instrument.visible=a.bow.visible=a.grip.visible=false;a.stool.visible=true;cello.visible=celloShadowBridge.visible=pinContact.visible=true;release();walkPose(0,false);upperBody.position.set(0,0,0);head.rotation.y=0;head.position.z=0;p.phase='egress';p.transitionStage='step-clear';p.elapsed=0;p.egressFrom={x:avatar.position.x,z:avatar.position.z};p.egressTo=sideStoolEgress(p.egressFrom,STOOL_COLLIDER);p.egressDuration=Math.max(120,Math.min(650,Math.hypot(p.egressTo.x-p.egressFrom.x,p.egressTo.z-p.egressFrom.z)/.7*1000));p.egressRoute=routeAroundStool(p.egressFrom,p.egressTo,STOOL_COLLIDER)||[p.egressTo];pos={...p.egressFrom};
   if(!p.returnCameraStarted)animateRoomCamera(p.home.position,p.home.zoom,true,p.home.quaternion,0);area.focus({preventScroll:true});
  }
 }
@@ -1280,10 +1281,10 @@ function doorArrivalState(ms){
  const approach=arrivalEase(ms/300),opening=arrivalEase((ms-300)/550);
  // Wait for the actual leaf to finish opening before crossing its plane.
  const entry=arrivalEase((ms-950)/1100),closing=arrivalEase((ms-2450)/550);
- const settle=arrivalEase((ms-3400)/650),view=arrivalEase((ms-3100)/1100),turnBack=arrivalEase((ms-2050)/400),faceRoom=arrivalEase((ms-3000)/400);
- return {x:.10*(1-settle),z:2.98-.10*approach-2.23*entry+.35*settle,
+ const view=arrivalEase((ms-3100)/1100),turnBack=arrivalEase((ms-2050)/400),faceRoom=arrivalEase((ms-3000)/400);
+ return {x:.10,z:entry===1?.65:2.98-.10*approach-2.23*entry,
  angle:Math.PI*.49*opening*(1-closing),heading:Math.PI*(1-turnBack+faceRoom),
- moving:ms<300||(ms>950&&ms<2050)||(ms>3400&&ms<4050),view,done:ms>=4200};
+ moving:ms<300||(ms>950&&ms<2050),view,done:ms>=4200};
 }
 // END ARRIVAL CONTRACT
 function startDoorArrival(){
@@ -1296,7 +1297,7 @@ function startDoorArrival(){
 function cancelDoorArrival(){
  if(!doorArrival)return;
  const {home}=doorArrival;doorArrival=null;destination=null;pendingStation=null;
- pos={x:0,z:1};heading=Math.PI;avatar.rotation.y=heading;exitLeaf.rotation.y=0;pressed.clear();
+ pos={x:.10,z:.65};heading=Math.PI;avatar.rotation.y=heading;exitLeaf.rotation.y=0;pressed.clear();
  cameraMotion=null;camera.position.copy(home.position);camera.quaternion.copy(home.quaternion);camera.zoom=home.zoom;camera.updateProjectionMatrix();
 }
 function tickDoorArrival(t){
@@ -1306,7 +1307,7 @@ function tickDoorArrival(t){
  const state=doorArrivalState(a.elapsed);
  pos={x:state.x,z:state.z};heading=state.heading;avatar.rotation.y=heading;exitLeaf.rotation.y=state.angle;
  camera.position.lerpVectors(a.from,a.home.position,state.view);camera.quaternion.slerpQuaternions(a.fromQuaternion,a.home.quaternion,state.view);camera.zoom=a.fromZoom+(a.home.zoom-a.fromZoom)*state.view;camera.updateProjectionMatrix();
- if(state.done){pos={x:0,z:1};heading=Math.PI;doorArrival=null;}
+ if(state.done){heading=Math.PI;doorArrival=null;}
 }
 function poseDoorArrival(t){
  if(!doorArrival)return;

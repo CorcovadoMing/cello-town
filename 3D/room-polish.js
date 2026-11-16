@@ -9,12 +9,12 @@ export function decoratePerformanceRoom(T, scene) {
     const source=scene.getObjectByName(name),p=source?.geometry?.parameters;if(!p)continue;
     const rear=source.userData.permanentRearSegment;
     const spans=rear?[{min:source.position.z-p.depth/2,max:rear.maxZ,base:rear.top},{min:rear.maxZ,max:source.position.z+p.depth/2,base:source.position.y+p.height/2}]:[{min:source.position.z-p.depth/2,max:source.position.z+p.depth/2,base:source.position.y+p.height/2}];
-    spans.forEach((span,index)=>{
+    spans.filter(span=>span.max-span.min>1e-6).forEach((span,index)=>{
       const g=new T.BoxGeometry(p.width,1,span.max-span.min),wall=new T.Mesh(g,source.material);
       wall.name=name+'-performance-extension'+(rear?(index?'':'-rear-cap'):'');wall.position.copy(source.position);wall.position.z=(span.min+span.max)/2;
       if(rear){const uv=g.attributes.uv,pos=g.attributes.position;for(let i=0;i<8;i++){const z=pos.getZ(i)+wall.position.z;uv.setX(i,i<4?(source.position.z+p.depth/2-z)/p.depth:(z-source.position.z+p.depth/2)/p.depth);}}
       wall.receiveShadow=source.receiveShadow;wall.castShadow=false;wall.raycast=()=>{};wall.renderOrder=source.renderOrder;architecture.add(wall);
-      extensions.push({wall,base:span.base,bottom:source.position.y-p.height/2,originalHeight:p.height});
+      extensions.push({wall,base:span.base,bottom:source.position.y-p.height/2,originalHeight:source.userData.plasterOriginalHeight||p.height});
     });
   }
   const mountMaterial=new T.MeshStandardMaterial({color:0xb6a17b,metalness:.48,roughness:.42,transparent:true,opacity:0});
@@ -92,22 +92,41 @@ export function decoratePerformanceRoom(T, scene) {
 /** Permanent rear west-wall joinery. Same objects in room and close-up. */
 export function installWestRoomDetail(T,scene){
  const source=scene.getObjectByName('side-wall-grounded');if(!source)return null;
- const p=source.geometry.parameters,minZ=-2.35,maxZ=-1.15,top=3.115,base=source.position.y+p.height/2;
+ const p=source.geometry.parameters,minZ=source.position.z-p.depth/2,maxZ=source.position.z+p.depth/2,top=3.115,base=source.position.y+p.height/2;
  source.userData.permanentRearSegment={minZ,maxZ,top};
  const group=new T.Group();group.name='west-wall-clock-nook';scene.add(group);
- const geo=new T.BoxGeometry(p.width,top-base,maxZ-minZ),pos=geo.attributes.position,uv=geo.attributes.uv;
- for(let i=0;i<pos.count;i++){const face=Math.floor(i/4),z=pos.getZ(i)+(minZ+maxZ)/2;if([0,1,4,5].includes(face))uv.setY(i,(base+pos.getY(i)+(top-base)/2-(source.position.y-p.height/2))/p.height);if(face===0)uv.setX(i,(source.position.z+p.depth/2-z)/p.depth);if(face===1)uv.setX(i,(z-(source.position.z-p.depth/2))/p.depth);}
- const wall=new T.Mesh(geo,source.material);wall.name='west-rear-permanent-high-wall';wall.position.set(source.position.x,(base+top)/2,(minZ+maxZ)/2);wall.castShadow=false;wall.receiveShadow=source.receiveShadow;wall.raycast=()=>{};group.add(wall);
- const clock=new T.Group();clock.name='west-dark-wood-pendulum-clock';clock.position.set(-2.9915,2.32,-1.73);clock.rotation.y=Math.PI/2;group.add(clock);
- const wood=new T.MeshStandardMaterial({color:'#503525',roughness:.7}),edge=new T.MeshStandardMaterial({color:'#755039',roughness:.66}),ivory=new T.MeshStandardMaterial({color:'#efe2bc',roughness:.82}),brass=new T.MeshStandardMaterial({color:'#b7a16c',roughness:.44,metalness:.35}),ink=new T.MeshStandardMaterial({color:'#302b24',roughness:.8});
- function add(g,m,x,y,z,name){const o=new T.Mesh(g,m);o.position.set(x,y,z);o.name=name;o.castShadow=false;o.receiveShadow=true;o.raycast=()=>{};clock.add(o);return o;}
- function box(w,h,d,x,y,z,m,name){return add(new T.BoxGeometry(w,h,d),m,x,y,z,name);}
- box(.39,.66,.105,0,0,.054,wood,'clock-walnut-case');box(.44,.045,.125,0,.335,.064,edge,'clock-crown');box(.42,.04,.125,0,-.335,.064,edge,'clock-base');
- box(.29,.27,.006,0,-.157,.11,ink,'clock-pendulum-recess');box(.014,.22,.015,0,-.128,.125,brass,'clock-pendulum-stem');add(new T.SphereGeometry(.058,20,12),brass,0,-.229,.126,'clock-pendulum-bob').scale.z=.25;
- add(new T.CircleGeometry(.143,48),brass,0,.145,.112,'clock-dial-rim');add(new T.CircleGeometry(.130,48),ivory,0,.145,.114,'clock-ivory-dial');
- for(let n=0;n<12;n++){const a=n*Math.PI/6,m=box(.008,n%3===0?.023:.014,.002,Math.sin(a)*.111,.145+Math.cos(a)*.111,.117,ink,'clock-hour-marker-'+n);m.rotation.z=-a;}
- const hour=box(.012,.072,.003,-.016,.169,.12,ink,'clock-hour-hand');hour.rotation.z=.65;const minute=box(.007,.099,.003,.030,.184,.122,ink,'clock-minute-hand');minute.rotation.z=-.65;
- add(new T.SphereGeometry(.011,12,8),brass,0,.145,.125,'clock-spindle');
- group.userData.wallSegment={minZ,maxZ,base,top};clock.userData.wallBackX=-2.990;clock.userData.permanent=true;
- return {group,clock,wall};
+ // Replace the original low box with one uninterrupted full-height surface.
+ // UV density remains that of the old plaster; no coincident seam at mid-wall.
+ const bottom=source.position.y-p.height/2,geo=new T.BoxGeometry(p.width,top-bottom,p.depth),uv=geo.attributes.uv;
+ for(const face of [0,1,4,5])for(let i=face*4;i<face*4+4;i++)uv.setY(i,uv.getY(i)*(top-bottom)/p.height);
+ const previousGeometry=source.geometry;source.geometry=geo;source.position.y=(bottom+top)/2;previousGeometry.dispose();
+ source.userData.plasterOriginalHeight=p.height;source.userData.fullPermanentWall=true;
+ source.castShadow=false;const wall=source;
+ const clock=new T.Group();clock.name='west-cottage-pendulum-clock';clock.position.set(-2.99,2.32,-1.73);clock.rotation.y=Math.PI/2;group.add(clock);
+ const wood=new T.MeshStandardMaterial({color:'#a47a50',roughness:.72}),sage=new T.MeshStandardMaterial({color:'#a8b7a0',roughness:.75}),ivory=new T.MeshStandardMaterial({color:'#f5eacb',roughness:.82}),brass=new T.MeshStandardMaterial({color:'#c4a66e',roughness:.44,metalness:.25}),ink=new T.MeshStandardMaterial({color:'#665443',roughness:.8});
+ function add(g,m,x,y,z,name,parent=clock){const o=new T.Mesh(g,m);o.position.set(x,y,z);o.name=name;o.castShadow=false;o.receiveShadow=true;o.raycast=()=>{};parent.add(o);return o;}
+ function disk(r,depth,m,x,y,z,name){const o=add(new T.CylinderGeometry(r,r,depth,48),m,x,y,z,name);o.rotation.x=Math.PI/2;return o;}
+ // A round natural-wood face and softly rounded little pendulum tail.
+ const shape=new T.Shape();shape.moveTo(-.14,.03);shape.lineTo(-.14,-.23);shape.quadraticCurveTo(-.14,-.36,0,-.36);shape.quadraticCurveTo(.14,-.36,.14,-.23);shape.lineTo(.14,.03);shape.closePath();
+ add(new T.ExtrudeGeometry(shape,{depth:.085,bevelEnabled:true,bevelSize:.012,bevelThickness:.008,bevelSegments:3,steps:1}),wood,0,0,.008,'clock-rounded-pendulum-case');
+ disk(.247,.105,wood,0,.095,.0525,'clock-round-wood-case');disk(.218,.014,sage,0,.095,.111,'clock-sage-rim');disk(.183,.005,ivory,0,.095,.121,'clock-cream-dial');
+ const slot=add(new T.SphereGeometry(1,24,16),sage,0,-.225,.100,'clock-pendulum-inset');slot.scale.set(.092,.101,.006);
+ add(new T.BoxGeometry(.012,.115,.012),brass,0,-.19,.116,'clock-pendulum-stem');const bob=add(new T.SphereGeometry(.040,20,12),brass,0,-.258,.121,'clock-pendulum-bob');bob.scale.z=.25;
+ for(let n=0;n<12;n++){const a=n*Math.PI/6;const marker=add(new T.SphereGeometry(n%3===0?.010:.006,12,8),ink,Math.sin(a)*.155,.095+Math.cos(a)*.155,.127,'clock-dot-'+n);marker.scale.z=.25;}
+ function hand(length,angle,width,name){const h=add(new T.BoxGeometry(width,length,.004),ink,Math.sin(angle)*length/2,.095+Math.cos(angle)*length/2,.133,name);h.rotation.z=-angle;}
+ hand(.085,-.8,.013,'clock-hour-hand');hand(.132,.8,.008,'clock-minute-hand');disk(.013,.005,brass,0,.095,.138,'clock-spindle');
+ // Separate true wall-mounted half-pot; the existing floor plant is not reused.
+ const plant=new T.Group();plant.name='west-wall-trailing-planter';plant.position.set(-2.99,2.35,-.68);plant.rotation.y=Math.PI/2;group.add(plant);
+ const clay=new T.MeshStandardMaterial({color:'#c79e83',roughness:.9}),leafMat=new T.MeshStandardMaterial({color:'#839b75',roughness:.9}),leafLight=new T.MeshStandardMaterial({color:'#a6b88a',roughness:.9});
+ const plate=add(new T.BoxGeometry(.13,.15,.012),wood,0,.04,.006,'wall-planter-flush-backplate',plant);
+ const pot=add(new T.SphereGeometry(1,24,12,0,Math.PI,Math.PI/2,Math.PI/2),clay,0,.04,.012,'wall-planter-ceramic-pocket',plant);pot.scale.set(.145,.14,.14);
+ // A visible brass mounting button fixes the ornament to its flush backplate.
+ const button=add(new T.SphereGeometry(.018,12,8),brass,0,.14,.025,'wall-planter-mount',plant);button.scale.z=.35;
+ for(let strand=0;strand<3;strand++){
+   const points=[];for(let k=0;k<6;k++)points.push(new T.Vector3((strand-1)*.077+Math.sin(k*.9+strand)*.025,.055-k*(strand===1?.082:.063),.12+Math.sin(k*.7)*.017));
+   add(new T.TubeGeometry(new T.CatmullRomCurve3(points),24,.006,6,false),leafMat,0,0,0,'wall-planter-vine-'+strand,plant);
+   points.forEach((v,k)=>{if(!k)return;for(const side of[-1,1]){const leaf=add(new T.SphereGeometry(1,12,8),k%2?leafMat:leafLight,v.x+side*.027,v.y+.010,v.z+.008,'wall-planter-leaf',plant);leaf.scale.set(.039,.061,.012);leaf.rotation.z=-side*.65;}});
+ }
+ group.userData.wallSegment={minZ,maxZ,base:bottom,top};clock.userData.wallBackX=-2.990;clock.userData.permanent=true;plant.userData.wallBackX=-2.990;plant.userData.wallMounted=true;
+ return {group,clock,wall,plant};
 }
