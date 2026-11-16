@@ -975,14 +975,15 @@ function performanceParts(){
 }
 const PERFORMANCE_YAW=Math.PI-.42, performanceUp=new T.Vector3(0,1,0);
 function performanceFramePoint(x,y,z){return new T.Vector3(x,y,z).applyAxisAngle(performanceUp,PERFORMANCE_YAW).add(new T.Vector3(pos.x,standY(pos),pos.z));}
-function performanceCamera(){
- const probe=camera.clone(),focus=new T.Vector3(-1.25,2.02,-2.12);
- probe.position.copy(focus).add(new T.Vector3(.83,.31,4.25));probe.lookAt(focus);probe.zoom=1;probe.updateMatrixWorld(true);
+function performanceCamera(width=area.clientWidth){
+ const probe=camera.clone(),focus=new T.Vector3(-1.25,2.02,-2.12),wide=width>=600&&(camera.right-camera.left)/(camera.top-camera.bottom)>1.25;
+ // On wide screens, a lower viewing angle exposes the actual bow and lap below the window.
+ probe.position.copy(focus).add(new T.Vector3(.83,wide?-.35:.31,4.25));probe.lookAt(focus);probe.zoom=1;probe.updateMatrixWorld(true);
  const points=[];for(const x of[-2.40,-.10])for(const y of[1.06,3.01])for(const z of[-2.12,-1.88])points.push(new T.Vector3(x,y,z).applyMatrix4(probe.matrixWorldInverse));
  const minX=Math.min(...points.map(v=>v.x)),maxX=Math.max(...points.map(v=>v.x)),minY=Math.min(...points.map(v=>v.y)),maxY=Math.max(...points.map(v=>v.y));
- probe.zoom=Math.min((probe.right-probe.left)/((maxX-minX)*1.08),(probe.top-probe.bottom)/((maxY-minY)*1.08));probe.updateProjectionMatrix();
+ probe.zoom=Math.min((probe.right-probe.left)/((maxX-minX)*1.08),(probe.top-probe.bottom)/((maxY-minY)*1.08))*(wide?.96:1);probe.updateProjectionMatrix();
  const center=new T.Vector3((minX+maxX)/2,(minY+maxY)/2,0).applyMatrix4(probe.matrixWorld),v=center.project(probe),right=new T.Vector3(1,0,0).applyQuaternion(probe.quaternion),up=new T.Vector3(0,1,0).applyQuaternion(probe.quaternion);
- probe.position.addScaledVector(right,v.x*(probe.right-probe.left)/(2*probe.zoom));probe.position.addScaledVector(up,v.y*(probe.top-probe.bottom)/(2*probe.zoom));
+ probe.position.addScaledVector(right,v.x*(probe.right-probe.left)/(2*probe.zoom));probe.position.addScaledVector(up,v.y*(probe.top-probe.bottom)/(2*probe.zoom)-(wide?.10:0));
  return{position:probe.position,quaternion:probe.quaternion,zoom:probe.zoom};
 }
 function beginPerformanceApproach(){
