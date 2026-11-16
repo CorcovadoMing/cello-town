@@ -15,7 +15,7 @@ test('static compact task overlay stays inside the map and leaves pointer input 
  assert.match(hud,/<h2 id="quest-title">D 大調邀請<\/h2>/);
  assert.match(css,/left:clamp\(9px,2.8%,14px\);top:11px;width:16%/);
  assert.match(css,/\.quest-sign \.quest-sign-content\{pointer-events:none\}/);
- assert.match(html,/style.css\?v=44/);
+ assert.match(html,/style.css\?v=45-preview/);
 });
 test('one local font family is shared by town DOM and painted labels',()=>{
  const css=read('style.css'),app=read('app.js');
@@ -30,4 +30,11 @@ test('tracker and footer share a tighter two-level type scale and true bullets',
  assert.match(css,/min-height:17px;padding:0;gap:1px/);
  assert.ok(app.includes("li.querySelector('b').textContent='•'"));
  assert.match(app,/quest-status.*quest.ready/);
+});
+test('larger viewports get readable tracker text while phone defaults remain small',()=>{
+ const css=read('style.css');
+ assert.match(css,/@media\(min-width:700px\)/);
+ assert.match(css,/max-width:112px/);
+ assert.match(css,/#quest-title\{font-size:12px/);
+ assert.match(css,/font-size:11px;line-height:1.4/);
 });
