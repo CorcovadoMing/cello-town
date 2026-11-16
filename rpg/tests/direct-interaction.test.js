@@ -17,3 +17,16 @@ test('single teacher tap resolves conversation only after a valid nearby arrival
  assert.match(app,/if\(teacherWithinReach\(\)\)\{standUp\(\);target=null;talk\(\);\}else walkTo\(/);
  assert.doesNotMatch(app,/再點老師交談/);
 });
+test('a stand tap queues a single reachable practice interaction and no second-tap prompt',()=>{
+ const app=read('app.js'), pointer=app.slice(app.indexOf('canvas.onpointerdown='));
+ assert.match(pointer,/if\(standWithinReach\(\)\)\{standUp\(\);target=null;practice\(\);\}else walkTo\(standApproach,'stand'\)/);
+ assert.match(app,/else if\(kind==='stand'&&standWithinReach\(\)\)\{player.walking=false;practice\(\);\}/);
+ assert.doesNotMatch(app,/走近後，再點譜架/);
+});
+test('teacher dialogue drops stock fillers but preserves the learning instructions',()=>{
+ const app=read('app.js'), talk=app.slice(app.indexOf('function talk()'),app.indexOf('function practice()'));
+ assert.doesNotMatch(talk,/[：。！？']來，|，好嗎？|慢慢來/);
+ assert.match(talk,/我們從 D 大調的一個八度開始。/);
+ assert.match(talk,/先聽一遍，再跟著拍子拉，最後把提示收起來試試。/);
+ assert.doesNotMatch(app,/老師：慢慢來/);
+});

@@ -1,4 +1,4 @@
-import {umbrellaShape} from './rain-geometry.js?v=32';
+import {umbrellaShape} from './rain-geometry.js?v=35';
 // Original, ephemeral 8-bit scenery. No state, route, timing or storage ownership.
 import {drawPlayer} from './avatar.js?v=32';
 import {drawTeacher} from './teacher.js?v=32';

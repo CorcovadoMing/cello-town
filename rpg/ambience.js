@@ -1,4 +1,4 @@
-import {umbrellaTop,umbrellaCoversGround,canopyCoversGround} from './rain-geometry.js?v=32';
+import {umbrellaTop,umbrellaCoversGround,canopyCoversGround} from './rain-geometry.js?v=35';
 // Pure bounded animation state; seed supplied once by app, no saved-state changes.
 export function fishVariants(seed=1){let n=seed>>>0;const rand=()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;return n/4294967296;};const colors=['#ed923d','#f5dd91','#535a78','#d66f62','#757449'];for(let k=0;k<5;k++)rand();for(let i=colors.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[colors[i],colors[j]]=[colors[j],colors[i]];}return Array.from({length:3},(_,i)=>({color:colors[i],size:.8+rand()*.35,length:.78+rand()*.5,girth:.72+rand()*.65,fin:['round','fork','none'][Math.floor(rand()*3)]}));}
 const defaultFish=fishVariants(1);

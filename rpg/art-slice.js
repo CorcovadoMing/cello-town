@@ -1,5 +1,5 @@
 import {MUSIC_ROOM_APPROACH} from './music-room-art.js?v=33';
-import {treeLeaves,leafOutline} from './rain-geometry.js?v=32';
+import {treeLeaves,leafOutline} from './rain-geometry.js?v=35';
 // Private art-direction study. Original vector pixels, no image assets or filters.
 // These caches affect drawing only: world anchors and gameplay stay in app.js.
 export function createTownArt(makeCanvas,trees){
