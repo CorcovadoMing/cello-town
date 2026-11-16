@@ -89,3 +89,39 @@ html{overscroll-behavior-y:none}
  .map-stage .quest-hud li,.map-stage .quest-hud .quest-return{font-size:10px}
  .map-stage .quest-hud li b{height:12px}
 }
+
+/* 037 private design preview: a practice sign in the map frame, never over the world. */
+.quest-sign{position:relative;margin:0;color:#39452c;background:transparent;border:0;border-bottom:1px solid #bcb68c;font:13px/1.5 system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif}
+.quest-sign[hidden]{display:none}
+.quest-sign summary{display:flex;align-items:center;gap:10px;min-height:60px;padding:8px 16px;cursor:pointer;list-style:none;touch-action:manipulation}
+.quest-sign summary::-webkit-details-marker{display:none}
+.quest-sign summary:focus-visible{outline:3px solid #657645;outline-offset:-4px}
+.quest-sign-mark{display:grid;place-items:center;width:24px;height:28px;flex:none;color:#657444;font:24px/1 Georgia,serif;border-bottom:2px solid #a7ab78}
+.quest-sign-copy{flex:1;min-width:0}
+.quest-sign-title{display:flex;align-items:baseline;gap:12px;font:600 14px/1.45 "Songti TC","Noto Serif CJK TC","PMingLiU",serif;color:#39452c}
+.quest-sign #quest-count{font:11px/1.5 ui-monospace,monospace;color:#3b482e}
+.quest-sign #quest-status{display:block;font-size:13px;line-height:1.5;color:#455132;margin:0;min-height:0}
+.quest-toggle{font-size:22px;color:#657444;transition:transform .15s}
+.quest-sign[open] .quest-toggle{transform:rotate(180deg)}
+.quest-sign-content{margin:0 16px 10px 50px;padding-top:8px;border-top:1px dashed #b9b58b}
+.quest-sign ol{display:flex;flex-wrap:wrap;gap:5px 24px;padding:0;margin:0;list-style:none}
+.quest-sign li{display:flex;gap:6px;align-items:center;font-size:13px;line-height:1.7;margin:0}
+.quest-sign li b{background:none;border:0;width:16px;height:auto;color:#69754a;font-size:15px}
+.quest-sign li.current{font-weight:600;color:#405124}
+.quest-sign li.done span{color:#3f4c35;text-decoration:line-through}
+.quest-sign .quest-return{display:flex;align-items:center;gap:9px;margin:8px 0 0;color:#3f4429;font-size:13px}
+.quest-sign .quest-return[hidden]{display:none}
+.quest-sign .quest-return b{color:#82631b;text-shadow:none;font-size:24px}
+.quest-sign .quest-return small{display:block;color:#3f4c35;font-size:12px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:620px){.quest-sign summary{padding:8px 11px;gap:8px}.quest-sign-title{font-size:13px;gap:10px}.quest-sign #quest-status{font-size:12px}.quest-sign-content{margin-left:43px;margin-right:11px}.quest-sign ol{display:block}.quest-sign li{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.quest-toggle{transition:none}}
+
+/* The closed sign is only one quiet line; the quest title lives in its disclosure. */
+.quest-sign summary{min-height:38px;padding:6px 14px;gap:8px}
+.quest-sign-mark{width:15px;height:20px;font-size:17px;border:0}
+.quest-sign #quest-status{flex:1;min-width:0;font-size:12px;white-space:normal}
+.quest-sign .quest-toggle{font-size:14px;transition:none}
+.quest-sign .quest-sign-title{font-size:13px;margin:0 0 6px;font-weight:600}
+.quest-sign-content{margin-left:37px}
+@media(max-width:620px){.quest-sign summary{min-height:36px;padding:5px 11px;gap:7px}.quest-sign #quest-status{font-size:12px}.quest-sign-content{margin-left:33px}}
