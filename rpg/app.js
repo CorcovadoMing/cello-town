@@ -28,11 +28,18 @@ let state=fresh(),storeOK=true;try{const raw=localStorage.getItem(KEY);if(raw)st
 const player={x:460,y:425,dir:1,facing:'front',walking:false};const npc={x:303,y:290,kind:'teacher'},stand={x:615,y:404},garden={x:710,y:460};let keys=new Set(),target=null,last=0,near=null,task='listen',revealed=false,demoDone=false,practiced=false,context,timer,mode=null,voices=new Set(),step=0,next=0,generation=0,demoUntil=0,releaseSession=()=>{},clockTime=0,clockSeen=0,audioNode=null,workletAck=null;
 const returnURL=roomReturnURL(window.location.href),doorApproach=createDoorApproach(Boolean(returnURL));
 if(returnURL){Object.assign(player,ROOM_RETURN);history.replaceState(history.state,'',returnURL.href);}
+// In-game scene changes share one history slot; native Back stays untouched.
+const townBrand=document.querySelector('a.brand');
+townBrand?.addEventListener('click',e=>{
+ if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+ const url=new URL(townBrand.href,location.href);if(url.origin!==location.origin)return;
+ e.preventDefault();location.replace(url.href);
+});
 let enteringRoom=false;
 function enterRoom(){
  if(enteringRoom||dlg.open)return;
  enteringRoom=true;doorApproach.disarm();target=null;keys.clear();player.walking=false;
- window.location.assign(new URL('./3D/?from=town',window.location.href).href);
+ window.location.replace(new URL('./3D/?from=town',window.location.href).href);
 }
 const TREE_LAYOUT=[[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1.6],[870,103,1.8],[930,178,1.4],[65,250,1.8],[139,279,1.2],[848,281,1.4],[919,356,1.2],[340,476,1.2],[585,495,1.3],[690,500,1]];
 const LOUNGE_SOLIDS=[LOUNGE_LAYOUT.table.solid,...LOUNGE_LAYOUT.seats.map(c=>c.solid)];

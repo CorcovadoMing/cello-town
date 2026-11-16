@@ -57,3 +57,11 @@ test('touch targets extend past the door and treads without capturing surroundin
  assert.ok(!roomDoorHit(634,225));assert.ok(!roomDoorHit(725,195));assert.ok(!roomDoorHit(676,276));
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');assert.doesNotMatch(html,/id="room-enter"/);
 });
+
+test('door and unmodified same-origin brand clicks replace current scene history',()=>{
+ const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+ assert.ok(app.includes("window.location.replace(new URL('./3D/?from=town',window.location.href).href)"));
+ assert.ok(app.includes('e.metaKey||e.ctrlKey||e.shiftKey||e.altKey'));
+ assert.ok(app.includes('url.origin!==location.origin'));
+ assert.doesNotMatch(app,/location\.assign|history\.pushState|addEventListener\(['"]popstate/);
+});
