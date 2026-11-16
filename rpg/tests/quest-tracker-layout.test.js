@@ -22,7 +22,6 @@ test('one local font family is shared by town DOM and painted labels',()=>{
  assert.ok(css.includes('body,body *{font-family:var(--town-font)!important}'));
  assert.ok(app.includes("getPropertyValue('--town-font')"));
  assert.ok(app.includes('g.font=`bold 13px ${townFont}`'));
- assert.ok(app.includes('g.font=`900 40px ${townFont}`'));
 });
 test('tracker and footer share a tighter two-level type scale and true bullets',()=>{
  const css=read('style.css'),app=read('app.js');

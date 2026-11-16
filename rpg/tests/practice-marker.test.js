@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {runInNewContext} from 'node:vm';
+import {createContext,runInContext,runInNewContext} from 'node:vm';
 import {accept,complete,fresh,turnIn} from '../model.js';
 const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const art=app.slice(app.indexOf('function drawStandMarker('),app.indexOf('function drawPracticeStand('));
@@ -19,4 +19,21 @@ test('practice arrow stays aimed at the stand until all practices complete',()=>
   assert.notDeepEqual(capture(state,500),still);
  }
  assert.match(app,/drawQuestMarker\(t\);drawStandMarker\(t\)/);
+});
+
+test('teacher status uses a noninteractive world-aligned vector overlay',()=>{
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8'),css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+ assert.match(html,/<svg class="teacher-marker-layer" viewBox="0 0 960 560" aria-hidden="true"/);
+ for(const kind of ['exclaim','question','spark'])assert.ok(html.includes('data-icon="'+kind+'"'));
+ assert.match(css,/\.teacher-marker-layer\{position:absolute;inset:0;width:100%;height:100%;pointer-events:none\}/);
+ const code=app.slice(app.indexOf('const teacherBadge='),app.indexOf('function drawStandMarker('));
+ const badge={dataset:{},transforms:[],setAttribute(k,v){assert.equal(k,'transform');this.transforms.push(v);}};
+ let q={marker:'!',markerTone:'gold',ready:false};
+ const context=createContext({$:(id)=>{assert.equal(id,'teacher-badge');return badge;},questView:()=>q,state:{},npc:{x:300,y:200},reducedMotion:{matches:true}});
+ runInContext(code+';drawQuestMarker(100);drawQuestMarker(110)',context);
+ assert.deepEqual(badge.dataset,{kind:'exclaim',tone:'gold'});assert.deepEqual(badge.transforms,['translate(300.00 135.00)']);
+ q={marker:'?',markerTone:'gray',ready:false};context.npc.x=320;runInContext('drawQuestMarker(150)',context);
+ assert.deepEqual(badge.dataset,{kind:'question',tone:'gray'});assert.equal(badge.transforms.at(-1),'translate(320.00 135.00)');
+ q={marker:'?',markerTone:'gold',ready:true};runInContext('drawQuestMarker(160)',context);assert.deepEqual(badge.dataset,{kind:'ready',tone:'gold'});
+ q={marker:null};runInContext('drawQuestMarker(170)',context);assert.equal(badge.dataset.kind,'');
 });

@@ -156,19 +156,17 @@ function person(x,y,t,{teacher=false,walking=false,facing='front'}={}){
  drawPlayer(g,{x,y,t,walking,facing,reduced:reducedMotion.matches});
 }
 function label(text,x,y,color='#fff7df'){g.font=`bold 13px ${townFont}`;g.textAlign='center';g.fillStyle='#294c35dd';const w=g.measureText(text).width+20;g.fillRect(x-w/2,y-15,w,24);g.fillStyle=color;g.fillText(text,x,y+2);}
+// Draw the status icon as vectors above the pixel-art canvas, in the same world coordinates.
+const teacherBadge=$('teacher-badge');
+let teacherBadgeKey='',teacherBadgePosition='';
 function drawQuestMarker(t){
-  const quest=questView(state),mark=quest.marker;
-  if(!mark)return;
-  const y=npc.y-65+(reducedMotion.matches?0:Math.sin(t/420)*2);
-  g.save();
-  // A large golden glyph stays over the teacher until explicit turn-in.
-  g.font=`900 40px ${townFont}`;g.textAlign='center';g.textBaseline='alphabetic';
-  g.lineJoin='round';g.lineWidth=6;g.strokeStyle=quest.markerTone==='gold'?'#56451d':'#3f4943';
-  g.strokeText(mark,npc.x,y);g.fillStyle=quest.markerTone==='gold'?'#ffd66d':'#b9bfb7';g.fillText(mark,npc.x,y);
-  if(mark==='?'&&quest.ready){
-    rect(npc.x+20,y-29,3,9,'#fff0b0');rect(npc.x+17,y-26,9,3,'#fff0b0');
-  }
-  g.restore();
+ const {marker,markerTone,ready}=questView(state);
+ const key=marker==='!'?'exclaim':marker==='?'?(ready?'ready':'question'):'';
+ if(key!==teacherBadgeKey){teacherBadgeKey=key;teacherBadge.dataset.kind=key;teacherBadge.dataset.tone=key&&markerTone==='gold'?'gold':'gray';}
+ if(!key)return;
+ const y=npc.y-65+(reducedMotion.matches?0:Math.sin(t/420)*2);
+ const next=`translate(${npc.x.toFixed(2)} ${y.toFixed(2)})`;
+ if(next!==teacherBadgePosition){teacherBadgePosition=next;teacherBadge.setAttribute('transform',next);}
 }
 function drawStandMarker(t){
  if(state.phase!=='active'||state.steps.length===3)return;
