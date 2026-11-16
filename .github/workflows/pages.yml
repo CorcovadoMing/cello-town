@@ -50,7 +50,7 @@ jobs:
           node --check app.js
           cd ../..
           mkdir -p _site/3D/vendor
-          cp .preview-3d/3D/{index.html,style.css,app.js,state.js} _site/3D/
+          cp .preview-3d/3D/{index.html,style.css,app.js,state.js,room-polish.js,window-landscape.js,rural-window.webp} _site/3D/
           cp .preview-3d/3D/vendor/{three.module.js,SVGRenderer.js,Projector.js,THREE-LICENSE.txt} _site/3D/vendor/
           test -s _site/3D/index.html
       - uses: actions/upload-pages-artifact@v3
