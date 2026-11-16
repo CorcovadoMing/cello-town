@@ -1,3 +1,4 @@
+import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=47-preview';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=46';
 import {createTerrainArt} from './terrain-art.js?v=32';
 import {createRainSystem} from './rain-system.js?v=35';
@@ -45,6 +46,7 @@ const TREE_LAYOUT=[[45,99,1.5],[115,105,1.3],[210,83,1.2],[325,87,1.4],[435,91,1
 const LOUNGE_SOLIDS=[LOUNGE_LAYOUT.table.solid,...LOUNGE_LAYOUT.seats.map(c=>c.solid)];
 const navigation=createNavigation({trees:TREE_LAYOUT.map(([x,y,s])=>({x:x+.5*s,y:y+32*s})),blocked});
 const teacherActor=createTeacher();
+const quietChat=createQuietChat();let quietChatPose={bubbles:[]};
 const lounge=createLounge({navigation,seats:LOUNGE_LAYOUT.seats});let loungePose=lounge.state,playerSeated=false,selectedChair=0,waitingForChair=false;
 const chairs=LOUNGE_LAYOUT.seats;
 const standApproach={x:stand.x,y:stand.y+28};
@@ -239,7 +241,7 @@ for(let i=0;i<18;i++){const x=370+(i*71)%400,y=395+(i*37)%110;
 drawBenchLife(g,t,reducedMotion.matches,petFrame);
 if(gameWeather.key!=='rain')drawTownWeather(g,t,gameWeather.key,reducedMotion.matches,RAIN_EXCLUSIONS);
 // Ground anchors order visible silhouettes; collision footprints remain separate.
-let entities=[{y:petFrame.life.cat.groundY,draw:()=>drawGardenLife(g,t,reducedMotion.matches,petFrame)},...(petFrame.dogActive?[{y:petFrame.dog.y,draw:()=>drawRainDog(g,petFrame.dog)}]:[]),...(petFrame.benchCatActive?[{y:petFrame.benchCat.y,draw:()=>drawRainBenchCat(g,petFrame.benchCat)}]:[]),{y:stand.y,draw:drawPracticeStand},{y:MUSIC_ROOM.depth,draw:()=>drawMusicRoom(g)},{y:231,draw:()=>{chairs.forEach(chair=>drawLoungeChair(g,chair));}},{y:245,draw:()=>drawLoungeTable(g,{rain:gameWeather.key==='rain',readingSide:loungePose.reading&&!dlg.open?chairs[loungePose.seatIndex].id:null})},...[player,npc].flatMap((actor,i)=>rainFrame.actorStage[i]!=='closed'?[{y:actor.y+21,draw:()=>drawRainUmbrella(g,{...actor,kind:i===1?'teacher':'player'},rainFrame.actorOpen[i],rainFrame.actorStage[i])}]:[]),...TREE_LAYOUT.map((a,i)=>({y:a[1]+46*a[2],draw:()=>tree(...a,t,i+1)})),{y:npc.y,draw:()=>person(npc.x,npc.y,t,{teacher:true})},{y:player.y,draw:()=>person(player.x,player.y,t,player)}];entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());if(gameWeather.key==='rain')drawRainFrame(g,rainFrame);label('老師',npc.x,npc.y+24);drawQuestMarker(t);drawStandMarker(t);if(near&&!['chair','seated'].includes(near)){g.strokeStyle='#fff2c3';g.lineWidth=2;g.beginPath();g.ellipse(near==='npc'?npc.x:near==='garden'?garden.x:stand.x,near==='npc'?npc.y:near==='garden'?garden.y:stand.y,24,10,0,0,Math.PI*2);g.stroke();}}
+let entities=[{y:petFrame.life.cat.groundY,draw:()=>drawGardenLife(g,t,reducedMotion.matches,petFrame)},...(petFrame.dogActive?[{y:petFrame.dog.y,draw:()=>drawRainDog(g,petFrame.dog)}]:[]),...(petFrame.benchCatActive?[{y:petFrame.benchCat.y,draw:()=>drawRainBenchCat(g,petFrame.benchCat)}]:[]),{y:stand.y,draw:drawPracticeStand},{y:MUSIC_ROOM.depth,draw:()=>drawMusicRoom(g)},{y:231,draw:()=>{chairs.forEach(chair=>drawLoungeChair(g,chair));}},{y:245,draw:()=>drawLoungeTable(g,{rain:gameWeather.key==='rain',readingSide:loungePose.reading&&!dlg.open?chairs[loungePose.seatIndex].id:null})},...[player,npc].flatMap((actor,i)=>rainFrame.actorStage[i]!=='closed'?[{y:actor.y+21,draw:()=>drawRainUmbrella(g,{...actor,kind:i===1?'teacher':'player'},rainFrame.actorOpen[i],rainFrame.actorStage[i])}]:[]),...TREE_LAYOUT.map((a,i)=>({y:a[1]+46*a[2],draw:()=>tree(...a,t,i+1)})),{y:npc.y,draw:()=>person(npc.x,npc.y,t,{teacher:true})},{y:player.y,draw:()=>person(player.x,player.y,t,player)}];entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());if(gameWeather.key==='rain')drawRainFrame(g,rainFrame);label('老師',npc.x,npc.y+24);drawQuestMarker(t);drawStandMarker(t);if(!dlg.open)drawQuietChat(g,quietChatPose.bubbles,{teacher:npc,player});if(near&&!['chair','seated'].includes(near)){g.strokeStyle='#fff2c3';g.lineWidth=2;g.beginPath();g.ellipse(near==='npc'?npc.x:near==='garden'?garden.x:stand.x,near==='npc'?npc.y:near==='garden'?garden.y:stand.y,24,10,0,0,Math.PI*2);g.stroke();}}
 function teacherWithinReach(){return Math.hypot(player.x-npc.x,player.y-npc.y)<65;}
 function standWithinReach(){return Math.hypot(player.x-stand.x,player.y-stand.y)<48;}
 function arriveAtTarget(){
@@ -251,12 +253,12 @@ function arriveAtTarget(){
 }
 function blocked(x,y,allowGarden=false){return roomBlocks(x,y)||(Math.abs(x-stand.x)<=14&&Math.abs(y-stand.y)<=4)||LOUNGE_SOLIDS.some(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)||x<30||x>930||y<130||y>542||(x<275&&y>380)||(!allowGarden&&x>730&&x<910&&y>395)||(x>174&&x<330&&y>170&&y<240);}
 function update(dt){
- const teacher=teacherActor.update(dt,{practiceActive:practiceOpen&&dlg.open,dialogOpen:dlg.open,holdForInteraction:lounge.state.borrowed||target?.kind==='npc',reducedMotion:reducedMotion.matches,player});
- loungePose=lounge.update(dt,{teacher,player,playerSeated,playerSeatIndex:(playerSeated||waitingForChair||target?.kind==='chair')?selectedChair:null,practice:practiceOpen&&dlg.open,dialog:dlg.open&&!practiceOpen,questApproach:target?.kind==='npc',rain:gameWeather.key==='rain',reduced:reducedMotion.matches});
+ const teacher=teacherActor.update(dt,{practiceActive:practiceOpen&&dlg.open,dialogOpen:dlg.open,holdForInteraction:quietChat.active||lounge.state.borrowed||target?.kind==='npc',reducedMotion:reducedMotion.matches,player});
+ loungePose=lounge.update(dt,{teacher,player,playerSeated,playerSeatIndex:(playerSeated||waitingForChair||target?.kind==='chair')?selectedChair:null,practice:practiceOpen&&dlg.open,dialog:(dlg.open&&!practiceOpen)||quietChat.active,questApproach:target?.kind==='npc',rain:gameWeather.key==='rain',reduced:reducedMotion.matches});
  Object.assign(npc,loungePose.borrowed?loungePose.pose:teacher);
  if(waitingForChair&&!dlg.open)sitDown();
- if(loungePose.chat)toast('老師：留一點空白，下一個音會更自在。');
- if(dlg.open){player.walking=false;return;}
+
+ if(dlg.open){player.walking=false;quietChatPose=quietChat.update(dt,{teacher:npc,player,modal:true});return;}
  let dx=(keys.has('right')?1:0)-(keys.has('left')?1:0),dy=(keys.has('down')?1:0)-(keys.has('up')?1:0),speed=150*dt;
  const oldX=player.x,oldY=player.y;
  if(dx||dy){
@@ -277,6 +279,8 @@ function update(dt){
  if(doorApproach.step({x:oldX,y:oldY},player,dy<0&&keys.has('up'))){enterRoom();return;}
  player.walking=Math.hypot(player.x-oldX,player.y-oldY)>.00001;
  player.facing=facingForMotion(player.facing,player.x-oldX,player.y-oldY);if(player.x!==oldX)player.dir=player.x>oldX?1:-1;if(playerSeated){player.facing=chairs[selectedChair].facing;player.walking=false;}
+ quietChatPose=quietChat.update(dt,{teacher:npc,player,input:keys.size>0,navigating:!!target,modal:dlg.open,practice:practiceOpen,seatedChat:loungePose.chat,seated:playerSeated,reduced:reducedMotion.matches});
+ if(quietChatPose.facing&&!playerSeated)player.facing=quietChatPose.facing;
  near=playerSeated?'seated':standWithinReach()?'stand':teacherWithinReach()?'npc':Math.hypot(player.x-garden.x,player.y-garden.y)<55?'garden':chairs.some(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y)<38)?'chair':null;
  const atDoor=roomDoorNearby(player)&&!playerSeated;
  $('location').textContent=atDoor?'琴房門前':near==='npc'?'老師身旁':near==='stand'?'戶外譜架前':near==='garden'?'花園入口':'晨光小徑';
