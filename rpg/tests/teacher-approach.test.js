@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import{createTeacherApproach}from'../teacher-approach.js';import{createQuietChat}from'../quiet-chat.js';
+const teacher={x:300,y:300,walking:false};const outside={x:370,y:300},inside={x:360,y:300,facing:'front'};
+const step=(c,extra={})=>c.update(.05,{before:inside,player:inside,teacher,...extra});
+const enter=c=>step(c,{before:outside});
+test('intentional approach waits three quiet seconds and opens only once',()=>{const c=createTeacherApproach();assert.equal(enter(c),false);for(let i=0;i<59;i++)assert.equal(step(c),false);assert.equal(step(c),true);for(let i=0;i<100;i++)assert.equal(step(c),false);});
+test('teacher approaching a stationary player never opens task dialogue',()=>{const c=createTeacherApproach();for(let i=0;i<200;i++)assert.equal(step(c),false);});
+test('movement, modal, seating, portal and leaving cancel a pending wait; fresh approach can rearm',()=>{for(const extra of[{input:true},{navigating:true},{blocked:true},{player:outside}]){const c=createTeacherApproach();enter(c);step(c);step(c,extra);for(let i=0;i<100;i++)assert.equal(step(c),false);enter(c);for(let i=0;i<59;i++)step(c);assert.equal(step(c),true);}});
+test('teacher arrival remembered while student moves, then turns only after stopping',()=>{const c=createQuietChat(),p={x:360,y:300,facing:'front',walking:true};c.update(.05,{teacher:{x:280,y:300,walking:true},player:p,input:true});c.update(.05,{teacher:{x:290,y:300,walking:true},player:p,input:true});for(let i=0;i<30;i++)assert.equal(c.update(.05,{teacher,player:p,input:true}).facing,null);p.walking=false;assert.equal(c.update(.05,{teacher,player:p}).facing,'left');});

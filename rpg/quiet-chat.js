@@ -12,11 +12,11 @@ export function createQuietChat(){
   cooldown=Math.max(0,cooldown-dt);approachWindow=Math.max(0,approachWindow-dt);
   const distance=Math.hypot(teacher.x-player.x,teacher.y-player.y);
   const teacherClosed=previous&&Math.hypot(previous.x-player.x,previous.y-player.y)>distance+.01;
-  if(teacherClosed&&teacher.walking&&distance<100)approachWindow=1;
+  if(teacherClosed&&teacher.walking&&distance<100)approachWindow=8;
   previous={x:teacher.x,y:teacher.y};
   if(distance>135){consumed=false;approachWindow=0;}
   const busy=input||navigating||player.walking||modal||practice;
-  if(busy||distance>(seated?125:100)){elapsed=-1;if(busy)approachWindow=0;return {facing:null,bubbles:[]};}
+  if(busy||distance>(seated?125:100)){elapsed=-1;if(modal||practice)approachWindow=0;return {facing:null,bubbles:[]};}
   let facing=null;
   const arrival=approachWindow>0&&!teacher.walking&&distance<=92&&!consumed;
   if(cooldown===0&&(arrival||seatedChat)){
