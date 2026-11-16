@@ -1,5 +1,5 @@
 import * as T from './vendor/three.module.js';
-import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=14';
+import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=15';
 const $=id=>document.getElementById(id),area=$('scene'),status=$('save-status');let state=defaults();try{state=normalize(JSON.parse(localStorage.getItem(KEY)));}catch{status.textContent='無法讀取本機設定，仍可自由試穿。';}
 installPullToRefreshGuard();
 const HAIR_ACCESSORY={bow:'#c88f83',beret:'#718f83',tie:'#d9b77d'};
@@ -160,7 +160,7 @@ roomExit.traverse(o=>{if(o.isMesh)o.userData.station='exit';});
 const cameFromTown=new URL(location.href).searchParams.get('from')==='town';
 if(cameFromTown){const u=new URL(location.href);u.searchParams.delete('from');history.replaceState(history.state,'',u);}
 let exitArmed=!cameFromTown,exitNavigating=false;
-function leaveRoom(){if(exitNavigating)return;exitNavigating=true;location.assign('../?from=room');}
+function leaveRoom(){if(exitNavigating)return;exitNavigating=true;location.replace('../?from=room');}
 // Window: one local coordinate system and a shared arched aperture.
 const windowGroup=new T.Group();windowGroup.position.set(-1.25,1.1,-2.12);scene.add(windowGroup);
 const WINDOW_APERTURE={half:.76,spring:.93,outerHalf:.87,sill:.025};
