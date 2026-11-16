@@ -3,7 +3,10 @@
 export const MUSIC_ROOM=Object.freeze({x:580,y:126,w:196,h:113,depth:239});
 export const MUSIC_ROOM_DOOR=Object.freeze({x:MUSIC_ROOM.x+73,y:MUSIC_ROOM.y+43,w:46,h:63});
 const doorCenter=MUSIC_ROOM_DOOR.x+MUSIC_ROOM_DOOR.w/2;
-export const MUSIC_ROOM_APPROACH=Object.freeze({centerX:doorCenter,landing:Object.freeze({x:doorCenter-32,y:MUSIC_ROOM.depth+4,w:64,h:20}),soil:Object.freeze({x:doorCenter-38,y:MUSIC_ROOM.depth+24,w:76,h:298-(MUSIC_ROOM.depth+24)})});
+// Lay the ground under the front wall and the separated wooden treads.
+// The wall draws over that overlap; landing and collision geometry stay put.
+const soilStart=MUSIC_ROOM.depth-4;
+export const MUSIC_ROOM_APPROACH=Object.freeze({centerX:doorCenter,landing:Object.freeze({x:doorCenter-32,y:MUSIC_ROOM.depth+4,w:64,h:20}),soil:Object.freeze({x:doorCenter-38,y:soilStart,w:76,h:298-soilStart})});
 const ROOF_BANDS=[[560,114,236,12,'#526c5b'],[572,100,211,14,'#62806a'],[587,86,181,14,'#759175'],[603,73,150,13,'#89a17f'],[620,62,116,11,'#9db18c'],[618,60,120,3,'#c0c69b']];
 export function musicRoomRainCanopy(){const columns=new Float32Array(236);columns.fill(Infinity);for(const[x,y,w]of ROOF_BANDS)for(let k=x;k<x+w;k++)columns[k-560]=Math.min(columns[k-560],y);for(let x=714;x<745;x++)columns[x-560]=40;return {kind:'roof',left:560,columns,groundMin:126,groundMax:239};}
 export function roomBlocks(x,y){return x>=580&&x<=776&&y>=126&&y<=239;}

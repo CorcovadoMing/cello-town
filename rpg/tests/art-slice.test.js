@@ -29,7 +29,7 @@ test('connected road mouths have continuous soil, with perimeter and texture pre
  // Both former three-pixel end caps disappear at each mouth, not at grass edges.
  for(const [x,y,w]of [[428,367,72],[638,295,76]])for(let dy=0;dy<6;dy++)for(let dx=0;dx<w;dx++)assert.equal(pixel(x+dx,y+dy),'#d0c298');
  // Core width agrees with playable soil; irregular margins blend outside it.
- for(const [x,y] of [[170,298],[619,300],[695,298],[789,300],[427,369],[500,367],[428,557],[638,263]])assert.equal(pixel(x,y),'#d0c298');
+ for(const [x,y] of [[170,298],[619,300],[695,298],[789,300],[427,369],[500,367],[428,557],[638,263],[638,238]])assert.equal(pixel(x,y),'#d0c298');
  const rim=new Set(['#cbbe93','#cec095','#b6b58a','#bdba8e']);
  const depth=new Set();
  for(let x=171;x<615;x++){let d=0;while(d<14&&rim.has(pixel(x,297-d)))d++;depth.add(d);}
@@ -37,7 +37,8 @@ test('connected road mouths have continuous soil, with perimeter and texture pre
  assert.equal(pixel(310,283),null);
  assert.equal(paint.filter(a=>a[1]==='#beae83').length,27);
  const specks=paint.filter(a=>['#e3d5ae','#b4a57c'].includes(a[1]));
- const expected=[];for(const [px,py,pw,ph]of [[170,298,620,72],[428,370,72,190],[638,263,76,35]])for(let i=0;i<Math.floor(pw*ph/750);i++)expected.push(['fillRect',i%2?'#e3d5ae':'#b4a57c',px+8+(i*47)%(pw-16),py+8+(i*31)%(ph-16),2+i%2,1]);
+ const {x,y,w,h}=MUSIC_ROOM_APPROACH.soil;
+ const expected=[];for(const [px,py,pw,ph]of [[170,298,620,72],[428,370,72,190],[x,y,w,h]])for(let i=0;i<Math.floor(pw*ph/750);i++)expected.push(['fillRect',i%2?'#e3d5ae':'#b4a57c',px+8+(i*47)%(pw-16),py+8+(i*31)%(ph-16),2+i%2,1]);
  assert.deepEqual(specks,expected);
 });
 
