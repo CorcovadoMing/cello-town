@@ -6,3 +6,10 @@ test('intentional approach waits three quiet seconds and opens only once',()=>{c
 test('teacher approaching a stationary player never opens task dialogue',()=>{const c=createTeacherApproach();for(let i=0;i<200;i++)assert.equal(step(c),false);});
 test('movement, modal, seating, portal and leaving cancel a pending wait; fresh approach can rearm',()=>{for(const extra of[{input:true},{navigating:true},{blocked:true},{player:outside}]){const c=createTeacherApproach();enter(c);step(c);step(c,extra);for(let i=0;i<100;i++)assert.equal(step(c),false);enter(c);for(let i=0;i<59;i++)step(c);assert.equal(step(c),true);}});
 test('teacher arrival remembered while student moves, then turns only after stopping',()=>{const c=createQuietChat(),p={x:360,y:300,facing:'front',walking:true};c.update(.05,{teacher:{x:280,y:300,walking:true},player:p,input:true});c.update(.05,{teacher:{x:290,y:300,walking:true},player:p,input:true});for(let i=0;i<30;i++)assert.equal(c.update(.05,{teacher,player:p,input:true}).facing,null);p.walking=false;assert.equal(c.update(.05,{teacher,player:p}).facing,'left');});
+test('teacher arrival turns the idle student even while pictogram bubbles are cooling down',()=>{
+ const q=createQuietChat(),player={x:0,y:0,facing:'front'};
+ const step=(x,walking)=>q.update(.05,{teacher:{x,y:0,walking},player});
+ step(110,true);step(92,true);assert.equal(step(91,false).facing,'right');
+ step(102,true);step(89,true);const next=step(88,false);
+ assert.equal(next.facing,'right');assert.deepEqual(next.bubbles,[]);
+});

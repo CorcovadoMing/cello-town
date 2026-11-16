@@ -17,9 +17,11 @@ export function createQuietChat(){
   if(distance>135){consumed=false;approachWindow=0;}
   const busy=input||navigating||player.walking||modal||practice;
   if(busy||distance>(seated?125:100)){elapsed=-1;if(modal||practice)approachWindow=0;return {facing:null,bubbles:[]};}
-  let facing=null;
-  const arrival=approachWindow>0&&!teacher.walking&&distance<=92&&!consumed;
-  if(cooldown===0&&(arrival||seatedChat)){
+  const arrived=approachWindow>0&&!teacher.walking&&distance<=92;
+  // Looking at the teacher is independent of the bubble cadence.
+  let facing=arrived?teacherFacing(player.facing,teacher.x-player.x,teacher.y-player.y):null;
+  if(arrived)approachWindow=0;
+  if(cooldown===0&&((arrived&&!consumed)||seatedChat)){
    elapsed=0;cooldown=24;consumed=true;approachWindow=0;variant++;
    facing=teacherFacing(player.facing,teacher.x-player.x,teacher.y-player.y);
   }else if(elapsed>=0){elapsed+=dt;if(elapsed>6.6)elapsed=-1;}
