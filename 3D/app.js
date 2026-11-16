@@ -553,6 +553,7 @@ function createCello() {
 const cello=createCello();
 cello.position.set(-2.27,.2,-1.4);
 cello.rotation.z=-.12;
+cello.scale.setScalar(.75);cello.updateMatrixWorld(true);cello.position.y+=.015-new T.Box3().setFromObject(cello).min.y;
 scene.add(cello);cello.traverse(o=>{o.userData.station='cello';});
 // Plant and reading stool on distant margins.
 // A feathered endpin-to-lower-bout footprint follows the same sun projection.
@@ -920,7 +921,7 @@ function anchorEditor(){if(!previewMode||previewMode==='records'||previewMode===
  x=Math.max(r.left+10,Math.min(r.right-panel.offsetWidth-10,x));y=Math.max(r.top+76,Math.min(r.bottom-panel.offsetHeight-10,y));
  Object.assign(panel.style,{left:(x-m.left)+'px',top:(y-m.top)+'px',right:'auto',bottom:'auto'});
 }
-function tickRoomCamera(t){if(cameraMotion){const motion=cameraMotion,u=Math.min(1,Math.max(0,(t-motion.start)/motion.duration)),ease=u*u*(3-2*u);camera.position.lerpVectors(motion.from,motion.to,ease);camera.zoom=motion.fromZoom+(motion.toZoom-motion.fromZoom)*ease;if(motion.fromQuaternion.equals(motion.toQuaternion))camera.quaternion.copy(motion.toQuaternion);else camera.quaternion.slerpQuaternions(motion.fromQuaternion,motion.toQuaternion,ease);camera.updateProjectionMatrix();if(u===1){camera.position.copy(motion.to);camera.zoom=motion.toZoom;camera.quaternion.copy(motion.toQuaternion);cameraMotion=null;}}if(previewMode)anchorEditor();}
+function tickRoomCamera(t,dt=null){if(cameraMotion){const motion=cameraMotion;if(motion.frameTimed&&dt!==null)motion.elapsed=(motion.elapsed||0)+Math.min(.05,Math.max(0,dt))*1000;const u=Math.min(1,Math.max(0,(motion.frameTimed&&dt!==null?motion.elapsed:t-motion.start)/motion.duration)),ease=u*u*(3-2*u);camera.position.lerpVectors(motion.from,motion.to,ease);camera.zoom=motion.fromZoom+(motion.toZoom-motion.fromZoom)*ease;if(motion.fromQuaternion.equals(motion.toQuaternion))camera.quaternion.copy(motion.toQuaternion);else camera.quaternion.slerpQuaternions(motion.fromQuaternion,motion.toQuaternion,ease);camera.updateProjectionMatrix();if(u===1){camera.position.copy(motion.to);camera.zoom=motion.toZoom;camera.quaternion.copy(motion.toQuaternion);cameraMotion=null;}}if(previewMode)anchorEditor();}
 function catCameraTarget(){
  const probe=camera.clone(),focus=new T.Vector3(-.70,.70,-1.30);probe.position.set(2.8,2.55,2.6);probe.lookAt(focus);
  probe.zoom=Math.max(1.35,Math.min(3.1,(probe.right-probe.left)/2.8,(probe.top-probe.bottom)/2.75));probe.updateProjectionMatrix();probe.updateMatrixWorld(true);
@@ -967,7 +968,7 @@ function performanceParts(){
   for(const[parent,values]of buckets){const g=new T.BufferGeometry();for(const key of['position','normal'])g.setAttribute(key,new T.Float32BufferAttribute(values[key],3));const mesh=new T.Mesh(g,source.material);mesh.name=parent===instrument?'performance-cello-'+source.material.color.getHexString():'performance-bow-'+source.material.color.getHexString();mesh.userData.partNames=(source.userData.parts||[]).filter(p=>p.name.startsWith('bow-')===(parent===bow)).map(p=>p.name);mesh.castShadow=source.castShadow;mesh.receiveShadow=true;mesh.raycast=()=>{};parent.add(mesh);}
  }
  for(const child of bow.children)child.geometry.translate(-.399,-.208,-.047);
- const stool=new T.Group();stool.name='performance-stool';for(const x of[-.17,.17])for(const z of[-.13,.13])box(x,.17,z,.045,.32,.045,'#967650',stool);box(0,.345,0,.48,.06,.40,'#b99a6c',stool);
+ const stool=new T.Group();stool.name='performance-stool';for(const x of[-.17,.17])for(const z of[-.13,.13])box(x,.17,z,.045,.32,.045,'#967650',stool);box(0,.345,0,.48,.06,.40,'#b99a6c',stool);stool.traverse(o=>o.userData.station='cello');
  const grip=new T.Group();grip.name='bow-thumb-index-grip';const skin=OPTIONS.skin[state.skin];ball(-.018,.012,.018,.030,.023,.026,skin,grip);ball(.014,-.017,.006,.025,.028,.022,skin,grip);scene.add(instrument,bow,stool,grip);instrument.visible=bow.visible=stool.visible=grip.visible=false;
  const back=$('cat-view-back').cloneNode(true);back.id='performance-back';back.setAttribute('aria-label','返回房間視角');back.title='返回房間視角';back.hidden=true;document.querySelector('.stage').append(back);back.onclick=finishPerformance;
  return performanceAssets={instrument,bow,stool,grip,back};
@@ -1018,20 +1019,20 @@ function aimPerformanceArm(rig,hand,bend){
    rig.forearm=cylinder(0,0,0,.052,.057,1,'#'+c,rig.elbow);
    rig.forearm.name='performance-connected-forearm';
    const sleeve=rig.arm.children.find(o=>o.isMesh&&o.geometry?.type==='SphereGeometry');
-   if(sleeve){sleeve.position.y=-.15;sleeve.scale.y=Math.max(sleeve.scale.y,.19);}
+   if(sleeve){sleeve.position.y=-l1*.5;sleeve.scale.y=l1*.52;}
  }
  rig.elbow.position.y=-l1;
  if(rig.hand){rig.hand.position.set(0,-l2,0);rig.hand.scale.set(.058,.072,.060);rig.hand.name='performance-hand-contact';}
  rig.forearm.position.y=-l2*.5;rig.forearm.scale.y=Math.max(.01,l2-.09);
  const direction=target.clone().sub(shoulder).normalize();
  const along=(l1*l1-l2*l2+distance*distance)/(2*distance);
- const side=(bend<0?new T.Vector3(-.45,.20,-.45):new T.Vector3(bend,.10,-.22)).projectOnPlane(direction).normalize();
+ const side=(bend<0?new T.Vector3(-.45,.20,-.45):new T.Vector3(bend,.70,-.22)).projectOnPlane(direction).normalize();
  const elbowPoint=shoulder.clone().addScaledVector(direction,along).addScaledVector(side,Math.sqrt(Math.max(0,l1*l1-along*along)));
  rig.arm.quaternion.setFromUnitVectors(new T.Vector3(0,-1,0),elbowPoint.clone().sub(shoulder).normalize());
  const localHand=target.sub(shoulder).applyQuaternion(rig.arm.quaternion.clone().invert()).sub(rig.elbow.position);
  rig.elbow.quaternion.setFromUnitVectors(new T.Vector3(0,-1,0),localHand.normalize());
 }
-function finishPerformance(){if(celloPerformance?.phase!=='playing')return;celloPerformance.returnStroke=reduced.matches?0:Math.sin(celloPerformance.elapsed*.0016)*.075*T.MathUtils.smoothstep(celloPerformance.elapsed,0,650);celloPerformance.phase='returning';celloPerformance.elapsed=0;const home=celloPerformance.home;animateRoomCamera(home.position,home.zoom,true,home.quaternion,reduced.matches?0:1500);celloPerformance.returnCameraStarted=true;performanceParts().back.hidden=true;pressed.clear();}
+function finishPerformance(){if(celloPerformance?.phase!=='playing')return;celloPerformance.returnStroke=reduced.matches?0:Math.sin(celloPerformance.elapsed*.0016)*.075*T.MathUtils.smoothstep(celloPerformance.elapsed,0,650);celloPerformance.phase='returning';celloPerformance.elapsed=0;const home=celloPerformance.home;animateRoomCamera(home.position,home.zoom,true,home.quaternion,reduced.matches?0:1500);if(cameraMotion)cameraMotion.frameTimed=true;celloPerformance.returnCameraStarted=true;performanceParts().back.hidden=true;pressed.clear();}
 window.addEventListener('pagehide',()=>{
  performanceKeys.clear();performancePointers.clear();
  if(!celloPerformance)return;
@@ -1056,23 +1057,23 @@ function tickPerformance(dt,t){
  p.elapsed+=dt*1000;const returning=p.phase==='returning',playing=p.phase==='playing';
  const clock=reduced.matches?(returning?0:PERFORMANCE_TRANSITION_MS):playing?PERFORMANCE_TRANSITION_MS:returning?PERFORMANCE_TRANSITION_MS-p.elapsed:p.elapsed;
  const phase=performanceTransition(clock),sit=phase.sit,carry=phase.carry;p.transitionStage=phase.stage;
- if(!returning&&!p.cameraStarted&&(clock>=1000||reduced.matches)){const view=performanceCamera();animateRoomCamera(view.position,view.zoom,false,view.quaternion,reduced.matches?0:1800);p.cameraStarted=true;}
+ if(!returning&&!p.cameraStarted&&(clock>=1750||reduced.matches)){const view=performanceCamera();animateRoomCamera(view.position,view.zoom,false,view.quaternion,reduced.matches?0:1800);if(cameraMotion)cameraMotion.frameTimed=true;p.cameraStarted=true;}
  const pickupYaw=Math.atan2(p.celloPosition.x-pos.x,p.celloPosition.z-pos.z),facing=p.fromHeading+Math.atan2(Math.sin(pickupYaw-p.fromHeading),Math.cos(pickupYaw-p.fromHeading))*phase.face;
  heading=facing+Math.atan2(Math.sin(PERFORMANCE_YAW-facing),Math.cos(PERFORMANCE_YAW-facing))*carry;
  avatar.rotation.y=heading;avatar.position.set(pos.x,standY(pos),pos.z);
- const pickupStep=new T.Vector3(p.celloPosition.x-pos.x,0,p.celloPosition.z-pos.z).normalize().multiplyScalar(.32*phase.step*(1-carry));avatar.position.add(pickupStep);
+ const pickupStep=new T.Vector3(p.celloPosition.x-pos.x,0,p.celloPosition.z-pos.z).normalize().multiplyScalar(.44*phase.step*(1-carry));avatar.position.add(pickupStep);
  walkPose(0,false);animateIdle(t,true);performancePose(sit,t);head.rotation.y=-.12*sit;
  const footstep=(Math.sin(Math.PI*phase.step)*(1-phase.reach)+Math.sin(Math.PI*2*carry)*.65)*(1-sit);
  leftLeg.rotation.x+=.20*footstep;rightLeg.rotation.x-=.26*footstep;
  leftLeg.getObjectByName('leg-foot').rotation.x=.12*footstep;rightLeg.getObjectByName('leg-foot').rotation.x=-.12*footstep;
  const lean=p.celloPosition.clone().sub(avatar.position);lean.y=0;lean.normalize().applyAxisAngle(performanceUp,-heading).multiplyScalar(.06*phase.reach*(1-carry));upperBody.position.add(lean);
  // Same prop geometry and scale from stand to hands, with a continuous carried pose.
- a.instrument.scale.setScalar(1);
+ a.instrument.scale.copy(cello.scale);
  const turn=Math.atan2(Math.sin(heading-pickupYaw),Math.cos(heading-pickupYaw));
  a.instrument.quaternion.setFromAxisAngle(performanceUp,turn*carry).multiply(new T.Quaternion().setFromEuler(p.celloRotation));
- const finalQ=new T.Quaternion().setFromEuler(new T.Euler(-.10,PERFORMANCE_YAW,-.48,'YXZ'));a.instrument.quaternion.slerp(finalQ,phase.bow);
- const neckLocal=new T.Vector3(-.018,.95,.192).applyQuaternion(a.instrument.quaternion);
- const heldNeck=new T.Vector3(.22,1.02-.07*sit,.20).applyAxisAngle(performanceUp,heading).add(avatar.position);
+ const finalQ=new T.Quaternion().setFromEuler(new T.Euler(.18,PERFORMANCE_YAW,-.70,'YXZ'));a.instrument.quaternion.slerp(finalQ,sit);
+ const neckLocal=new T.Vector3(.17,1.38,.08).multiplyScalar(cello.scale.x).applyQuaternion(a.instrument.quaternion);
+ const heldNeck=new T.Vector3(.46,1.02-.07*sit,.34).applyAxisAngle(performanceUp,heading).add(avatar.position);
  a.instrument.position.lerpVectors(p.celloPosition,heldNeck.sub(neckLocal),carry);
  a.instrument.position.y+=Math.sin(Math.PI*carry)*.025;
  // Continuously ground the endpin correction, no threshold snap at 99%.
@@ -1086,20 +1087,22 @@ function tickPerformance(dt,t){
  const stringY=.785,stringZ=.216+(.177-.216)*(stringY-.706)/(1.648-.706);
  const contact=new T.Vector3(0,stringY,stringZ).applyMatrix4(a.instrument.matrixWorld);
  const bowQ=a.instrument.quaternion.clone().multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),-Math.PI/2)).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),-Math.PI/2));
- const bowScale=1;
+ const bowScale=cello.scale.x;
  const contactOnHair=new T.Vector3(-.010,.38+motion/bowScale,0).multiplyScalar(bowScale).applyQuaternion(bowQ);
  const bowHand=contact.clone().sub(contactOnHair);
  const carriedBow=new T.Vector3(.399,.208,.047).applyMatrix4(a.instrument.matrixWorld);
- const relaxedBow=new T.Vector3(-.30,.20,.28).applyAxisAngle(performanceUp,heading).add(avatar.position);carriedBow.lerp(relaxedBow,carry);
+ const relaxedBow=new T.Vector3(-.30,.36,.28).applyAxisAngle(performanceUp,heading).add(avatar.position);carriedBow.lerp(relaxedBow,carry);
  const carryBowQ=a.instrument.quaternion.clone().slerp(new T.Quaternion().setFromAxisAngle(performanceUp,heading),carry);
- bowHand.lerpVectors(carriedBow,bowHand.clone(),phase.bow);
- a.bow.position.copy(bowHand);a.bow.quaternion.copy(carryBowQ).slerp(bowQ,phase.bow);a.bow.scale.setScalar(T.MathUtils.lerp(a.instrument.scale.x,bowScale,phase.bow));
- const bowGrip=bowHand.clone().add(new T.Vector3(0,.42*(1-phase.bow),0).multiplyScalar(a.bow.scale.x).applyQuaternion(a.bow.quaternion));
+ const carriedGrip=carriedBow.clone().add(new T.Vector3(0,.85,0).multiplyScalar(a.instrument.scale.x).applyQuaternion(carryBowQ));
+ const bowGrip=carriedGrip.lerp(bowHand,phase.bow);
+ a.bow.quaternion.copy(carryBowQ).slerp(bowQ,phase.bow);a.bow.scale.setScalar(bowScale);
+ a.bow.position.copy(bowGrip).sub(new T.Vector3(0,.85*(1-phase.bow),0).multiplyScalar(bowScale).applyQuaternion(a.bow.quaternion));
+
  a.grip.visible=phase.reach>.99;a.grip.position.copy(bowGrip);a.grip.quaternion.copy(a.bow.quaternion);
  if(p.arms){
    avatar.updateMatrixWorld(true);upperBody.updateMatrixWorld(true);
    const leftWorld=avatar.localToWorld(p.restHandLocal[0].clone()).lerp(bowGrip,phase.reach);
-   const fingerTarget=new T.Vector3(-.018,.95,.192).applyMatrix4(a.instrument.matrixWorld);
+   const fingerTarget=new T.Vector3(.17,1.38,.08).applyMatrix4(a.instrument.matrixWorld);
    const rightWorld=avatar.localToWorld(p.restHandLocal[1].clone()).lerp(fingerTarget,phase.reach);
    const lengths=[.22,.18];for(const rig of p.arms)rig.lengths=lengths;
    // Move the shoulder girdle into the intersection of the two reach spheres.
@@ -1196,7 +1199,7 @@ area.addEventListener('pointerup',e=>{if(!tap||tap.id!==e.pointerId)return;const
 // still wins; exact wardrobe/vanity/cello mesh hits were handled above.
 const hitIntent=forgivingRoomHit(raycaster.ray,blockers[0]);if(hitIntent){approachStation(hitIntent);return;}
 if(blockers[0]&&blockers[0].point.y>.11)return;const hit=new T.Vector3();if(!raycaster.ray.intersectPlane(floorPlane,hit)||Math.abs(hit.x)>3.05||hit.z< -2.35||hit.z>2.35)return;pendingStation=null;destination={x:Math.max(-2.2,Math.min(2.2,hit.x)),z:Math.max(-.8,Math.min(1.9,hit.z))};area.focus({preventScroll:true});});
-function resize(){const w=area.clientWidth,h=area.clientHeight;renderer.setSize(w,h);const phone=w<600,size=Math.max(3.75,(phone?3.6:3.9)*h/w),lift=phone?size*.13:0;camera.left=-size*w/h;camera.right=size*w/h;camera.top=size-lift;camera.bottom=-size-lift;camera.updateProjectionMatrix();if(celloPerformance?.cameraStarted&&celloPerformance.phase!=='returning'){const view=performanceCamera();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(watchingCat){const view=catCameraTarget();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(previewMode&&previewMode!=='records'&&previewMode!=='performance'&&roomSnapshot){const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);}}new ResizeObserver(resize).observe(area);resize();controls();const reduced=matchMedia('(prefers-reduced-motion: reduce)');let last=0,lastDraw=0;
+function resize(){const w=area.clientWidth,h=area.clientHeight;renderer.setSize(w,h);const phone=w<600,size=Math.max(3.75,(phone?3.6:3.9)*h/w),lift=phone?size*.13:0;camera.left=-size*w/h;camera.right=size*w/h;camera.top=size-lift;camera.bottom=-size-lift;camera.updateProjectionMatrix();if(celloPerformance?.cameraStarted&&celloPerformance.phase!=='returning'){const view=performanceCamera();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);if(cameraMotion)cameraMotion.frameTimed=true;}if(watchingCat){const view=catCameraTarget();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(previewMode&&previewMode!=='records'&&previewMode!=='performance'&&roomSnapshot){const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);}}new ResizeObserver(resize).observe(area);resize();controls();const reduced=matchMedia('(prefers-reduced-motion: reduce)');let last=0,lastDraw=0;
 // A real doorway arrival: the saved outfit walks inward while the view opens.
 // Only the consumed town arrival parameter opts in; direct visits never replay.
 let doorArrival=null;
@@ -1278,7 +1281,7 @@ function animateIdle(t,moving){
  faceRig.mouth.scale.set(fm.mouthX,fm.mouthY,1);head.rotation.z+=fm.tilt;
 
 }
-function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;watchPerformanceApproach(dt);if(celloPerformance?.phase==='approach'&&!destination){destination={...stationSpots.cello};pendingStation='cello';}tickDoorArrival(t);tickDoorCutaway(dt);tickRoomCamera(t);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode==='performance'){tickPerformance(dt,t);if(!software||t-lastDraw>100){renderPerformanceView(t);lastDraw=t;}return;}if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}
+function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;watchPerformanceApproach(dt);if(celloPerformance?.phase==='approach'&&!destination){destination={...stationSpots.cello};pendingStation='cello';}tickDoorArrival(t);tickDoorCutaway(dt);tickRoomCamera(t,dt);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode==='performance'){tickPerformance(dt,t);if(!software||t-lastDraw>100){renderPerformanceView(t);lastDraw=t;}return;}if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}
 const realRoomPolish=software?null:decoratePerformanceRoom(T,scene);const realStool=performanceParts().stool;realStool.position.set(stationSpots.cello.x,0,stationSpots.cello.z+.04);realStool.rotation.y=PERFORMANCE_YAW;realStool.scale.y=.455/.375;realStool.visible=true;
 requestAnimationFrame(frame);
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();release();$('scene-status').textContent='3D 畫面暫停，請重新整理恢復。';status.textContent='3D 顯示中斷，穿搭設定仍保留。請重新整理。';});

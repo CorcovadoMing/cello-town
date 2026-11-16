@@ -37,5 +37,5 @@ test('023 transition secures grips before carry, sits before bow and reverses co
  assert.deepEqual(JSON.parse(JSON.stringify(c.performanceTransition(0))),{step:0,face:0,reach:0,carry:0,sit:0,bow:0,stage:'face-step'});
  for(const t of[1000,1200,2200,2500,3050,3300,3550]){const p=c.performanceTransition(t);assert.equal(p.reach,1);if(p.sit>0)assert.equal(p.carry,1);if(p.bow>0)assert.equal(p.sit,1);}
  for(const b of[1000,2200,3050,3550])for(const k of['reach','carry','sit','bow'])assert.ok(Math.abs(c.performanceTransition(b-.01)[k]-c.performanceTransition(b+.01)[k])<1e-6);
- assert.ok(!app.includes('frameOpacity'));assert.ok(app.includes('a.instrument.scale.setScalar(1)'));assert.ok(app.includes('Math.sin(p.elapsed*.0016)'));
+ assert.ok(!app.includes('frameOpacity'));assert.ok(app.includes('a.instrument.scale.copy(cello.scale)'));assert.ok(app.includes('Math.sin(p.elapsed*.0016)'));
 });
