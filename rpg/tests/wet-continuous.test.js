@@ -19,7 +19,7 @@ test('contact footprint cannot cross tree, umbrella or furniture shelter into dr
  const f=r.sample(3000,'rain',actors);r.sample(6000,'rain',actors);
  const w=createWetSoil();w.update(0,'rain',false,{contacts:[]});f.contacts.splice(0,f.contacts.length,...[336,422,660,726].map((x,id)=>({id,x,y:330})));
  const c=w.update(40,'rain',false,f);assert.ok(c.length>10);
- for(const p of c)assert.equal(f.groundHitAt(p.x+p.w/2,p.y+p.h/2).kind,'ground');
+ for(const p of c)assert.ok(f.moistureExposureAt(p.x+p.w/2,p.y+p.h/2)>0);
  assert.equal(at(c,322,330),0);assert.equal(at(c,470,330),0);assert.equal(at(c,630,330),0);assert.equal(at(c,710,330),0);
 });
 test('same-frame overlapping drops share exposure checks and 25 Hz snapshots; alpha interpolation is bounded',()=>{

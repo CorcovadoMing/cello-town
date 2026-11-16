@@ -31,3 +31,7 @@ export function umbrellaTop(u,x){if(u.opening<=0)return Infinity;const dx=x-u.x;
 // Otherwise a foreground road would falsely remain dry below a distant tree.
 export function canopyCoversGround(c,y){return y>=(c.groundMin??-Infinity)&&y<=(c.groundMax??Infinity);}
 export function umbrellaCoversGround(u,y){return y>=u.y-24&&y<=u.y+24;}
+
+// Ground projection is rounded, not the rectangular screen silhouette.
+export function umbrellaGroundRadius(u,x,y){return Math.hypot((x-u.x)/(36*Math.max(.01,u.opening)),(y-u.y)/24);}
+export function umbrellaGroundCovers(u,x,y){return u.opening>0&&umbrellaGroundRadius(u,x,y)<=1;}

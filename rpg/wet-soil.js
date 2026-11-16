@@ -6,11 +6,23 @@ export const WET_SURFACES=Object.freeze([
  {kind:'road',x:170,y:298,w:620,h:72},{kind:'road',x:428,y:370,w:72,h:190},
  {kind:'road',...MUSIC_ROOM_APPROACH.soil},{kind:'bed',x:744,y:412,w:154,h:93}
 ].map(Object.freeze));
-export const WET_CELL_LIMIT=WET_SURFACES.reduce((n,r)=>n+Math.ceil(r.w/8)*Math.ceil(r.h/8),0);
+export const WET_CELL_LIMIT=5000;
 export function soilCell(x,y){
  const r=WET_SURFACES.find(r=>x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h);if(!r)return null;
  const cx=Math.floor((x-r.x)/8)*8+r.x,cy=Math.floor((y-r.y)/8)*8+r.y;
  return {x:cx,y:cy,w:Math.min(8,r.x+r.w-cx),h:Math.min(8,r.y+r.h-cy),kind:r.kind};
+}
+// Narrow meadow verge follows the same road union, with a faded outer tail.
+// Separate 4 px cells preserve the original soil grid and avoid an edge seam.
+export function moistureCell(x,y){
+ const soil=soilCell(x,y);if(soil)return soil;
+ const cx=Math.floor(x/4)*4,cy=Math.floor(y/4)*4,mx=cx+2,my=cy+2;
+ if(soilCell(mx,my))return null;
+ let distance=Infinity;
+ for(const r of WET_SURFACES.filter(r=>r.kind==='road'))distance=Math.min(distance,Math.hypot(Math.max(r.x-mx,0,mx-r.x-r.w),Math.max(r.y-my,0,my-r.y-r.h)));
+ if(distance>=16)return null;
+ const t=Math.max(0,1-distance/16);
+ return {x:cx,y:cy,w:4,h:4,kind:'verge',opacity:t*t*(3-2*t)};
 }
 // A landing moistens a small elliptical patch, rather than one tiny square.
 // Amounts stay continuous: 0 is dry, 3 is the previous deepest shade.
@@ -26,20 +38,18 @@ export function createWetSoil({excludeRects=[]}={}){
   if(contiguous&&rain&&wasRain&&!reduced){
    const hits=rainFrame?rainFrame.contacts:rainLandings(now,false,excludeRects).filter(d=>{const hit=now-d.age+d.fallDuration-(d.age<d.fallDuration?d.cycle:0);return hit>previous&&hit<=now}).map(d=>({id:d.id,x:d.landingX,y:d.landingY}));
    for(const d of hits){
-    if(!soilCell(d.x,d.y))continue;
+    if(!moistureCell(d.x,d.y))continue;
     const visited=new Set();
     for(let y=d.y-WET_RATES.radiusY;y<=d.y+WET_RATES.radiusY;y+=4)for(let x=d.x-WET_RATES.radiusX;x<=d.x+WET_RATES.radiusX;x+=4){
-     const c=soilCell(x,y);if(!c)continue;const id=c.x+','+c.y;if(visited.has(id))continue;visited.add(id);
+     const c=moistureCell(x,y);if(!c)continue;const id=c.x+','+c.y;if(visited.has(id))continue;visited.add(id);
      const cx=c.x+c.w/2,cy=c.y+c.h/2,q=((cx-d.x)/WET_RATES.radiusX)**2+((cy-d.y)/WET_RATES.radiusY)**2;
      if(q>1||excluded(cx,cy))continue;
-     // Use exactly the same current shelter query as the visible rain.
-     if(rainFrame?.groundHitAt){
-      if(!exposure.has(id))exposure.set(id,rainFrame.groundHitAt(cx,cy)?.kind==='ground');
-      if(!exposure.get(id))continue;
-     }
+     // Cache one shelter/exposure query per cell per update, not per drop.
+     if(!exposure.has(id))exposure.set(id,rainFrame?.moistureExposureAt?rainFrame.moistureExposureAt(cx,cy):rainFrame?.groundHitAt?(rainFrame.groundHitAt(cx,cy)?.kind==='ground'?1:0):1);
+     const amount=exposure.get(id);if(amount<=0)continue;
      const old=cells.get(id)||{...c,level:0,target:0};
      if(cells.has(id)||cells.size<WET_CELL_LIMIT){
-      old.target=Math.min(3,old.target+.32+.32*(1-q));cells.set(id,old);
+      old.target=Math.max(old.level,Math.min(3*amount,old.target+(.32+.32*(1-q))*amount));cells.set(id,old);
      }
     }
    }
@@ -69,8 +79,8 @@ const wetRunCache=new WeakMap();
 export function drawWetSoil(g,cells,kind=null){
  let cache=wetRunCache.get(cells);if(!cache){cache=new Map();wetRunCache.set(cells,cache);}const key=kind||'all';let levels=cache.get(key);
  if(!levels){
-  levels=new Map();const ordered=cells.filter(c=>!kind||c.kind===kind).sort((a,b)=>a.y-b.y||a.x-b.x);
-  for(const c of ordered){const alpha=Math.round(Math.min(3,Math.max(0,c.level))/3*.35*255);if(!alpha)continue;let runs=levels.get(alpha);if(!runs){runs=[];levels.set(alpha,runs);}const run=runs.at(-1),w=c.w??8,h=c.h??8;
+  levels=new Map();const ordered=cells.filter(c=>!kind||c.kind===kind||(kind==='road'&&c.kind==='verge')).sort((a,b)=>a.y-b.y||a.x-b.x);
+  for(const c of ordered){const alpha=Math.round(Math.min(3,Math.max(0,c.level))/3*.35*(c.opacity??1)*255);if(!alpha)continue;let runs=levels.get(alpha);if(!runs){runs=[];levels.set(alpha,runs);}const run=runs.at(-1),w=c.w??8,h=c.h??8;
    if(run&&run.y===c.y&&run.h===h&&run.x+run.w===c.x)run.w+=w;else runs.push({x:c.x,y:c.y,w,h});
   }cache.set(key,levels);
  }
