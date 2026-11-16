@@ -214,7 +214,9 @@ body,body *{font-family:var(--town-font)!important}
 #teacher-badge[data-kind="exclaim"] [data-icon="exclaim"],#teacher-badge[data-kind="question"] [data-icon="question"],#teacher-badge[data-kind="ready"] [data-icon="question"],#teacher-badge[data-kind="ready"] [data-icon="spark"]{display:inline}
 #teacher-badge [data-icon="spark"]{fill:none;stroke:#fff0b0;stroke-width:2.15}
 
-/* A warm, short doorway fade only. It never captures input or traps Back. */
-body::after{content:"";position:fixed;inset:0;z-index:10000;pointer-events:none;background:#30291f;opacity:0;transition:opacity 180ms ease}
-body.door-scene-dark::after{opacity:1}
-@media(prefers-reduced-motion:reduce){body::after{display:none;transition:none}}
+/* Only the town canvas and its world-aligned symbols track the door shot. */
+.map-stage{overflow:hidden}
+.map-stage>canvas,.map-stage>.teacher-marker-layer{transform-origin:var(--door-origin-x,70.417%) var(--door-origin-y,35.804%)}
+.map-stage.door-shot-moving>canvas,.map-stage.door-shot-moving>.teacher-marker-layer{transition:transform 300ms cubic-bezier(.22,.65,.24,1)}
+.map-stage.door-shot-near>canvas,.map-stage.door-shot-near>.teacher-marker-layer{transform:translate(var(--door-shift-x,-20.417%),var(--door-shift-y,14.196%)) scale(1.74)}
+@media(prefers-reduced-motion:reduce){.map-stage.door-shot-moving>canvas,.map-stage.door-shot-moving>.teacher-marker-layer{transition:none}.map-stage.door-shot-near>canvas,.map-stage.door-shot-near>.teacher-marker-layer{transform:none}}

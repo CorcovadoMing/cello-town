@@ -3,7 +3,7 @@ import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDo
 import {createTerrainArt} from './terrain-art.js?v=32';
 import {createRainSystem} from './rain-system.js?v=35';
 import {treeRainCanopies,umbrellaPose} from './rain-geometry.js?v=35';
-import {MUSIC_ROOM,roomBlocks,drawMusicRoom,musicRoomRainCanopy} from './music-room-art.js?v=46';
+import {MUSIC_ROOM,MUSIC_ROOM_DOOR,roomBlocks,drawMusicRoom,musicRoomRainCanopy} from './music-room-art.js?v=46';
 import {createLounge} from './lounge-state.js?v=46';
 import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella} from './lounge-art.js?v=46';
 import {createWetSoil,drawWetSoil} from './wet-soil.js?v=47';
@@ -37,29 +37,34 @@ townBrand?.addEventListener('click',e=>{
  e.preventDefault();location.replace(url.href);
 });
 let enteringRoom=false;
-// Door-only visual bridge. No history entries, storage or input interception.
-function doorSceneTransition(incoming,onReset){
+// Push the view toward the doorway, not a veil over the surrounding page.
+function doorSceneTransition(stage,incoming,onReset){
  let travelTimer=0,recoveryTimer=0,revealTimer=0,generation=0;
  const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
- const clear=()=>{generation++;clearTimeout(travelTimer);clearTimeout(recoveryTimer);clearTimeout(revealTimer);document.body.classList.remove('door-scene-dark');};
+ const clear=()=>{generation++;clearTimeout(travelTimer);clearTimeout(recoveryTimer);clearTimeout(revealTimer);stage.classList.remove('door-shot-moving','door-shot-near');};
  const reset=()=>{clear();onReset();};
  window.addEventListener('pagehide',reset);
  window.addEventListener('pageshow',e=>{if(e.persisted)reset();});
  if(incoming&&!reduced()){
-  document.body.classList.add('door-scene-dark');const token=generation;
-  const reveal=()=>{if(token===generation)document.body.classList.remove('door-scene-dark');};
-  requestAnimationFrame(()=>requestAnimationFrame(reveal));revealTimer=setTimeout(reveal,220);
+  stage.classList.add('door-shot-near');const token=generation;
+  const reveal=()=>{if(token!==generation||!stage.classList.contains('door-shot-near'))return;stage.classList.add('door-shot-moving');stage.classList.remove('door-shot-near');clearTimeout(revealTimer);revealTimer=setTimeout(()=>stage.classList.remove('door-shot-moving'),360);};
+  requestAnimationFrame(()=>requestAnimationFrame(reveal));revealTimer=setTimeout(reveal,120);
  }
  return navigate=>{
   clear();const run=()=>{try{navigate();}catch{reset();}};
   recoveryTimer=setTimeout(reset,2000);
   if(reduced()){run();return;}
-  document.body.classList.add('door-scene-dark');
-  travelTimer=setTimeout(run,180);
-  // If a browser rejects/cancels navigation without pagehide, never leave a veil.
+  stage.classList.add('door-shot-moving','door-shot-near');
+  travelTimer=setTimeout(run,300);
  };
 }
-const transferDoor=doorSceneTransition(Boolean(returnURL),()=>{enteringRoom=false;doorApproach.disarm();});
+const doorStage=canvas.parentElement;
+const doorFocus={x:(MUSIC_ROOM_DOOR.x+MUSIC_ROOM_DOOR.w/2)/canvas.width*100,y:(MUSIC_ROOM_DOOR.y+MUSIC_ROOM_DOOR.h/2)/canvas.height*100};
+for(const axis of ['x','y']){
+ doorStage.style.setProperty(`--door-origin-${axis}`,`${doorFocus[axis]}%`);
+ doorStage.style.setProperty(`--door-shift-${axis}`,`${50-doorFocus[axis]}%`);
+}
+const transferDoor=doorSceneTransition(doorStage,Boolean(returnURL),()=>{enteringRoom=false;doorApproach.disarm();target=null;keys.clear();});
 function enterRoom(){
  if(enteringRoom||dlg.open)return;
  enteringRoom=true;doorApproach.disarm();target=null;keys.clear();player.walking=false;
@@ -283,6 +288,7 @@ function update(dt){
  Object.assign(npc,loungePose.borrowed?loungePose.pose:teacher);
  if(waitingForChair&&!dlg.open)sitDown();
 
+ if(enteringRoom)return;
  if(dlg.open){player.walking=false;quietChatPose=quietChat.update(dt,{teacher:npc,player,modal:true});return;}
  let dx=(keys.has('right')?1:0)-(keys.has('left')?1:0),dy=(keys.has('down')?1:0)-(keys.has('up')?1:0),speed=150*dt;
  const oldX=player.x,oldY=player.y;
