@@ -5,7 +5,7 @@ test('cello action uses existing arrival path, reuses named original instrument 
  const s=app.slice(app.indexOf('function performanceParts'),app.indexOf('const performanceKeys'));
  assert.ok(s.includes("source.userData.parts"));assert.ok(s.includes("part.name.startsWith('bow-')"));assert.ok(s.includes("new T.Mesh(g,source.material)"));
  assert.ok(!/localStorage|fetch\(|getUserMedia|AudioContext/.test(s));
- assert.ok(s.includes("back.textContent='返回琴房'"));assert.ok(s.includes("phase!=='playing'"));assert.ok(app.includes("performanceKeys.add(e.key);e.preventDefault();e.stopImmediatePropagation()"));
+ assert.ok(s.includes("back.setAttribute('aria-label','返回房間視角')"));assert.ok(s.includes("phase!=='playing'"));assert.ok(app.includes("performanceKeys.add(e.key);e.preventDefault();e.stopImmediatePropagation()"));
 });
 test('two-segment performance arms stay finite and reverse elbow orientation across bow stroke',()=>{
  const c={T,OPTIONS:{skin:["#cba987"]},state:{skin:0},cylinder:(x,y,z,a,b,h,color,parent)=>{const m=new T.Mesh(new T.CylinderGeometry(a,b,h),new T.MeshBasicMaterial({color}));parent.add(m);return m;}};vm.createContext(c);vm.runInContext(app.slice(app.indexOf('function aimPerformanceArm'),app.indexOf('function finishPerformance')),c);
@@ -22,7 +22,7 @@ test('genuine approach stall releases lock, while normal progress and cat stand-
  vm.createContext(c);vm.runInContext(app.slice(app.indexOf('function watchPerformanceApproach'),app.indexOf('function articulatePerformanceArms')),c);
  for(let i=0;i<20;i++){c.pos.x-=.01;vm.runInContext('watchPerformanceApproach(.05)',c);}assert.equal(released,0);
  c.catPose=1;for(let i=0;i<40;i++)vm.runInContext('watchPerformanceApproach(.05)',c);assert.equal(released,0);c.catPose=0;
- for(let i=0;i<40;i++)vm.runInContext('watchPerformanceApproach(.05)',c);assert.equal(released,1);assert.equal(c.celloPerformance,null);assert.equal(stool.visible,false);
+ for(let i=0;i<40;i++)vm.runInContext('watchPerformanceApproach(.05)',c);assert.equal(released,1);assert.equal(c.celloPerformance,null);assert.equal(stool.visible,true);
 });
 test('repeat cello tap ignores only avatar occlusion, never an intervening solid',()=>{
  const avatar={},head={parent:avatar,userData:{}},cello={userData:{station:'cello'}},wall={userData:{}};
@@ -37,5 +37,5 @@ test('023 transition secures grips before carry, sits before bow and reverses co
  assert.deepEqual(JSON.parse(JSON.stringify(c.performanceTransition(0))),{step:0,face:0,reach:0,carry:0,sit:0,bow:0,stage:'face-step'});
  for(const t of[1000,1200,2200,2500,3050,3300,3550]){const p=c.performanceTransition(t);assert.equal(p.reach,1);if(p.sit>0)assert.equal(p.carry,1);if(p.bow>0)assert.equal(p.sit,1);}
  for(const b of[1000,2200,3050,3550])for(const k of['reach','carry','sit','bow'])assert.ok(Math.abs(c.performanceTransition(b-.01)[k]-c.performanceTransition(b+.01)[k])<1e-6);
- assert.ok(app.includes('Math.abs(clock-3050)/125'));assert.ok(app.includes('a.instrument.scale.setScalar(SCALE)'));assert.ok(app.includes('Math.sin(p.elapsed*.0016)'));
+ assert.ok(!app.includes('frameOpacity'));assert.ok(app.includes('a.instrument.scale.setScalar(1)'));assert.ok(app.includes('Math.sin(p.elapsed*.0016)'));
 });

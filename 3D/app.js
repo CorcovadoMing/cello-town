@@ -550,209 +550,6 @@ function createCello() {
   return root;
 }
 
-function createPerformanceCello() {
-  const root = new T.Group(); root.name = 'DetailedCello';
-  const parts = [], colors = {
-    maple: '#b76b32', ribs: '#874323', edge: '#c88d49', line: '#39261b',
-    ebony: '#211c18', metal: '#bcbcb5', ivory: '#dac394', bow: '#855331'
-  };
-  function add(geometry, color, name, x=0, y=0, z=0) {
-    const part = new T.Mesh(geometry,null); part.position.set(x,y,z);
-    parts.push({part,color,name}); return part;
-  }
-  function bar(name, a, b, radius, color, segments=6) {
-    const v = new T.Vector3(...b).sub(new T.Vector3(...a));
-    const part=add(new T.CylinderGeometry(radius,radius,v.length(),segments),color,name);
-    part.position.copy(new T.Vector3(...a).addScaledVector(v,.5));
-    part.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),v.normalize()); return part;
-  }
-  function block(name,x,y,z,w,h,d,color) {
-    return add(new T.BoxGeometry(w,h,d),color,name,x,y,z);
-  }
-  function oval(name,x,y,z,rx,ry,rz,color) {
-    const part=add(new T.SphereGeometry(1,24,16),color,name,x,y,z);
-    part.scale.set(rx,ry,rz); return part;
-  }
-  function plate(shape, depth, color, name, z, bevel=false) {
-    const g=new T.ExtrudeGeometry(shape,{depth,steps:1,curveSegments:14,
-      bevelEnabled:bevel,bevelThickness:.006,bevelSize:.006,bevelSegments:3});
-    // Small cap triangles retain the arched top and reliable painter sorting in SVG.
-    const src=g.index?g.toNonIndexed():g, out=[], normals=[];
-    function split(a,b,c,n,depth=0) {
-      const d=[a.distanceToSquared(b),b.distanceToSquared(c),c.distanceToSquared(a)],j=d.indexOf(Math.max(...d));
-      if(Math.abs(n.z)>.9 && d[j]>.0196 && depth<10) {
-        const vs=[a,b,c],v=vs[j],w=vs[(j+1)%3],q=vs[(j+2)%3],m=v.clone().add(w).multiplyScalar(.5);
-        split(v,m,q,n,depth+1);split(m,w,q,n,depth+1);return;
-      }
-      for(const v of [a,b,c]){out.push(v.x,v.y,v.z);normals.push(n.x,n.y,n.z);}
-    }
-    for(let i=0;i<src.attributes.position.count;i+=3){const ps=src.attributes.position;
-      split(new T.Vector3().fromBufferAttribute(ps,i),new T.Vector3().fromBufferAttribute(ps,i+1),new T.Vector3().fromBufferAttribute(ps,i+2),new T.Vector3().fromBufferAttribute(src.attributes.normal,i));}
-    const refined=new T.BufferGeometry();refined.setAttribute('position',new T.Float32BufferAttribute(out,3));
-    refined.setAttribute('normal',new T.Float32BufferAttribute(normals,3));if(src!==g)src.dispose();g.dispose();
-    return add(refined,color,name,0,0,z);
-  }
-  const outline=new T.Shape();
-  outline.moveTo(0,1.225);
-  // Rounded upper bouts, definite inward C-bouts, four small corners, broad lower bouts.
-  outline.bezierCurveTo(.12,1.225,.225,1.145,.238,1.025);
-  outline.bezierCurveTo(.244,.965,.204,.925,.187,.897);
-  outline.lineTo(.214,.872);
-  outline.bezierCurveTo(.133,.854,.130,.752,.212,.708);
-  outline.lineTo(.192,.680);
-  outline.bezierCurveTo(.270,.642,.312,.549,.307,.441);
-  outline.bezierCurveTo(.300,.300,.173,.225,0,.222);
-  outline.bezierCurveTo(-.173,.225,-.300,.300,-.307,.441);
-  outline.bezierCurveTo(-.312,.549,-.270,.642,-.192,.680);
-  outline.lineTo(-.212,.708);
-  outline.bezierCurveTo(-.130,.752,-.133,.854,-.214,.872);
-  outline.lineTo(-.187,.897);
-  outline.bezierCurveTo(-.204,.925,-.244,.965,-.238,1.025);
-  outline.bezierCurveTo(-.225,1.145,-.12,1.225,0,1.225);
-  outline.closePath();
-  plate(outline,.155,colors.ribs,'ribs-and-back',-.078,true);
-  // Preview-only carved maple back: preserves the front/neck collision envelope.
-  const back=plate(outline,.012,colors.maple,'carved-maple-back',-.093,true);
-  const bp=back.geometry.attributes.position;
-  for(let i=0;i<bp.count;i++){
-    const x=bp.getX(i),y=bp.getY(i);
-    bp.setZ(i,bp.getZ(i)-.020*Math.max(0,1-(x/.335)**2)*Math.max(0,1-((y-.724)/.53)**2));
-  }
-  back.geometry.computeVertexNormals();
-
-  const archAt=(x,y)=>.026*Math.max(0,1-(x/.335)**2)*Math.max(0,1-((y-.724)/.53)**2);
-  const front=outline.clone();
-  // Real holes in the top plate; dark inset apertures sit behind them.
-  const apertureShape=new T.Shape();
-  apertureShape.moveTo(.006,.133);
-  apertureShape.bezierCurveTo(.037,.151,.047,.115,.024,.089);
-  apertureShape.bezierCurveTo(.007,.068,-.002,-.057,-.021,-.083);
-  apertureShape.bezierCurveTo(-.048,-.110,-.031,-.144,-.008,-.128);
-  apertureShape.bezierCurveTo(.006,-.117,-.007,-.097,-.015,-.100);
-  apertureShape.bezierCurveTo(.016,-.074,.019,.057,.037,.083);
-  apertureShape.bezierCurveTo(.061,.116,.041,.164,.009,.149);
-  apertureShape.closePath();
-  const aperturePoints=apertureShape.getPoints(7);
-  for(const side of [-1,1]) {
-    const points=aperturePoints.map(p=>new T.Vector2(side*(.110+p.x*.62),.770+p.y));
-    if(T.ShapeUtils.isClockWise(points))points.reverse();
-    const hole=new T.Path(points); hole.closePath(); front.holes.push(hole);
-    const inset=new T.Shape(points); inset.closePath();
-    const dark=new T.ShapeGeometry(inset,7),dp=dark.attributes.position;
-    for(let i=0;i<dp.count;i++)dp.setZ(i,.121+archAt(dp.getX(i),dp.getY(i)));
-    dark.computeVertexNormals();add(dark,colors.ebony,`f-hole-interior-${side}`);
-    // The tiny transverse notches distinguish an f-hole from a generic slot.
-    block(`f-notch-${side}`,side*.116,.770,.153,.025,.009,.003,colors.ebony);
-  }
-  const top=plate(front,.021,colors.maple,'arched-top-with-two-f-holes',.102,false);
-  const positions=top.geometry.attributes.position;
-  for(let i=0;i<positions.count;i++) {
-    const x=positions.getX(i),y=positions.getY(i);
-    const arch=archAt(x,y);
-    positions.setZ(i,positions.getZ(i)+arch);
-  }
-  top.geometry.computeVertexNormals();
-  // Continuous light edge and dark purfling, both kept on the plate perimeter.
-  const rim=outline.getPoints(14);
-  function perimeter(name,scale,z,r,color) {
-    const pts=rim.map(p=>{const x=p.x*scale,y=.724+(p.y-.724)*scale;return new T.Vector3(x,y,z+archAt(x,y));});
-    const curve=new T.CatmullRomCurve3(pts,false,'centripetal');
-    add(new T.TubeGeometry(curve,180,r,8,false),color,name);
-  }
-  perimeter('maple-edge',1,.132,.0045,colors.edge);
-  perimeter('purfling',.964,.133,.0022,colors.line);
-  const backRim=rim.map(p=>new T.Vector3(p.x,.724+(p.y-.724),-.094));
-  add(new T.TubeGeometry(new T.CatmullRomCurve3(backRim,false,'centripetal'),180,.004,8,false),colors.edge,'back-maple-edge');
-  const backPurfling=rim.map(p=>new T.Vector3(p.x*.964,.724+(p.y-.724)*.964,-.097));
-  add(new T.TubeGeometry(new T.CatmullRomCurve3(backPurfling,false,'centripetal'),180,.0018,6,false),colors.line,'back-purfling');
-
-  // Neck/heel and tapered ebony fingerboard remain separate from the four strings.
-  const neck=block('neck',0,1.424,.020,.065,.455,.070,colors.ribs);
-  const neckVertices=neck.geometry.attributes.position;
-  for(let i=0;i<neckVertices.count;i++){const front=neckVertices.getZ(i)>0,y=neckVertices.getY(i)+neck.position.y;neckVertices.setZ(i,.139+.025*(1.652-y)/.797+.002-(front?0:.065)-neck.position.z);}
-  neck.geometry.computeVertexNormals();
-  oval('neck-heel',0,1.196,.045,.065,.095,.085,colors.ribs);
-  const fingerboard=new T.Shape(); fingerboard.moveTo(-.047,.855);
-  fingerboard.lineTo(.047,.855);fingerboard.lineTo(.026,1.652);
-  fingerboard.lineTo(-.026,1.652);fingerboard.closePath();
-  const fb=plate(fingerboard,.014,colors.ebony,'tapered-fingerboard',.139);
-  for(let i=0;i<fb.geometry.attributes.position.count;i++) {
-    const p=fb.geometry.attributes.position;
-    p.setZ(i,p.getZ(i)+.025*(1.652-p.getY(i))/.797);
-  }
-  fb.geometry.computeVertexNormals();
-  block('nut',0,1.647,.160,.062,.014,.025,colors.ebony);
-  // Slender pegbox with four individually visible alternating tuning pegs.
-  const pegAssemblyStart=parts.length;
-  block('pegbox',0,1.741,.018,.063,.190,.075,colors.ribs);
-  block('pegbox-recess',0,1.736,.061,.039,.142,.008,colors.ebony);
-  for(let i=0;i<4;i++) {
-    const side=i%2===0?-1:1,y=1.678+i*.041;
-    bar(`peg-shaft-${i+1}`,[0,y,.020],[side*.107,y,.020],.010,colors.ebony);
-    oval(`peg-handle-${i+1}`,side*.113,y,.020,.024,.018,.026,colors.ebony);
-  }
-  oval('scroll-core',0,1.866,.018,.056,.060,.046,colors.ribs);
-  const spiral=[];
-  for(let i=0;i<=30;i++) {const a=i/30*Math.PI*3.7,r=.043*(1-i/37);
-    spiral.push(new T.Vector3(Math.cos(a)*r,1.867+Math.sin(a)*r,.066));}
-  add(new T.TubeGeometry(new T.CatmullRomCurve3(spiral),30,.005,5,false),colors.edge,'carved-scroll');
-
-  // Move the whole pegbox/scroll assembly into the nut's continuous neck plane.
-  for(const item of parts.slice(pegAssemblyStart))item.part.position.z+=.092;
-
-  const tail=new T.Shape();tail.moveTo(-.027,.290);tail.lineTo(.027,.290);
-  tail.lineTo(.061,.547);tail.quadraticCurveTo(0,.573,-.061,.547);tail.closePath();
-  plate(tail,.021,colors.ebony,'tapered-tailpiece',.155,true);
-  bar('tail-gut-left',[-.018,.293,.161],[-.012,.224,.11],.003,colors.ebony);
-  bar('tail-gut-right',[.018,.293,.161],[.012,.224,.11],.003,colors.ebony);
-  oval('endbutton',0,.224,.041,.025,.018,.024,colors.ebony);
-  bar('endpin',[0,.225,0],[0,.100,0],.009,colors.metal);
-  oval('endpin-tip',0,.096,0,.017,.014,.017,colors.ebony);
-
-  const bridge=new T.Shape();bridge.moveTo(-.078,.646);bridge.lineTo(-.078,.692);
-  bridge.quadraticCurveTo(0,.730,.078,.692);bridge.lineTo(.078,.646);
-  bridge.lineTo(.041,.646);bridge.quadraticCurveTo(0,.695,-.041,.646);bridge.closePath();
-  for(const x of [-.043,.043]) {const h=new T.Path();h.absellipse(x,.692,.012,.010,0,Math.PI*2,false);bridge.holes.push(h);}
-  plate(bridge,.024,colors.ivory,'bridge-with-two-feet-and-kidneys',.185);
-  for(let i=0;i<4;i++) {
-    const x=(i-1.5)*.019,r=.0018+i*.00035;
-    const points=[[x*.87,.549,.180],[x,.706,.216],[x*.72,1.648,.177],[(i%2?1:-1)*.014,1.678+i*.041,.157]];
-    for(let j=0;j<3;j++)bar(`string-${i+1}-segment-${j+1}`,points[j],points[j+1],r,colors.metal,5);
-    oval(`fine-tuner-${i+1}`,x*.87,.532,.190,.006,.006,.006,colors.metal);
-  }
-  // Existing bow, now recognizable: cambered stick, separate hair, frog and tip.
-  const bx=.413,bz=.047;
-  const bowPath=new T.QuadraticBezierCurve3(new T.Vector3(bx,.13,bz),new T.Vector3(bx+.065,.88,bz),new T.Vector3(bx,1.63,bz));
-  add(new T.TubeGeometry(bowPath,32,.0105,10,false),colors.bow,'bow-cambered-stick');
-  bar('bow-hair',[bx-.024,.25,bz],[bx-.024,1.59,bz],.006,colors.ivory,4);
-  block('bow-frog',bx-.014,.208,bz,.043,.079,.032,colors.ebony);
-  block('bow-ferrule',bx-.022,.253,bz,.028,.019,.034,colors.metal);
-  oval('bow-frog-eye',bx-.014,.207,bz+.018,.008,.008,.003,colors.ivory);
-  bar('bow-screw',[bx,.124,bz],[bx,.088,bz],.012,colors.metal);
-  bar('bow-tip',[bx,1.626,bz],[bx-.025,1.583,bz],.012,colors.bow);
-
-  // Merge static parts by material. Eight draw calls, no shader/texture dependency,
-  // and the official SVG fallback receives ordinary BufferGeometry triangles.
-  const batches=new Map();
-  for(const {part,color,name} of parts) {
-    part.updateMatrix();const g=part.geometry.index?part.geometry.toNonIndexed():part.geometry.clone();
-    g.applyMatrix4(part.matrix);const b=batches.get(color)||{positions:[],normals:[],names:[]};
-    const start=b.positions.length/3;
-    b.positions.push(...g.attributes.position.array);b.normals.push(...g.attributes.normal.array);
-    b.names.push({name,start,count:g.attributes.position.count});batches.set(color,b);
-    part.geometry.dispose();g.dispose();
-  }
-  for(const [color,b] of batches) {
-    const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(b.positions,3));
-    g.setAttribute('normal',new T.Float32BufferAttribute(b.normals,3));g.computeBoundingBox();g.computeBoundingSphere();
-    const m=new T.Mesh(g,new T.MeshStandardMaterial({color,roughness:color===colors.metal?.24:color===colors.ivory?.65:color===colors.ebony?.31:.32,metalness:color===colors.metal?.65:0}));
-    m.name=`cello-material-${color}`;m.userData.parts=b.names;
-    m.castShadow=color===colors.maple||color===colors.ribs;m.receiveShadow=true;root.add(m);
-  }
-  root.userData={model:'cello-procedural-002',strings:4,pegs:4,frontHoles:2,animated:false};
-  return root;
-}
-
 const cello=createCello();
 cello.position.set(-2.27,.2,-1.4);
 cello.rotation.z=-.12;
@@ -1163,25 +960,29 @@ let performanceAssets=null;
 function performanceParts(){
  if(performanceAssets)return performanceAssets;
  const instrument=new T.Group(),bow=new T.Group();instrument.name='performance-cello';bow.name='performance-bow';
- const performanceSource=createPerformanceCello();
+ const performanceSource=cello;
  for(const source of performanceSource.children){
   const buckets=new Map();
   for(const part of source.userData.parts||[]){const parent=part.name.startsWith('bow-')?bow:instrument,values=buckets.get(parent)||{position:[],normal:[]};for(const key of['position','normal'])values[key].push(...source.geometry.attributes[key].array.slice(part.start*3,(part.start+part.count)*3));buckets.set(parent,values);}
   for(const[parent,values]of buckets){const g=new T.BufferGeometry();for(const key of['position','normal'])g.setAttribute(key,new T.Float32BufferAttribute(values[key],3));const mesh=new T.Mesh(g,source.material);mesh.name=parent===instrument?'performance-cello-'+source.material.color.getHexString():'performance-bow-'+source.material.color.getHexString();mesh.userData.partNames=(source.userData.parts||[]).filter(p=>p.name.startsWith('bow-')===(parent===bow)).map(p=>p.name);mesh.castShadow=source.castShadow;mesh.receiveShadow=true;mesh.raycast=()=>{};parent.add(mesh);}
  }
- for(const child of performanceSource.children)child.geometry.dispose();
  for(const child of bow.children)child.geometry.translate(-.399,-.208,-.047);
  const stool=new T.Group();stool.name='performance-stool';for(const x of[-.17,.17])for(const z of[-.13,.13])box(x,.17,z,.045,.32,.045,'#967650',stool);box(0,.345,0,.48,.06,.40,'#b99a6c',stool);
  const grip=new T.Group();grip.name='bow-thumb-index-grip';const skin=OPTIONS.skin[state.skin];ball(-.018,.012,.018,.030,.023,.026,skin,grip);ball(.014,-.017,.006,.025,.028,.022,skin,grip);scene.add(instrument,bow,stool,grip);instrument.visible=bow.visible=stool.visible=grip.visible=false;
- const back=document.createElement('button');back.id='performance-back';back.textContent='返回琴房';back.hidden=true;back.style.cssText='position:absolute;left:18px;top:18px;z-index:6;border:1px solid #d5c8a4;border-radius:22px;background:#fff8e8;color:#68583f;padding:11px 18px;font:inherit;box-shadow:0 3px 12px #463b2520';document.querySelector('.stage').append(back);back.onclick=finishPerformance;
+ const back=$('cat-view-back').cloneNode(true);back.id='performance-back';back.setAttribute('aria-label','返回房間視角');back.title='返回房間視角';back.hidden=true;document.querySelector('.stage').append(back);back.onclick=finishPerformance;
  return performanceAssets={instrument,bow,stool,grip,back};
 }
-const PERFORMANCE_YAW=Math.PI-.42, PERFORMANCE_OFFSET=new T.Vector3(-.81,0,-.59), performanceUp=new T.Vector3(0,1,0);
-function performanceFramePoint(x,y,z){return new T.Vector3(x,y,z).applyAxisAngle(performanceUp,PERFORMANCE_YAW).add(new T.Vector3(pos.x,standY(pos),pos.z)).addScaledVector(PERFORMANCE_OFFSET,performanceVisualAmount);}
+const PERFORMANCE_YAW=Math.PI-.42, performanceUp=new T.Vector3(0,1,0);
+function performanceFramePoint(x,y,z){return new T.Vector3(x,y,z).applyAxisAngle(performanceUp,PERFORMANCE_YAW).add(new T.Vector3(pos.x,standY(pos),pos.z));}
 function performanceCamera(){
- const phone=area.clientWidth<600,focus=new T.Vector3(-1.33,1.58,-2.09),probe=camera.clone();
- probe.position.copy(focus).add(new T.Vector3(.83,.31,4.25));probe.lookAt(focus);
- return{position:probe.position,quaternion:probe.quaternion,zoom:Math.min((camera.right-camera.left)/(phone?1.92:2.43),(camera.top-camera.bottom)/(phone?2.7:1.98))};
+ const probe=camera.clone(),focus=new T.Vector3(-1.25,2.02,-2.12);
+ probe.position.copy(focus).add(new T.Vector3(.83,.31,4.25));probe.lookAt(focus);probe.zoom=1;probe.updateMatrixWorld(true);
+ const points=[];for(const x of[-2.40,-.10])for(const y of[1.06,3.01])for(const z of[-2.12,-1.88])points.push(new T.Vector3(x,y,z).applyMatrix4(probe.matrixWorldInverse));
+ const minX=Math.min(...points.map(v=>v.x)),maxX=Math.max(...points.map(v=>v.x)),minY=Math.min(...points.map(v=>v.y)),maxY=Math.max(...points.map(v=>v.y));
+ probe.zoom=Math.min((probe.right-probe.left)/((maxX-minX)*1.08),(probe.top-probe.bottom)/((maxY-minY)*1.08));probe.updateProjectionMatrix();
+ const center=new T.Vector3((minX+maxX)/2,(minY+maxY)/2,0).applyMatrix4(probe.matrixWorld),v=center.project(probe),right=new T.Vector3(1,0,0).applyQuaternion(probe.quaternion),up=new T.Vector3(0,1,0).applyQuaternion(probe.quaternion);
+ probe.position.addScaledVector(right,v.x*(probe.right-probe.left)/(2*probe.zoom));probe.position.addScaledVector(up,v.y*(probe.top-probe.bottom)/(2*probe.zoom));
+ return{position:probe.position,quaternion:probe.quaternion,zoom:probe.zoom};
 }
 function beginPerformanceApproach(){
  const a=performanceParts();celloPerformance={phase:'approach',elapsed:0,home:{position:camera.position.clone(),quaternion:camera.quaternion.clone(),zoom:camera.zoom},celloPosition:cello.position.clone(),celloRotation:cello.rotation.clone(),arms:null};
@@ -1195,7 +996,7 @@ function watchPerformanceApproach(dt){
  if(distance<.01||catPose>.001){p.stalled=0;return;}
  p.stalled=distance<(p.distance??Infinity)-.0001?0:(p.stalled||0)+dt;p.distance=distance;
  if(p.stalled<1.5)return;
- performanceParts().stool.visible=false;celloPerformance=null;release();document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;
+ performanceParts().stool.visible=true;celloPerformance=null;release();document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;
  animateRoomCamera(p.home.position,p.home.zoom,true,p.home.quaternion,reduced.matches?0:450);$('scene-status').textContent='目前無法走到大提琴旁，已回到琴房操作。';
 }
 function articulatePerformanceArms(){
@@ -1204,9 +1005,9 @@ function articulatePerformanceArms(){
  return arms;
 }
 function seatPerformance(){
- if(!celloPerformance)beginPerformanceApproach();release();tap=null;previewMode='performance';celloPerformance.phase='seating';celloPerformance.elapsed=0;celloPerformance.arms=articulatePerformanceArms();celloPerformance.fromHeading=heading;celloPerformance.seatPosition={...pos};
+ if(!celloPerformance)beginPerformanceApproach();release();tap=null;previewMode='performance';celloPerformance.phase='seating';celloPerformance.elapsed=0;beginPerformancePresentation();celloPerformance.arms=articulatePerformanceArms();celloPerformance.fromHeading=heading;celloPerformance.seatPosition={...pos};
  avatar.updateMatrixWorld(true);celloPerformance.restHands=celloPerformance.arms.map(r=>{const hand=r.moved.find(m=>m.child.isMesh&&m.child.geometry?.type==='SphereGeometry')?.child;return hand?hand.getWorldPosition(new T.Vector3()):r.arm.localToWorld(new T.Vector3(0,-.3,0));});celloPerformance.restHandLocal=celloPerformance.restHands.map(v=>avatar.worldToLocal(v.clone()));
- const a=performanceParts();cello.visible=false;celloShadowBridge.visible=false;pinContact.visible=false;a.instrument.visible=a.bow.visible=true;
+ const a=performanceParts();cello.visible=false;celloShadowBridge.visible=false;pinContact.visible=false;a.instrument.visible=a.bow.visible=true;tickPerformance(0,performance.now());
 }
 function aimPerformanceArm(rig,hand,bend){
  const shoulder=rig.arm.position.clone(),target=hand.clone(),distance=target.distanceTo(shoulder),l1=rig.lengths?.[0]??.30,l2=rig.lengths?.[1]??.30;
@@ -1230,12 +1031,12 @@ function aimPerformanceArm(rig,hand,bend){
  const localHand=target.sub(shoulder).applyQuaternion(rig.arm.quaternion.clone().invert()).sub(rig.elbow.position);
  rig.elbow.quaternion.setFromUnitVectors(new T.Vector3(0,-1,0),localHand.normalize());
 }
-function finishPerformance(){if(celloPerformance?.phase!=='playing')return;celloPerformance.returnStroke=reduced.matches?0:Math.sin(celloPerformance.elapsed*.0016)*.075*T.MathUtils.smoothstep(celloPerformance.elapsed,0,650);celloPerformance.phase='returning';celloPerformance.elapsed=0;performanceParts().back.hidden=true;pressed.clear();}
+function finishPerformance(){if(celloPerformance?.phase!=='playing')return;celloPerformance.returnStroke=reduced.matches?0:Math.sin(celloPerformance.elapsed*.0016)*.075*T.MathUtils.smoothstep(celloPerformance.elapsed,0,650);celloPerformance.phase='returning';celloPerformance.elapsed=0;const home=celloPerformance.home;animateRoomCamera(home.position,home.zoom,true,home.quaternion,reduced.matches?0:1500);celloPerformance.returnCameraStarted=true;performanceParts().back.hidden=true;pressed.clear();}
 window.addEventListener('pagehide',()=>{
  performanceKeys.clear();performancePointers.clear();
  if(!celloPerformance)return;
  const p=celloPerformance;
- if(!p.arms){const a=performanceParts();a.stool.visible=false;celloPerformance=null;release();document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;}
+ if(!p.arms){const a=performanceParts();a.stool.visible=true;celloPerformance=null;release();document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;}
  else{p.phase='returning';p.elapsed=4000;tickPerformance(0,performance.now());}
  cameraMotion=null;camera.position.copy(p.home.position);camera.quaternion.copy(p.home.quaternion);camera.zoom=p.home.zoom;camera.updateProjectionMatrix();
 });
@@ -1255,12 +1056,7 @@ function tickPerformance(dt,t){
  p.elapsed+=dt*1000;const returning=p.phase==='returning',playing=p.phase==='playing';
  const clock=reduced.matches?(returning?0:PERFORMANCE_TRANSITION_MS):playing?PERFORMANCE_TRANSITION_MS:returning?PERFORMANCE_TRANSITION_MS-p.elapsed:p.elapsed;
  const phase=performanceTransition(clock),sit=phase.sit,carry=phase.carry;p.transitionStage=phase.stage;
- // Framing-only relocation is hidden at a brief match-cut, never shown as skating.
- let cut=false;
- if(clock>=3050&&!performancePresentation){beginPerformancePresentation();cut=true;}
- if(clock<3050&&performancePresentation){endPerformancePresentation();cut=true;}
- if(cut&&!reduced.matches)p.cutPending=true;
- p.frameOpacity=reduced.matches?1:p.cutPending?0:clock<2925||clock>3175?1:Math.abs(clock-3050)/125;
+ if(!returning&&!p.cameraStarted&&(clock>=1000||reduced.matches)){const view=performanceCamera();animateRoomCamera(view.position,view.zoom,false,view.quaternion,reduced.matches?0:1800);p.cameraStarted=true;}
  const pickupYaw=Math.atan2(p.celloPosition.x-pos.x,p.celloPosition.z-pos.z),facing=p.fromHeading+Math.atan2(Math.sin(pickupYaw-p.fromHeading),Math.cos(pickupYaw-p.fromHeading))*phase.face;
  heading=facing+Math.atan2(Math.sin(PERFORMANCE_YAW-facing),Math.cos(PERFORMANCE_YAW-facing))*carry;
  avatar.rotation.y=heading;avatar.position.set(pos.x,standY(pos),pos.z);
@@ -1270,20 +1066,15 @@ function tickPerformance(dt,t){
  leftLeg.rotation.x+=.20*footstep;rightLeg.rotation.x-=.26*footstep;
  leftLeg.getObjectByName('leg-foot').rotation.x=.12*footstep;rightLeg.getObjectByName('leg-foot').rotation.x=-.12*footstep;
  const lean=p.celloPosition.clone().sub(avatar.position);lean.y=0;lean.normalize().applyAxisAngle(performanceUp,-heading).multiplyScalar(.06*phase.reach*(1-carry));upperBody.position.add(lean);
- performanceVisualAmount=performancePresentation?1:0;avatar.position.addScaledVector(PERFORMANCE_OFFSET,performanceVisualAmount);
- const SCALE=.82,lap=performanceFramePoint(-.11,.132753,.353);
- // Secure neck and bow first; lift with the torso, then lower as the knees bend.
- if(performancePresentation){
-  a.instrument.position.copy(lap);a.instrument.scale.setScalar(SCALE);a.instrument.rotation.set(-.10,PERFORMANCE_YAW,-.48,'YXZ');
- }else{
-  a.instrument.scale.setScalar(1);
-  const turn=Math.atan2(Math.sin(heading-pickupYaw),Math.cos(heading-pickupYaw));
-  a.instrument.quaternion.setFromAxisAngle(performanceUp,turn*carry).multiply(new T.Quaternion().setFromEuler(p.celloRotation));
-  const neckLocal=new T.Vector3(-.018,.95,.192).applyQuaternion(a.instrument.quaternion);
-  const heldNeck=new T.Vector3(.22,1.02-.07*sit,.20).applyAxisAngle(performanceUp,heading).add(avatar.position);
-  a.instrument.position.lerpVectors(p.celloPosition,heldNeck.sub(neckLocal),carry);
-  a.instrument.position.y+=Math.sin(Math.PI*carry)*.025;
- }
+ // Same prop geometry and scale from stand to hands, with a continuous carried pose.
+ a.instrument.scale.setScalar(1);
+ const turn=Math.atan2(Math.sin(heading-pickupYaw),Math.cos(heading-pickupYaw));
+ a.instrument.quaternion.setFromAxisAngle(performanceUp,turn*carry).multiply(new T.Quaternion().setFromEuler(p.celloRotation));
+ const finalQ=new T.Quaternion().setFromEuler(new T.Euler(-.10,PERFORMANCE_YAW,-.48,'YXZ'));a.instrument.quaternion.slerp(finalQ,phase.bow);
+ const neckLocal=new T.Vector3(-.018,.95,.192).applyQuaternion(a.instrument.quaternion);
+ const heldNeck=new T.Vector3(.22,1.02-.07*sit,.20).applyAxisAngle(performanceUp,heading).add(avatar.position);
+ a.instrument.position.lerpVectors(p.celloPosition,heldNeck.sub(neckLocal),carry);
+ a.instrument.position.y+=Math.sin(Math.PI*carry)*.025;
  // Continuously ground the endpin correction, no threshold snap at 99%.
  a.instrument.updateMatrixWorld(true);
  const finalBox=new T.Box3().setFromObject(a.instrument);
@@ -1295,7 +1086,7 @@ function tickPerformance(dt,t){
  const stringY=.785,stringZ=.216+(.177-.216)*(stringY-.706)/(1.648-.706);
  const contact=new T.Vector3(0,stringY,stringZ).applyMatrix4(a.instrument.matrixWorld);
  const bowQ=a.instrument.quaternion.clone().multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),-Math.PI/2)).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),-Math.PI/2));
- const bowScale=.68;
+ const bowScale=1;
  const contactOnHair=new T.Vector3(-.010,.38+motion/bowScale,0).multiplyScalar(bowScale).applyQuaternion(bowQ);
  const bowHand=contact.clone().sub(contactOnHair);
  const carriedBow=new T.Vector3(.399,.208,.047).applyMatrix4(a.instrument.matrixWorld);
@@ -1308,9 +1099,9 @@ function tickPerformance(dt,t){
  if(p.arms){
    avatar.updateMatrixWorld(true);upperBody.updateMatrixWorld(true);
    const leftWorld=avatar.localToWorld(p.restHandLocal[0].clone()).lerp(bowGrip,phase.reach);
-   const fingerTarget=new T.Vector3(-.018,T.MathUtils.lerp(.95,1.38,phase.bow),.192).applyMatrix4(a.instrument.matrixWorld);
+   const fingerTarget=new T.Vector3(-.018,.95,.192).applyMatrix4(a.instrument.matrixWorld);
    const rightWorld=avatar.localToWorld(p.restHandLocal[1].clone()).lerp(fingerTarget,phase.reach);
-   const lengths=performancePresentation?[.30,.30]:[.22,.18];for(const rig of p.arms)rig.lengths=lengths;
+   const lengths=[.22,.18];for(const rig of p.arms)rig.lengths=lengths;
    // Move the shoulder girdle into the intersection of the two reach spheres.
    // No limb length is derived from target distance.
    const reach=lengths[0]+lengths[1]-.006;
@@ -1331,58 +1122,44 @@ function tickPerformance(dt,t){
  if(!returning&&p.phase==='seating'&&clock>=PERFORMANCE_TRANSITION_MS){p.phase='playing';p.elapsed=0;$('scene-status').textContent='大提琴演奏畫面，不記錄練習資料。可返回琴房。';a.back.hidden=false;a.back.focus({preventScroll:true});}
  if(returning&&(p.elapsed>=PERFORMANCE_TRANSITION_MS||reduced.matches)){
   for(const{arm,elbow,moved,snapshots}of p.arms){for(const{child,original}of moved){elbow.remove(child);arm.add(child);child.position.copy(original);}arm.remove(elbow);for(const saved of snapshots){saved.child.position.copy(saved.position);saved.child.scale.copy(saved.scale);saved.child.quaternion.copy(saved.quaternion);saved.child.name=saved.name;}for(const child of elbow.children){if(!moved.some(m=>m.child===child))child.geometry?.dispose();}arm.rotation.set(0,0,arm===leftArm?-.12:.12);}
-  endPerformancePresentation();a.instrument.visible=a.bow.visible=a.stool.visible=a.grip.visible=false;cello.visible=celloShadowBridge.visible=pinContact.visible=true;previewMode=null;celloPerformance=null;release();walkPose(0,false);upperBody.position.set(0,0,0);head.rotation.y=0;renderer.domElement.style.opacity='1';document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;
+  endPerformancePresentation();a.instrument.visible=a.bow.visible=a.grip.visible=false;a.stool.visible=true;cello.visible=celloShadowBridge.visible=pinContact.visible=true;previewMode=null;celloPerformance=null;release();walkPose(0,false);upperBody.position.set(0,0,0);head.rotation.y=0;document.querySelector('.station-controls').hidden=false;$('cat-watch-access').hidden=false;
   if(!p.returnCameraStarted)animateRoomCamera(p.home.position,p.home.zoom,true,p.home.quaternion,0);area.focus({preventScroll:true});
  }
 }
 
-// Performance presentation is temporary. Room navigation/save coordinates never move.
-let performanceVisualAmount=0,performancePresentation=null;
-const concertCamera=new T.PerspectiveCamera(50.18,4/3,.03,60);
-concertCamera.position.set(-.08,1.67,.59);concertCamera.lookAt(-1.25,1.77,-2.09);
+// Only the outside view changes. Room geometry and camera remain the same scene.
+let performancePresentation=null;
+const outdoorMaterials=[];livingLandscape.group.traverse(o=>{for(const m of(o.material?(Array.isArray(o.material)?o.material:[o.material]):[])){if(!outdoorMaterials.some(v=>v.m===m))outdoorMaterials.push({m,opacity:m.opacity});m.transparent=true;}});
+previewLandscape.material.transparent=true;
 function beginPerformancePresentation(){
- if(performancePresentation)return;
- const objects=[windowGroup,rearWall,sideWall,vanity,performanceAssets.stool];
- performancePresentation={objects:objects.map(o=>({o,position:o.position.clone(),scale:o.scale.clone(),visible:o.visible})),cloth:[],sky:windowGroup.children.filter(o=>['window-sky','window-sun','window-far-hill','window-near-hill'].includes(o.name)||o.name.startsWith('window-cloud')).map(o=>({o,visible:o.visible}))};
- windowGroup.scale.set(1.26,1.16,1);windowGroup.position.set(-1.25,.8152,-2.12);
- rearWall.scale.y=1.65;rearWall.position.y=2.57;sideWall.scale.y=3.2;sideWall.position.y=2.48;vanity.visible=false;
- performanceAssets.stool.position.add(PERFORMANCE_OFFSET);
- // Compute the deformation in its final seated frame, then let the transition animate.
- performancePose(1,0);scene.updateMatrixWorld(true);
- upperBody.traverse(o=>{if(!o.isMesh)return;let a=o;while(a&&a!==upperBody){if(a===head||a===leftArm||a===rightArm)return;a=a.parent;}const attr=o.geometry?.attributes.position;if(!attr)return;
- const original=o.geometry;o.geometry=original.clone();performancePresentation.cloth.push({o,original});const p=o.geometry.attributes.position;
- const toAvatar=avatar.matrixWorld.clone().invert().multiply(o.matrixWorld),fromAvatar=toAvatar.clone().invert();
- for(let i=0;i<p.count;i++){const vv=new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(toAvatar);if(vv.y<.94&&vv.z>0){const w=Math.max(0,Math.min(1,(.94-vv.y)/.10))*Math.max(0,Math.min(1,(.38-Math.abs(vv.x))/.14));vv.z*=1-.78*w;vv.applyMatrix4(fromAvatar);p.setXYZ(i,vv.x,vv.y,vv.z);}}p.needsUpdate=true;o.geometry.computeVertexNormals();});
- performancePose(0,0);
- performancePresentation.polish=software?null:decoratePerformanceRoom(T,scene);document.body.classList.add('concert-view');
+ if(!performancePresentation)performancePresentation={amount:0,sky:windowGroup.children.filter(o=>['window-sky','window-sun','window-far-hill','window-near-hill'].includes(o.name)||o.name.startsWith('window-cloud')).map(o=>({o,visible:o.visible}))};
 }
 function endPerformancePresentation(){
- if(!performancePresentation)return;
- for(const{x,o,position,scale,visible}of performancePresentation.objects){o.position.copy(position);o.scale.copy(scale);o.visible=visible;}
- for(const{o,original}of performancePresentation.cloth){o.geometry.dispose();o.geometry=original;}
- performancePresentation.polish?.();for(const{o,visible}of performancePresentation.sky)o.visible=visible;previewLandscape.visible=false;livingLandscape.group.visible=false;performancePresentation=null;performanceVisualAmount=0;document.body.classList.remove('concert-view');
- if(!software){renderer.setViewport(0,0,area.clientWidth,area.clientHeight);renderer.setScissorTest(false);}
+ if(!performancePresentation)return;for(const{o,visible}of performancePresentation.sky)o.visible=visible;
+ previewLandscape.visible=false;livingLandscape.group.visible=false;performancePresentation=null;
 }
 function renderPerformanceView(t){
- // Consume only at an actual draw; SVG can skip intermediate animation ticks.
- if(celloPerformance?.cutPending)celloPerformance.frameOpacity=0;
- renderer.domElement.style.opacity=String(celloPerformance?.frameOpacity??1);
- if(!performancePresentation){renderer.render(scene,camera);if(celloPerformance)celloPerformance.cutPending=false;return;}
- const ready=!software&&!!previewLandscape.userData.ready;previewLandscape.visible=ready;livingLandscape.group.visible=ready;for(const{o}of performancePresentation.sky)o.visible=!ready;livingLandscape.tick(t*.001,reduced.matches);
- const w=area.clientWidth,h=area.clientHeight,viewW=Math.min(w,h*4/3),viewH=viewW*3/4;
- if(!software){renderer.setScissorTest(false);renderer.setClearColor(0xf1ebda,1);renderer.clear();renderer.setViewport((w-viewW)/2,(h-viewH)/2,viewW,viewH);renderer.setScissor((w-viewW)/2,(h-viewH)/2,viewW,viewH);renderer.setScissorTest(true);}
- renderer.render(scene,concertCamera);if(celloPerformance)celloPerformance.cutPending=false;
- if(!software){renderer.setScissorTest(false);renderer.setViewport(0,0,w,h);renderer.setClearColor(0x000000,0);}
+ const ready=!software&&!!previewLandscape.userData.ready;
+ if(performancePresentation){
+  const p=celloPerformance,target=p?.phase==='returning'?Math.max(0,1-p.elapsed/900):Math.min(1,(p?.elapsed||0)/900);
+  if(p?.phase==='playing')performancePresentation.amount=1;else performancePresentation.amount=target;
+  const amount=performancePresentation.amount;
+  previewLandscape.visible=livingLandscape.group.visible=ready&&amount>0;previewLandscape.material.opacity=amount;
+  for(const{m,opacity}of outdoorMaterials)m.opacity=opacity*amount;
+  for(const{o,visible}of performancePresentation.sky)o.visible=visible&&!(ready&&amount>=1);
+  livingLandscape.tick(t*.001,reduced.matches);for(const c of livingLandscape.clouds)c.material.uniforms.opacity.value*=amount;
+ }
+ renderer.render(scene,camera);
 }
 
 const performanceKeys=new Set(),performancePointers=new Set();
-window.addEventListener('keydown',e=>{if(!celloPerformance&&!performanceKeys.has(e.key))return;if(!keyMap[e.key]&&!['Enter',' ','Escape','e','E'].includes(e.key))return;if(celloPerformance?.phase==='playing'&&e.target===performanceAssets?.back&&['Enter',' '].includes(e.key))return;performanceKeys.add(e.key);e.preventDefault();e.stopImmediatePropagation();},{capture:true});
+window.addEventListener('keydown',e=>{if(!celloPerformance&&!performanceKeys.has(e.key))return;if(e.key==='Escape'&&celloPerformance?.phase==='playing'){e.preventDefault();e.stopImmediatePropagation();finishPerformance();return;}if(!keyMap[e.key]&&!['Enter',' ','Escape','e','E'].includes(e.key))return;if(celloPerformance?.phase==='playing'&&e.target===performanceAssets?.back&&['Enter',' '].includes(e.key))return;performanceKeys.add(e.key);e.preventDefault();e.stopImmediatePropagation();},{capture:true});
 window.addEventListener('keyup',e=>performanceKeys.delete(e.key),{capture:true});
 window.addEventListener('pointerdown',e=>{if(!celloPerformance||e.target===performanceAssets?.back)return;if(!e.target.closest?.('.stage,aside'))return;performancePointers.add(e.pointerId);e.preventDefault();e.stopImmediatePropagation();},{capture:true});
 window.addEventListener('pointerup',e=>{if(performancePointers.delete(e.pointerId)){e.preventDefault();e.stopImmediatePropagation();}},{capture:true});
 window.addEventListener('click',e=>{if(celloPerformance&&e.target!==performanceAssets?.back&&e.target.closest?.('.stage,aside')){e.preventDefault();e.stopImmediatePropagation();}},{capture:true});
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&watchingCat){e.preventDefault();endCatView();return;}if(!previewMode)return;if(e.key==='Escape'){e.preventDefault();exitPreview();return;}if(previewMode!=='records'&&e.target===area&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();previewYaw+=(e.key==='ArrowLeft'?-1:1)*Math.PI/12;}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&celloPerformance?.phase==='playing'){e.preventDefault();finishPerformance();return;}if(e.key==='Escape'&&watchingCat){e.preventDefault();endCatView();return;}if(!previewMode)return;if(e.key==='Escape'){e.preventDefault();exitPreview();return;}if(previewMode!=='records'&&e.target===area&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();previewYaw+=(e.key==='ArrowLeft'?-1:1)*Math.PI/12;}});
 area.addEventListener('pointerdown',e=>{if(!e.isPrimary){tap=null;return;}if(e.button!==0)return;if(!previewMode&&!watchingCat)release();tap={id:e.pointerId,x:e.clientX,y:e.clientY,yaw:previewYaw};if(previewMode)area.setPointerCapture(e.pointerId);});
 area.addEventListener('pointermove',e=>{if(previewMode&&previewMode!=='records'&&tap?.id===e.pointerId)previewYaw=tap.yaw+(e.clientX-tap.x)*.012;});
 area.addEventListener('pointercancel',()=>tap=null);area.addEventListener('lostpointercapture',()=>tap=null);
@@ -1419,7 +1196,7 @@ area.addEventListener('pointerup',e=>{if(!tap||tap.id!==e.pointerId)return;const
 // still wins; exact wardrobe/vanity/cello mesh hits were handled above.
 const hitIntent=forgivingRoomHit(raycaster.ray,blockers[0]);if(hitIntent){approachStation(hitIntent);return;}
 if(blockers[0]&&blockers[0].point.y>.11)return;const hit=new T.Vector3();if(!raycaster.ray.intersectPlane(floorPlane,hit)||Math.abs(hit.x)>3.05||hit.z< -2.35||hit.z>2.35)return;pendingStation=null;destination={x:Math.max(-2.2,Math.min(2.2,hit.x)),z:Math.max(-.8,Math.min(1.9,hit.z))};area.focus({preventScroll:true});});
-function resize(){const w=area.clientWidth,h=area.clientHeight;renderer.setSize(w,h);const phone=w<600,size=Math.max(3.75,(phone?3.6:3.9)*h/w),lift=phone?size*.13:0;camera.left=-size*w/h;camera.right=size*w/h;camera.top=size-lift;camera.bottom=-size-lift;camera.updateProjectionMatrix();if(watchingCat){const view=catCameraTarget();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(previewMode&&previewMode!=='records'&&previewMode!=='performance'&&roomSnapshot){const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);}}new ResizeObserver(resize).observe(area);resize();controls();const reduced=matchMedia('(prefers-reduced-motion: reduce)');let last=0,lastDraw=0;
+function resize(){const w=area.clientWidth,h=area.clientHeight;renderer.setSize(w,h);const phone=w<600,size=Math.max(3.75,(phone?3.6:3.9)*h/w),lift=phone?size*.13:0;camera.left=-size*w/h;camera.right=size*w/h;camera.top=size-lift;camera.bottom=-size-lift;camera.updateProjectionMatrix();if(celloPerformance?.cameraStarted&&celloPerformance.phase!=='returning'){const view=performanceCamera();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(watchingCat){const view=catCameraTarget();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(previewMode&&previewMode!=='records'&&previewMode!=='performance'&&roomSnapshot){const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);}}new ResizeObserver(resize).observe(area);resize();controls();const reduced=matchMedia('(prefers-reduced-motion: reduce)');let last=0,lastDraw=0;
 // A real doorway arrival: the saved outfit walks inward while the view opens.
 // Only the consumed town arrival parameter opts in; direct visits never replay.
 let doorArrival=null;
@@ -1501,5 +1278,7 @@ function animateIdle(t,moving){
  faceRig.mouth.scale.set(fm.mouthX,fm.mouthY,1);head.rotation.z+=fm.tilt;
 
 }
-function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;watchPerformanceApproach(dt);if(celloPerformance?.phase==='approach'&&!destination){destination={...stationSpots.cello};pendingStation='cello';}tickDoorArrival(t);tickDoorCutaway(dt);tickRoomCamera(t);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode==='performance'){tickPerformance(dt,t);if(!software||t-lastDraw>100){renderPerformanceView(t);lastDraw=t;}return;}if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}requestAnimationFrame(frame);
+function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;watchPerformanceApproach(dt);if(celloPerformance?.phase==='approach'&&!destination){destination={...stationSpots.cello};pendingStation='cello';}tickDoorArrival(t);tickDoorCutaway(dt);tickRoomCamera(t);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode==='performance'){tickPerformance(dt,t);if(!software||t-lastDraw>100){renderPerformanceView(t);lastDraw=t;}return;}if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}
+const realRoomPolish=software?null:decoratePerformanceRoom(T,scene);const realStool=performanceParts().stool;realStool.position.set(stationSpots.cello.x,0,stationSpots.cello.z+.04);realStool.rotation.y=PERFORMANCE_YAW;realStool.scale.y=.455/.375;realStool.visible=true;
+requestAnimationFrame(frame);
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();release();$('scene-status').textContent='3D 畫面暫停，請重新整理恢復。';status.textContent='3D 顯示中斷，穿搭設定仍保留。請重新整理。';});
