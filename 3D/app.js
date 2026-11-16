@@ -1,5 +1,5 @@
 import * as T from './vendor/three.module.js';
-import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=15';
+import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=16';
 const $=id=>document.getElementById(id),area=$('scene'),status=$('save-status');let state=defaults();try{state=normalize(JSON.parse(localStorage.getItem(KEY)));}catch{status.textContent='無法讀取本機設定，仍可自由試穿。';}
 installPullToRefreshGuard();
 const HAIR_ACCESSORY={bow:'#c88f83',beret:'#718f83',tie:'#d9b77d'};
@@ -294,7 +294,7 @@ function mirrorSuggestion(x,z,facing=0,cameraX=5.8,cameraZ=8.2){
 function updateMirrorHint(){if(!mirrorHint)return;const p=mirrorSuggestion(pos.x,pos.z,avatar.rotation.y,camera.position.x,camera.position.z);if(software){mirrorHint.position.x=p.x*.35;mirrorHint.scale.set(Math.min(1.18,p.width),Math.min(1.12,p.size),1);mirrorHint.children.forEach(o=>o.material.opacity=p.opacity*.55);}else{mirrorHint.material.uniforms.opacity.value=p.opacity;mirrorHint.material.uniforms.size.value.set(p.width,p.size);mirrorHint.material.uniforms.shift.value=p.x/.62;}}
 
 
-rod([-.23,1.58,-.098],[-.08,1.77,-.098],.012,'#ecf4e7',vanity);cylinder(.31,.89,.05,.075,.065,.16,'#dbc5a4',vanity);
+cylinder(.31,.89,.05,.075,.065,.16,'#dbc5a4',vanity);
 // A shallow drawer front, framed lip and a fitted brass pull.
 box(0,.685,.217,.73,.105,.018,'#bea07d',vanity);
 box(0,.69,.232,.10,.018,.018,'#cbb17b',vanity);
