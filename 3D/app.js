@@ -160,8 +160,37 @@ const exitLeaf=new T.Group();exitLeaf.position.set(-.58,0,2.24);exitLeaf.name='m
 roomFinish(box(.57,.92,0,1.14,1.72,.07,'#91a68a',exitLeaf),'oak');
 for(const y of[.49,1.24]){box(.57,y,.045,.88,.55,.035,'#b4c4a3',exitLeaf);box(.57,y,.067,.72,.39,.012,'#9eb492',exitLeaf);}
 box(.99,.96,.09,.07,.07,.07,'#c9ac68',exitLeaf);
-exitLeaf.rotation.y=Math.PI*.49;
+exitLeaf.rotation.y=0;
 roomExit.traverse(o=>{if(o.isMesh)o.userData.station='exit';});
+// Literal low cross-section, retaining source material/maps and bottom UVs.
+const doorCutaway=new T.Group();doorCutaway.name='door-low-cutaway';scene.add(doorCutaway);
+function doorBottomSlice(source,height,bottom,parent){
+ const p=source.geometry.parameters,geometry=new T.BoxGeometry(p.width,height,p.depth),uv=geometry.attributes.uv;
+ for(const face of[0,1,4,5])for(let i=face*4;i<face*4+4;i++)uv.setY(i,(bottom-(source.position.y-p.height/2)+uv.getY(i)*height)/p.height);
+ const o=new T.Mesh(geometry,source.material);o.position.copy(source.position);o.position.y=bottom+height/2;o.castShadow=false;o.receiveShadow=source.receiveShadow;o.raycast=()=>{};parent.add(o);return o;
+}
+const fullDoorParts=roomExit.children.filter(o=>o.isMesh&&o.position.y+(o.geometry.parameters?.height||0)/2>.3);
+for(const x of[-.67,.67]){const original=fullDoorParts.find(o=>Math.abs(o.position.x-x)<.001&&o.geometry.parameters.height===1.83);doorBottomSlice(original,.14,.04,doorCutaway);}
+const lowLeaf=new T.Group();lowLeaf.position.copy(exitLeaf.position);doorCutaway.add(lowLeaf);doorBottomSlice(exitLeaf.children[0],.12,.06,lowLeaf);
+exitLeaf.traverse(o=>{if(o.isMesh)fullDoorParts.push(o);});
+// Never fade shared furniture finishes or the low section's original materials.
+const doorFadeMaterials=new Map();
+for(const o of fullDoorParts){o.userData.fullDoorRaycast=o.raycast;let material=doorFadeMaterials.get(o.material);if(!material){material=o.material.clone();doorFadeMaterials.set(o.material,material);}o.material=material;}
+let doorFullness=1,doorWantsFull=true;
+function tickDoorCutaway(dt){
+ if(doorArrival||pendingStation==='exit'||exitNavigating)doorWantsFull=true;
+ else if(Math.abs(pos.x)<.95&&pos.z>1.38)doorWantsFull=true;
+ else if(Math.abs(pos.x)>1.2||pos.z<1.12)doorWantsFull=false;
+ const target=doorWantsFull?1:0;
+ // A cancelled approach closes during the same fade, never leaving an ajar low slice.
+ if(!doorWantsFull)exitLeaf.rotation.y=reduced.matches?0:Math.max(0,exitLeaf.rotation.y-dt*Math.PI*.49/.24);
+ doorFullness=reduced.matches?target:doorFullness+Math.max(-dt/ .24,Math.min(dt/ .24,target-doorFullness));
+ if(Math.abs(doorFullness-target)<.001)doorFullness=target;
+ exitHitBounds.max.y=doorWantsFull?1.98:.20;
+ for(const o of fullDoorParts){o.raycast=doorWantsFull?o.userData.fullDoorRaycast:()=>{};o.visible=doorFullness>0;o.material.transparent=doorFullness<1;o.material.opacity=doorFullness;o.material.depthWrite=doorFullness===1;}
+ // The matching opaque lower section stays grounded while the tall part fades.
+ doorCutaway.visible=doorFullness<1;lowLeaf.rotation.y=exitLeaf.rotation.y;
+}
 const cameFromTown=new URL(location.href).searchParams.get('from')==='town';
 if(cameFromTown){const u=new URL(location.href);u.searchParams.delete('from');history.replaceState(history.state,'',u);}
 let exitArmed=!cameFromTown,exitNavigating=false;
@@ -1033,5 +1062,5 @@ function animateIdle(t,moving){
  faceRig.mouth.scale.set(fm.mouthX,fm.mouthY,1);head.rotation.z+=fm.tilt;
 
 }
-function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;tickDoorArrival(t);tickRoomCamera(t);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}requestAnimationFrame(frame);
+function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;tickDoorArrival(t);tickDoorCutaway(dt);tickRoomCamera(t);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){const next=stepToward(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=move(pos,wx,wz,dt);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}requestAnimationFrame(frame);
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();release();$('scene-status').textContent='3D 畫面暫停，請重新整理恢復。';status.textContent='3D 顯示中斷，穿搭設定仍保留。請重新整理。';});
