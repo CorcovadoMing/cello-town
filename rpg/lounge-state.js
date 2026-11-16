@@ -34,7 +34,7 @@ export function createLounge({navigation,seat={x:560,y:232},approach={x:577,y:25
   if(mode==='approach'||mode==='return'){
    let remaining=32*dt;pose.walking=false;
    while(path.length&&remaining>0){const p=path[0],dx=p.x-pose.x,dy=p.y-pose.y,d=Math.hypot(dx,dy),step=Math.min(d,remaining);
-    if(d>.0001){const next={x:pose.x+dx/d*step,y:pose.y+dy/d*step};if(!navigation.lineClear(pose,next))break;pose={...pose,...next,walking:true,facing:Math.abs(dx)>Math.abs(dy)?dx<0?'left':'right':dy<0?'back':'front'};remaining-=step;}
+    if(d>.0001){const next={x:pose.x+dx/d*step,y:pose.y+dy/d*step};if(!navigation.lineClear(pose,next))break;pose={...pose,...next,stride:(pose.stride||0)+step*Math.PI/8,walking:true,facing:Math.abs(dx)>Math.abs(dy)?dx<0?'left':'right':dy<0?'back':'front'};remaining-=step;}
     if(d<=step+.0001)path.shift();else break;
    }
    if(!path.length){if(mode==='return'){mode='idle';pose=null;origin=null;wait=playerSeated?32:48;}else{mode='seated';pose={...pose,...seat,facing:seat.facing,walking:false};sharedSeat=playerSeated;rest=0;}}

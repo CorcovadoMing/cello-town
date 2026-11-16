@@ -10,7 +10,7 @@ export function teacherFacing(previous,dx,dy){
 const POINTS=[TEACHER_HOME,{x:303,y:334},{x:400,y:334},{x:520,y:334}];
 export function createTeacher(){
  let x=303,y=290,node=0,goal=1,direction=1,rest=4.7,clock=0,distance=0,facing='front',walking=false,observing=false,practiceSeconds=0,motionReduced=false;
- const snapshot=()=>({x,y,facing,walking,observing,reduced:motionReduced,t:clock*1000,stride:distance/7});
+ const snapshot=()=>({x,y,facing,walking,observing,reduced:motionReduced,t:clock*1000,stride:distance*Math.PI/8});
  function reset(){x=303;y=290;node=0;goal=1;direction=1;rest=4.7;clock=0;distance=0;facing='front';walking=false;observing=false;practiceSeconds=0;motionReduced=false;return snapshot();}
  function update(dt,{practiceActive=false,dialogOpen=false,holdForInteraction=false,reducedMotion=false,player=null}={}){
   dt=Number.isFinite(dt)?Math.max(0,Math.min(.05,dt)):0;
@@ -38,22 +38,27 @@ export function createTeacher(){
  }
  return {update,reset,get position(){return {x,y};},get pose(){return snapshot();},draw(g){drawTeacher(g,snapshot());}};
 }
+// A 16-world-pixel cycle: each planted shoe counter-translates eight pixels
+// during its stance half, while the opposite foot swings clear of the ground.
+export function teacherFoot(phase,side=true){const t=((phase/(Math.PI*2))%1+1)%1;return {travel:(t<.5?1-4*t:-1+4*(t-.5))*(side?3.2:3.63636),lift:t<.5?0:Math.sin((t-.5)*Math.PI*2)*2.4};}
 export function drawTeacher(g,{x,y,t=0,walking=false,facing='front',stride=0,observing=false,reduced=false}){
  const hair='#694b43',edge='#493e43',dress='#b7809e',shade='#936681',skin='#f5cfa7';
- const swing=walking&&!reduced?Math.sin(stride)*2.2:0,blink=!reduced&&!walking&&(t+1317)%5270>5110;
+ const active=walking&&!reduced,swing=active?Math.sin(stride)*2.2:0,blink=!reduced&&!walking&&(t+1317)%5270>5110;
  g.save();g.translate(x,y);g.scale(1.25,1.10);g.fillStyle='#294a3530';g.fillRect(-11,0,22,5);
  const p=(a,b,w,h,c)=>{g.fillStyle=c;g.fillRect(a,b,w,h);};
  const side=facing==='left'||facing==='right',back=facing==='back';if(facing==='left')g.scale(-1,1);
+ const feet=[0,Math.PI].map(offset=>active?teacherFoot(stride+offset,side):{travel:0,lift:0});
+ const foot=(i,x,color)=>{const f=feet[i],dx=side?f.travel:0,dy=(side?0:f.travel*(back?-1:1))-f.lift;for(let k=0;k<6;k++){const u=k/5;p(x+dx*u,-6+k+dy*u,4,2,color);}p(x-1+dx,-1+dy,6,3,edge);};
  if(side){
   // A genuine profile: rear foot/arm behind the narrower dress, near sleeve in front.
-  p(-4,-8-swing,4,8,shade);p(-5,-1-swing,6,3,edge);
+  foot(0,-4,shade);
   p(-8,-25,15,9,dress);p(-7,-17,14,9,shade);p(-8,-8,17,4,dress);
-  p(1,-8+swing,4,8,skin);p(0,-1+swing,7,3,edge);
+  foot(1,1,skin);
   p(-3,-23-swing*.45,5,7,'#d39bb5');p(-2,-16-swing*.45,3,5,skin);
   p(4,-25,3,3,'#fff1d9');p(6,-21,1,3,'#ead292');p(-7,-15,14,2,'#e3bf97');
   p(-7,-5,4,2,'#f6dfcd');p(0,-5,4,2,'#f6dfcd');p(5,-5,3,2,'#f6dfcd');
  }else{
-  p(-6,-8-swing,4,8,skin);p(3,-8+swing,4,8,skin);p(-7,-1-swing,6,3,edge);p(2,-1+swing,6,3,edge);
+  foot(0,-6,skin);foot(1,3,skin);
   p(-10,-25,20,8,dress);p(-12,-23+swing*.45,4,7,'#d39bb5');p(8,-23-swing*.45,4,7,'#d39bb5');
   p(-12,-17+swing*.45,3,6,skin);p(9,-17-swing*.45,3,6,skin);p(-7,-17,14,4,shade);
   p(-8,-13,16,5,dress);p(-10,-8,20,4,dress);p(-9,-5,5,2,'#f6dfcd');p(-2,-5,5,2,'#f6dfcd');p(5,-5,4,2,'#f6dfcd');

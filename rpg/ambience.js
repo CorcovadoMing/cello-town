@@ -106,7 +106,8 @@ const CAT_BACK_REST=[
 '..OOOOOOOOOO..', '...OOOSSOOO...', '....OOSSOO....'];
 // Advance gait by actual ground distance: fast umbrella following cannot skate
 // through the same tiny time-based foot wiggle used for a leisurely stroll.
-export function advancePetGait(p,distance){p.gaitPhase=((p.gaitPhase||0)+distance/24*Math.PI*2)%(Math.PI*2);return p.gaitPhase;}
+export function petGaitCycle(speed=58){const u=Math.max(0,Math.min(1,(speed-37)/21));return 12+12*u*u*(3-2*u);}
+export function advancePetGait(p,distance,speed=58){p.gaitPhase=((p.gaitPhase||0)+distance/petGaitCycle(speed)*Math.PI*2)%(Math.PI*2);return p.gaitPhase;}
 export function articulatePaws(pixels,{h,vertical,phase,fur='O',shade='S',anchors=[6,9,19,22]}){
  const top=h-5;
  for(const id of [...pixels.keys()])if(Number(id.split(',')[1])>=top)pixels.delete(id);
@@ -277,7 +278,7 @@ export function drawRainFrame(g,frame){
 // Pet-only ground core includes the drawn roots plus small-body clearance.
 export function petTrunkBlocked(trees,x,y){return trees.some(([tx,ty,scale])=>x>=tx-9*scale-14&&x<=tx+10*scale+14&&y>=ty+34*scale-7&&y<=ty+46*scale+7);}
 export function rainPetGesture(time,offset=0,reduced=false){const phase=(time/1000+offset)%17;return {shake:reduced?0:phase>2&&phase<2.7?Math.sin((phase-2)*45)*1.1:0,groom:reduced?0:phase>8&&phase<10.3?Math.max(0,Math.sin((phase-8)*6)):0};}
-export function createRainPets({navigation,rainNavigation=navigation,canopies=[],trees=[]}={}){
+export function createRainPets({navigation,rainNavigation=navigation,canopies=[],trees=[],random=Math.random}={}){
  let last=null,clock=0,raining=false,rainAge=0,dryAge=0,homePrevious=null;const homeGait={};
  const benchCat={x:223,y:211,facing:'left',mode:'home',path:[],moving:false},benchHome={x:223,y:211},benchLanding={x:238,y:247};let benchAge=0,benchJump=null,dogDryDone=false,benchDryDone=false;
  function jumpBench(up){benchJump={from:{x:benchCat.x,y:benchCat.y},to:up?benchHome:benchLanding,age:0,up};benchCat.mode=up?'jumpUp':'jumpDown';benchCat.path=[];}
@@ -287,10 +288,26 @@ export function createRainPets({navigation,rainNavigation=navigation,canopies=[]
  const homeDog={x:240,y:245};
  const point=p=>({x:p.x,y:p.y});
  const sheltered=(x,y)=>canopies.some((c,i)=>{const k=Math.floor(x-c.left),tree=trees[i];return tree&&k>=8&&k<c.columns.length-8&&Number.isFinite(c.columns[k])&&canopyCoversGround(c,y)&&Math.abs(y-(tree[1]+46*tree[2]))<=66;});
- function chooseShelter(p,avoid=[]){const candidates=[];for(let i=0;i<trees.length;i++){const[x,y,s]=trees[i],c=canopies[i];if(!c)continue;for(const dx of[-(12*s+18),12*s+18])for(const dy of[8,14,-8]){const q={x:x+dx,y:y+46*s+dy};if(rainNavigation.isWalkable(q.x,q.y)&&sheltered(q.x,q.y)&&avoid.every(a=>!a||Math.hypot(a.x-q.x,a.y-q.y)>=46))candidates.push({q,bound:Math.hypot(q.x-p.x,q.y-p.y)});}}candidates.sort((a,b)=>a.bound-b.bound);let best=null;for(const candidate of candidates){if(best&&candidate.bound>=best.d)break;const path=rainNavigation.findPath(p,candidate.q);if(!path)continue;let from=p,d=0;for(const to of path){d+=Math.hypot(to.x-from.x,to.y-from.y);from=to;}if(!best||d<best.d)best={q:candidate.q,path,d};}return best;}
+ function chooseShelter(p,avoid=[]){
+  const candidates=[];
+  for(let i=0;i<trees.length;i++){const[x,y,s]=trees[i],c=canopies[i];if(!c)continue;for(const dx of[-(12*s+18),12*s+18])for(const dy of[8,14,-8]){const q={x:x+dx,y:y+46*s+dy};if(rainNavigation.isWalkable(q.x,q.y)&&sheltered(q.x,q.y)&&avoid.every(a=>!a||Math.hypot(a.x-q.x,a.y-q.y)>=46))candidates.push({q,tree:i,bound:Math.hypot(q.x-p.x,q.y-p.y)});}}
+  candidates.sort((a,b)=>a.bound-b.bound);const viable=[],triedTrees=new Set();let checks=0;const checked=new Set();
+  // One short list per shelter decision, never re-roll a settled animal.
+  // Nearby alternate trees get a chance without querying every candidate path.
+  for(const candidate of candidates){if(checks>=8||viable.length>=3)break;if(viable.length&&candidate.bound>viable[0].bound+140)break;if(triedTrees.has(candidate.tree))continue;
+   checks++;checked.add(candidate);const path=rainNavigation.findPath(p,candidate.q);if(!path)continue;triedTrees.add(candidate.tree);let from=p,d=0;for(const to of path){d+=Math.hypot(to.x-from.x,to.y-from.y);from=to;}viable.push({...candidate,path,d});
+  }
+  // Reliable legacy fallback if the nearby shortlist is disconnected.
+  if(!viable.length)for(const candidate of candidates){if(checked.has(candidate))continue;const path=rainNavigation.findPath(p,candidate.q);if(path){viable.push({...candidate,path});break;}}
+  if(!viable.length)return null;
+  const closestTree=q=>{let best=-1,d=Infinity;trees.forEach(([x,y,s],i)=>{const n=Math.hypot(q.x-x,q.y-(y+46*s));if(n<d){d=n;best=i;}});return best;};
+  const occupied=new Set(avoid.filter(Boolean).map(closestTree)),distinct=viable.filter(v=>!occupied.has(v.tree)),pool=distinct.length?distinct:viable;
+  return pool[Math.min(pool.length-1,Math.floor(Math.max(0,Math.min(.999999,random()))*pool.length))];
+ }
+
 
  function route(p,q){const path=(p.rainRoute?rainNavigation:navigation).findPath(p,q);if(path){p.path=path;p.goal=point(q);}return !!path;}
- function step(p,dt,speed){let budget=dt*speed,moved=0;while(p.path.length&&budget>0){const q=p.path[0],d=Math.hypot(q.x-p.x,q.y-p.y);if(d<.01){p.path.shift();continue;}const n=Math.min(d,budget),next={x:p.x+(q.x-p.x)/d*n,y:p.y+(q.y-p.y)/d*n};if(!(p.rainRoute?rainNavigation:navigation).lineClear(p,next)){p.path=[];break;}p.facing=catFacing(next.x-p.x,next.y-p.y,p.facing);p.x=next.x;p.y=next.y;budget-=n;moved+=n;if(n===d)p.path.shift();}p.moving=moved>.01;if(p.moving)advancePetGait(p,moved);return moved;}
+ function step(p,dt,speed){let budget=dt*speed,moved=0;while(p.path.length&&budget>0){const q=p.path[0],d=Math.hypot(q.x-p.x,q.y-p.y);if(d<.01){p.path.shift();continue;}const n=Math.min(d,budget),next={x:p.x+(q.x-p.x)/d*n,y:p.y+(q.y-p.y)/d*n};if(!(p.rainRoute?rainNavigation:navigation).lineClear(p,next)){p.path=[];break;}p.facing=catFacing(next.x-p.x,next.y-p.y,p.facing);p.x=next.x;p.y=next.y;budget-=n;moved+=n;if(n===d)p.path.shift();}p.moving=moved>.01;if(p.moving)advancePetGait(p,moved,speed);return moved;}
  return {update(time,{weather='sun',player=null,playerUmbrella=null,reduced=false}={}){
   const dt=last===null?0:Math.min(.05,Math.max(0,(time-last)/1000));if(last===null)clock=time;last=time;
   const wet=weather==='rain';
@@ -342,7 +359,7 @@ export function createRainPets({navigation,rainNavigation=navigation,canopies=[]
   const dg=rainPetGesture(time,0,reduced),cg=rainPetGesture(time,5,reduced),bg=rainPetGesture(time,11,reduced);
   const life=gardenLife(clock,reduced),activeCat=cat.mode!=='home';
   if(activeCat){life.visitor=null;life.cat={...life.cat,x:cat.x,y:cat.y-(cat.jump||0),groundY:cat.y,facing:cat.facing,dir:cat.facing==='left'?-1:1,pounce:false,paw:cat.pondPaw||0,pondPaw:cat.mode==='pondWatch',aim:0,wiggle:0,burst:0,searching:false,running:cat.moving,gaitPhase:cat.gaitPhase||0,moving:cat.moving,stride:cat.moving?Math.sin(cat.gaitPhase||0)*3:0,sit:cat.moving||cat.mode==='follow'||cat.mode==='pondWatch'||cat.mode==='pondStartle'?0:1,lie:0,phase:cat.mode,rainAlert:wet&&cat.mode==='shelter'&&!cat.moving,shake:wet&&!cat.moving?cg.shake:0,groom:wet&&!cat.moving?cg.groom:0};}
-  if(!activeCat){const c=life.cat,dist=homePrevious?Math.hypot(c.x-homePrevious.x,c.groundY-homePrevious.y):0;homePrevious={x:c.x,y:c.groundY};c.moving=!reduced&&dt>0&&dist>.01;c.gaitPhase=advancePetGait(homeGait,c.moving?dist:0);c.stride=c.moving?Math.sin(c.gaitPhase)*3:0;}else homePrevious=null;
+  if(!activeCat){const c=life.cat,dist=homePrevious?Math.hypot(c.x-homePrevious.x,c.groundY-homePrevious.y):0;homePrevious={x:c.x,y:c.groundY};c.moving=!reduced&&dt>0&&dist>.01;c.gaitPhase=advancePetGait(homeGait,c.moving?dist:0,dt>0?dist/dt:0);c.stride=c.moving?Math.sin(c.gaitPhase)*3:0;}else homePrevious=null;
   return {life,pondContact:cat.mode==='pondStartle'?{x:269,y:459,progress:Math.min(1,(pondHop?.age||0)/.6)}:null,pondFish:cat.mode==='pondWatch'?pondLife(time,reduced).map(point):null,benchCat:{...point(benchCat),rainAlert:wet&&benchCat.mode==='shelter'&&!benchCat.moving,shake:wet&&!benchCat.moving?bg.shake:0,groom:wet&&!benchCat.moving?bg.groom:0,facing:benchCat.facing,moving:benchCat.moving,mode:benchCat.mode,jump:benchCat.jump||0,gaitPhase:benchCat.gaitPhase||0,stride:benchCat.moving?Math.sin(benchCat.gaitPhase||0)*3:0},benchCatActive:benchCat.mode!=='home',dog:{...point(dog),rainAlert:wet&&dog.mode==='shelter'&&!dog.moving,shake:wet&&!dog.moving?dg.shake:0,groom:wet&&!dog.moving?dg.groom:0,facing:dog.facing,moving:dog.moving,mode:dog.mode,gaitPhase:dog.gaitPhase||0,stride:dog.moving?Math.sin(dog.gaitPhase||0)*3:0},dogActive:dog.mode!=='home',catActive:activeCat,covered:{dog:sheltered(dog.x,dog.y),cat:sheltered(cat.x,cat.y)},clock};
  },get positions(){return{dog:point(dog),cat:point(cat),benchCat:point(benchCat)}}};
 }
