@@ -31,10 +31,10 @@ test('tracker and footer share a tighter two-level type scale and true bullets',
  assert.ok(app.includes("li.querySelector('b').textContent='•'"));
  assert.match(app,/quest-status.*quest.ready/);
 });
-test('larger viewports get readable tracker text while phone defaults remain small',()=>{
+test('tracker scales with actual map width with explicit small-phone floors',()=>{
  const css=read('style.css');
- assert.match(css,/@media\(min-width:700px\)/);
- assert.match(css,/max-width:112px/);
- assert.match(css,/#quest-title\{font-size:12px/);
- assert.match(css,/font-size:11px;line-height:1.4/);
+ assert.match(css,/container-type:inline-size/);
+ assert.match(css,/font-size:max\(8px,1.62cqi\)/);
+ assert.match(css,/font-size:max\(7px,1.42cqi\)/);
+ assert.doesNotMatch(css,/@media\(min-width:700px\)/);
 });
