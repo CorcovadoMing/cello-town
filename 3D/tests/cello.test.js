@@ -7,7 +7,7 @@ test('integrated detailed cello is finite, bounded, and retains placement',()=>{
  const start=source.indexOf('// Cello resting in left corner.');
  const end=source.indexOf('// Plant and reading stool',start);
  const scene=new T.Scene();const cello=new Function('T','scene',source.slice(start,end)+'\nreturn cello;')(T,scene);
- assert.deepEqual(cello.position.toArray(),[-2.27,.2,-1.4]);assert.equal(cello.rotation.z,-.12);
+ assert.equal(cello.position.x,-2.27);assert.equal(cello.position.z,-1.4);assert.equal(cello.scale.x,.75);cello.updateMatrixWorld(true);assert.ok(Math.abs(new T.Box3().setFromObject(cello).min.y-.015)<1e-6);assert.equal(cello.rotation.z,-.12);
  assert.equal(cello.userData.strings,4);assert.equal(cello.userData.pegs,4);assert.equal(cello.userData.frontHoles,2);
  let triangles=0;cello.traverse(o=>{if(o.geometry){assert.ok(o.geometry.attributes.position.array.every(Number.isFinite));triangles+=o.geometry.attributes.position.count/3;}});
  assert.ok(triangles<7000);assert.ok(cello.children.length<=8);
