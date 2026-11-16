@@ -11,8 +11,8 @@ test('quest tracker is opt-in by acceptance and keeps explicit turn-in',()=>{
 test('compact objective list stays left over the map on mobile without taking taps',()=>{
  const css=read('style.css').split('/* Keep objectives on the map')[1];
  assert.match(css,/position:absolute;top:10px;left:10px;right:auto/);
- assert.match(css,/pointer-events:none/);assert.match(css,/\.quest-hud ol\{display:block/);
+ assert.match(css,/pointer-events:none/);assert.match(css,/width:124px/);assert.match(css,/linear-gradient\(90deg,#f6ebd3dc/);assert.match(css,/\.quest-hud ol\{display:block/);
  assert.doesNotMatch(css,/position:relative/);
- assert.match(read('index.html'),/style.css\?v=35-quest/);
+ assert.match(read('index.html'),/style.css\?v=36/);
  assert.match(read('index.html'),/>任務 · 1<\/span>/);
 });
