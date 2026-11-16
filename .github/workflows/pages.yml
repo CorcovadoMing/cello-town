@@ -19,7 +19,7 @@ jobs:
       - name: Check out 3D from its independent branch
         uses: actions/checkout@v4
         with:
-          ref: 3d
+          ref: ${{ github.ref == 'refs/heads/3d' && github.sha || '3d' }}
           path: .preview-3d
           persist-credentials: false
       - name: Record source snapshots
@@ -50,9 +50,20 @@ jobs:
           node --check app.js
           cd ../..
           mkdir -p _site/3D/vendor
-          cp .preview-3d/3D/{index.html,style.css,app.js,state.js} _site/3D/
+          cp .preview-3d/3D/{index.html,style.css,app.js,state.js,room-polish.js,window-landscape.js,rural-window.webp} _site/3D/
           cp .preview-3d/3D/vendor/{three.module.js,SVGRenderer.js,Projector.js,THREE-LICENSE.txt} _site/3D/vendor/
           test -s _site/3D/index.html
+      - name: Verify WebGL performance and room return
+        if: github.ref == 'refs/heads/3d'
+        timeout-minutes: 7
+        run: CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-browser-smoke" node .preview-3d/3D/tests/browser-smoke.cjs _site
+      - name: Save browser verification evidence
+        if: always() && github.ref == 'refs/heads/3d'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cello-browser-smoke
+          path: ${{ runner.temp }}/cello-browser-smoke
+          if-no-files-found: ignore
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
