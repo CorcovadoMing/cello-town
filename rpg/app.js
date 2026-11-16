@@ -23,6 +23,7 @@ installPullToRefreshGuard();
 let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
 const $=id=>document.getElementById(id), canvas=$('world'),g=canvas.getContext('2d'),dlg=$('dialog'),KEY='cello-town-rpg-v1';
+const townFont=getComputedStyle(document.documentElement).getPropertyValue('--town-font').trim()||'system-ui';
 let state=fresh(),storeOK=true;try{const raw=localStorage.getItem(KEY);if(raw)state=normalize(JSON.parse(raw));}catch{storeOK=false;}
 const player={x:460,y:425,dir:1,facing:'front',walking:false};const npc={x:303,y:290,kind:'teacher'},stand={x:615,y:404},garden={x:710,y:460};let keys=new Set(),target=null,last=0,near=null,task='listen',revealed=false,demoDone=false,practiced=false,context,timer,mode=null,voices=new Set(),step=0,next=0,generation=0,demoUntil=0,releaseSession=()=>{},clockTime=0,clockSeen=0,audioNode=null,workletAck=null;
 const returnURL=roomReturnURL(window.location.href),doorApproach=createDoorApproach(Boolean(returnURL));
@@ -83,6 +84,8 @@ function render(){
   $('quest-count').textContent=quest.count+'/3';
   $('quest-count').setAttribute('aria-label','三項練習已完成 '+quest.count+' 項');
   $('quest-status').textContent=quest.ready?'回老師身旁交付':({listen:'聽一次 D 大調',rhythm:'跟節拍器練習',memory:'不看提示拉一遍'}[quest.next]||'到戶外譜架開始練習。');
+  $('quest-status').setAttribute('aria-label',$('quest-status').textContent);
+  $('quest-status').textContent=quest.ready?'交付':({listen:'聽音',rhythm:'跟拍',memory:'記憶'}[quest.next]||'練習');
   $('quest-return').hidden=!quest.ready;
   document.querySelectorAll('[data-step]').forEach(li=>{
     const done=state.steps.includes(li.dataset.step);
@@ -147,14 +150,14 @@ function person(x,y,t,{teacher=false,walking=false,facing='front'}={}){
  if(playerSeated){drawSeatedResident(g,{...player,kind:'player',t,reduced:reducedMotion.matches});return;}
  drawPlayer(g,{x,y,t,walking,facing,reduced:reducedMotion.matches});
 }
-function label(text,x,y,color='#fff7df'){g.font='bold 13px system-ui';g.textAlign='center';g.fillStyle='#294c35dd';const w=g.measureText(text).width+20;g.fillRect(x-w/2,y-15,w,24);g.fillStyle=color;g.fillText(text,x,y+2);}
+function label(text,x,y,color='#fff7df'){g.font=`bold 13px ${townFont}`;g.textAlign='center';g.fillStyle='#294c35dd';const w=g.measureText(text).width+20;g.fillRect(x-w/2,y-15,w,24);g.fillStyle=color;g.fillText(text,x,y+2);}
 function drawQuestMarker(t){
   const quest=questView(state),mark=quest.marker;
   if(!mark)return;
   const y=npc.y-65+(reducedMotion.matches?0:Math.sin(t/420)*2);
   g.save();
   // A large golden glyph stays over the teacher until explicit turn-in.
-  g.font='900 40px system-ui';g.textAlign='center';g.textBaseline='alphabetic';
+  g.font=`900 40px ${townFont}`;g.textAlign='center';g.textBaseline='alphabetic';
   g.lineJoin='round';g.lineWidth=6;g.strokeStyle=quest.markerTone==='gold'?'#56451d':'#3f4943';
   g.strokeText(mark,npc.x,y);g.fillStyle=quest.markerTone==='gold'?'#ffd66d':'#b9bfb7';g.fillText(mark,npc.x,y);
   if(mark==='?'&&quest.ready){

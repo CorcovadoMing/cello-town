@@ -141,3 +141,25 @@ html{overscroll-behavior-y:none}
 .map-stage .quest-sign .quest-return{font-size:11px;line-height:1.5;gap:5px;margin-top:5px}
 .map-stage .quest-sign .quest-return small{font-size:10px}
 @media(max-width:620px){.map-stage .quest-sign{top:5px;left:5px;width:174px;max-width:54%}.map-stage .quest-sign summary{min-height:28px}.map-stage .quest-sign #quest-status{font-size:11px}}
+
+/* 039 private preview: gold ink like the teacher marker, bounded by tree three. */
+.map-stage .quest-sign{left:1%;top:5px;width:21%;max-width:106px;background:none;border:0;border-radius:0;text-shadow:-1px 0 #191b16,1px 0 #191b16,0 -1px #191b16,0 1px #191b16,1px 1px #191b16;color:#ffd66d}
+.map-stage .quest-sign[open]{background:none}
+.map-stage .quest-sign summary{min-height:22px;padding:2px 0;gap:3px}
+.map-stage .quest-sign #quest-status{font:600 10px/1.5 system-ui,"PingFang TC","Microsoft JhengHei",sans-serif;color:#ffd66d}
+.map-stage .quest-sign #quest-count{font:10px/1.5 ui-monospace,monospace;color:#ffd66d}
+.map-stage .quest-sign .quest-toggle{font-size:10px;color:#ffd66d}
+.map-stage .quest-sign-content{margin:0;padding:3px 0 2px;border-top:1px solid #ffd66d66}
+.map-stage .quest-sign .quest-sign-title{font-size:10px;color:#ffd66d;margin:0 0 3px}
+.map-stage .quest-sign li{font-size:10px;line-height:1.65;gap:2px;white-space:nowrap;color:#ffd66d}
+.map-stage .quest-sign li b{width:9px;flex:none;font-size:10px;color:#ffd66d}
+.map-stage .quest-sign li.current{color:#ffe49c}
+.map-stage .quest-sign li.done span,.map-stage .quest-sign li.done b{color:#d0c6a4}
+.map-stage .quest-sign .quest-return{gap:3px;font-size:10px;color:#ffd66d}
+.map-stage .quest-sign .quest-return b{font-size:16px;color:#ffd66d;text-shadow:inherit}
+.map-stage .quest-sign .quest-return small{font-size:9px;color:#e9d5a1}
+
+/* One local town typeface across text UI and the canvas labels. */
+:root{--town-font:system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif}
+body,body *{font-family:var(--town-font)!important}
+#quest-count,.release-badge{font-variant-numeric:tabular-nums}

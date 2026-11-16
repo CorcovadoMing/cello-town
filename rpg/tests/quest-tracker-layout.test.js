@@ -9,9 +9,16 @@ test('quest tracker is opt-in by acceptance and keeps explicit turn-in',()=>{
  assert.equal(questView(s).ready,true);assert.equal(questView(turnIn(s)).visible,false);
 });
 test('collapsible task overlay lives inside map without shifting canvas',()=>{
- const html=read('index.html'),css=read('style.css').split('/* 038 preview')[1];
+ const html=read('index.html'),css=read('style.css').split('/* 039 private preview')[1];
  assert.ok(html.indexOf('<details id="quest-hud"')>html.indexOf('class="map-stage"'));
  assert.ok(html.indexOf('<details id="quest-hud"')<html.indexOf('<canvas id="world"'));
- assert.match(css,/position:absolute/);assert.match(css,/background:#f7efd633/);
- assert.match(css,/summary\{pointer-events:auto/);assert.match(html,/style.css\?v=38-preview/);
+ assert.match(css,/left:1%/);assert.match(css,/width:21%/);assert.match(css,/background:none/);
+ assert.match(css,/color:#ffd66d/);assert.match(html,/style.css\?v=39-preview/);
+});
+test('one local font family is shared by town DOM and painted labels',()=>{
+ const css=read('style.css'),app=read('app.js');
+ assert.ok(css.includes('body,body *{font-family:var(--town-font)!important}'));
+ assert.ok(app.includes("getPropertyValue('--town-font')"));
+ assert.ok(app.includes('g.font=`bold 13px ${townFont}`'));
+ assert.ok(app.includes('g.font=`900 40px ${townFont}`'));
 });
