@@ -11,7 +11,7 @@ test('town return is same-origin and incoming room spawn is loop-safe without mi
  assert.ok(source.includes("let exitArmed=!cameFromTown"));
  assert.ok(source.includes("cameFromTown?{x:0,z:1.51}:{x:0,z:.55}"));
  assert.ok(source.includes("u.searchParams.delete('from');history.replaceState(history.state,'',u)"));
- assert.ok(source.includes("if(!exitArmed&&pos.z<1.4)exitArmed=true"));
+ assert.ok(source.includes("if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true"));
  assert.equal(source.includes('sessionStorage'),false);
 });
 
