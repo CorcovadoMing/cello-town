@@ -1022,7 +1022,7 @@ function performanceCamera(width=area.clientWidth){
  const catView=T.MathUtils.smoothstep(aspect,1.2,1.4),extraWide=Math.max(0,aspect-1.8);
  // Aspect-based leftward and slightly lower aim includes the nearby player and cello, while fitting the real window.
  const probe=camera.clone(),focus=new T.Vector3(-1.25-.25*portrait-wide-catView*(.48+.25*extraWide),1.68-.18*portrait-catView*(.28+.10*extraWide),-2.09);
- const wideFrame=T.MathUtils.smoothstep(aspect,1.2,1.5);
+ const wideFrame=T.MathUtils.smoothstep(aspect,4/3,1.54);
  // A lower real eye line separates the near player/cello from the far window.
  // Portrait and ordinary tablet compositions retain their exact camera tuple.
  focus.lerp(new T.Vector3(-1.8-1.3*Math.max(0,aspect-1.58),1.4,-2.09),wideFrame);

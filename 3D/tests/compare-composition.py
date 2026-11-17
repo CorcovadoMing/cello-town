@@ -1,9 +1,9 @@
 import json,sys,pathlib,math
 old,new=map(pathlib.Path,sys.argv[1:3]);rows=[]
-for name in ['native-narrow065','native-tablet115','attachment-aspect1582','reference-wide2065','reference-wide225']:
+for name in ['native-narrow065','native-tablet115','tablet-exact1333','attachment-aspect1582','reference-wide2065','reference-wide225']:
  a=json.load(open(old/(name+'.json')))['composition'];b=json.load(open(new/(name+'.json')))['composition']
  assert a['stage']==b['stage'],(name,'stage size mismatch',a['stage'],b['stage'])
- if name.startswith('native'):
+ if name.startswith('native') or name=='tablet-exact1333':
   for k in ['position','quaternion','zoom','fov','lens']:
    aa=a['camera'][k];bb=b['camera'][k]
    if not isinstance(aa,list):aa=[aa];bb=[bb]
