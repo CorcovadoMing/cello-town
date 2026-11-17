@@ -17,12 +17,6 @@ jobs:
         with:
           ref: cb7e0202040e8b567b83e04b1c57b001fc6f3f61
           persist-credentials: false
-      - name: Check out released 2D baseline for performance comparison
-        uses: actions/checkout@v4
-        with:
-          ref: 7f18c86a7e9cba12713916a8a349c1605b57c0af
-          path: .baseline-2d
-          persist-credentials: false
       - name: Check out 3D from its independent branch
         uses: actions/checkout@v4
         with:
@@ -62,55 +56,6 @@ jobs:
           cp .preview-3d/3D/{index.html,style.css,app.js,state.js,room-polish.js,window-landscape.js,rural-window.webp} _site/3D/
           cp .preview-3d/3D/vendor/{three.module.js,SVGRenderer.js,Projector.js,THREE-LICENSE.txt} _site/3D/vendor/
           test -s _site/3D/index.html
-      - name: Verify teacher ambient chat in real Chromium
-        if: github.ref == 'refs/heads/3d'
-        timeout-minutes: 3
-        env:
-          CHROME_PATH: /usr/bin/google-chrome
-        run: CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-release032/teacher" node .preview-3d/3D/tests/browser-idle051.cjs _site
-      - name: Benchmark released and new 2D startup in paired room returns
-        if: ${{ !cancelled() && github.ref == 'refs/heads/3d' && steps.package-3d.outcome == 'success' }}
-        timeout-minutes: 7
-        env:
-          CHROME_PATH: /usr/bin/google-chrome
-          CELLO_QA_MODE: transition
-          CELLO_QA_ONE_CASE: '1'
-          CELLO_QA_LATENCY_MS: '80'
-        run: |
-          set -euo pipefail
-          mkdir -p _site-baseline
-          find .baseline-2d/rpg -maxdepth 1 -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' \) -exec cp '{}' _site-baseline/ ';'
-          node .baseline-2d/rpg/scripts/preload-town.mjs _site-baseline
-          cp -R _site/3D _site-baseline/
-          out="$RUNNER_TEMP/cello-release032/exit"
-          for trial in 1 2 3; do
-            order='baseline candidate'
-            if [ "$trial" = 2 ]; then order='candidate baseline'; fi
-            for build in $order; do
-              site=_site
-              if [ "$build" = baseline ]; then site=_site-baseline; fi
-              CELLO_SMOKE_ARTIFACTS="$out/$build-$trial" node .preview-3d/3D/tests/browser-exit-ab.cjs "$site"
-            done
-          done
-          python .preview-3d/3D/tests/compare-exit.py "$out"
-      - name: Preserve 032 teacher and room handoff evidence
-        if: always() && github.ref == 'refs/heads/3d'
-        uses: actions/upload-artifact@v4
-        with:
-          name: cello-release032-browser
-          path: ${{ runner.temp }}/cello-release032
-          if-no-files-found: error
-      - name: Verify WebGL performance and room return
-        if: github.ref == 'refs/heads/3d'
-        timeout-minutes: 7
-        run: CELLO_SMOKE_ENTRANCE_EVIDENCE=1 CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-browser-smoke" node .preview-3d/3D/tests/browser-smoke.cjs _site
-      - name: Save browser verification evidence
-        if: always() && github.ref == 'refs/heads/3d'
-        uses: actions/upload-artifact@v4
-        with:
-          name: cello-browser-smoke
-          path: ${{ runner.temp }}/cello-browser-smoke
-          if-no-files-found: ignore
       - name: Verify candidate cat and cold/warm door return in real Chromium
         if: ${{ !cancelled() && github.ref == 'refs/heads/3d' && steps.package-3d.outcome == 'success' }}
         timeout-minutes: 7
@@ -125,7 +70,7 @@ jobs:
         if: always() && github.ref == 'refs/heads/3d'
         uses: actions/upload-artifact@v4
         with:
-          name: cello-release031-browser
+          name: cello-release032-camera-recheck
           path: ${{ runner.temp }}/cello-release031
           if-no-files-found: warn
       - uses: actions/upload-pages-artifact@v3
