@@ -314,6 +314,19 @@ export function drawRainFrame(g,frame){
 // exact visible canopy columns; nothing writes save data or changes collision.
 // Pet-only ground core includes the drawn roots plus small-body clearance.
 export function petTrunkBlocked(trees,x,y){return trees.some(([tx,ty,scale])=>x>=tx-9*scale-14&&x<=tx+10*scale+14&&y>=ty+34*scale-7&&y<=ty+46*scale+7);}
+// Snapshot only the town's immutable static trunk layout. Animated pet state and
+// the original live-array predicate above remain untouched.
+export function createPetTrunkBlocker(trees, cellSize=30){
+ const rows=new Map();
+ for(const[tx,ty,scale]of trees){
+  const b={left:tx-9*scale-14,right:tx+10*scale+14,top:ty+34*scale-7,bottom:ty+46*scale+7};
+  for(let cy=Math.floor(b.top/cellSize);cy<=Math.floor(b.bottom/cellSize);cy++){
+   if(!rows.has(cy))rows.set(cy,new Map());const row=rows.get(cy);
+   for(let cx=Math.floor(b.left/cellSize);cx<=Math.floor(b.right/cellSize);cx++){if(!row.has(cx))row.set(cx,[]);row.get(cx).push(b);}
+  }
+ }
+ return (x,y)=>{const cells=rows.get(Math.floor(y/cellSize))?.get(Math.floor(x/cellSize));if(!cells)return false;for(const b of cells)if(x>=b.left&&x<=b.right&&y>=b.top&&y<=b.bottom)return true;return false;};
+}
 export function rainPetGesture(time,offset=0,reduced=false){const phase=(time/1000+offset)%17;return {shake:reduced?0:phase>2&&phase<2.7?Math.sin((phase-2)*45)*1.1:0,groom:reduced?0:phase>8&&phase<10.3?Math.max(0,Math.sin((phase-8)*6)):0};}
 export function createRainPets({navigation,rainNavigation=navigation,canopies=[],trees=[],random=Math.random}={}){
  let last=null,clock=0,raining=false,rainAge=0,dryAge=0,homePrevious=null;const homeGait={};

@@ -1,5 +1,5 @@
-import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=49';
-import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=49';
+import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
+import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=46';
 import {createTerrainArt} from './terrain-art.js?v=32';
 import {createRainSystem} from './rain-system.js?v=35';
@@ -7,17 +7,17 @@ import {treeRainCanopies,umbrellaPose} from './rain-geometry.js?v=35';
 import {MUSIC_ROOM,MUSIC_ROOM_DOOR,roomBlocks,drawMusicRoom,musicRoomRainCanopy} from './music-room-art.js?v=46';
 import {createLounge} from './lounge-state.js?v=46';
 import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella} from './lounge-art.js?v=48';
-import {createWetSoil,drawWetSoil} from './wet-soil.js?v=47';
+import {createWetSoil,drawWetSoil} from './wet-soil.js?v=51';
 const RAIN_EXCLUSIONS=Object.freeze([{x:410,y:175,w:160,h:95}]);
 const wetSoil=createWetSoil({excludeRects:RAIN_EXCLUSIONS});
 import {createTownArt,drawBackFence} from './art-slice.js?v=46';
-import {createNavigation} from './navigation.js?v=24';
+import {createNavigation} from './navigation.js?v=51';
 import {createTeacher,drawTeacher,teacherFacing} from './teacher.js?v=48';
 import {facingForMotion,drawPlayer} from './avatar.js?v=42';
 import {resumeFromTap,requestPlaybackSession,clockStalled} from './audio-start.js?v=23';
 import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=23';
 import {installPullToRefreshGuard} from './scroll-guard.js?v=23';
-import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife,drawRainFrame,createRainPets,petTrunkBlocked,drawRainDog,drawRainBenchCat,drawPetPondContact} from './ambience.js?v=47';
+import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife,drawRainFrame,createRainPets,createPetTrunkBlocker,drawRainDog,drawRainBenchCat,drawPetPondContact} from './ambience.js?v=51';
 import {gardenScene,gardenPlants,townPlantPosition,drawPreparedSoil,weatherAt} from './garden.js?v=32';
 import {DEV_TOOLS} from './config.js?v=23';
 import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,clearStoredRecords,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=23';
@@ -109,7 +109,8 @@ const townArt=createTownArt(()=>document.createElement('canvas'),TREE_LAYOUT);
 const terrainArt=createTerrainArt(()=>document.createElement('canvas'));
 const rainCanopies=treeRainCanopies(TREE_LAYOUT);
 const petNavigation=createNavigation({trees:TREE_LAYOUT.map(([x,y,s])=>({x:x+.5*s,y:y+32*s})),blocked:(x,y)=>blocked(x,y,true)});
-const petRainNavigation=createNavigation({tileSize:15,blocked:(x,y)=>blocked(x,y,true)||petTrunkBlocked(TREE_LAYOUT,x,y)});
+const petTrunkBlocker=createPetTrunkBlocker(TREE_LAYOUT);
+const petRainNavigation=createNavigation({tileSize:15,blocked:(x,y)=>blocked(x,y,true)||petTrunkBlocker(x,y)});
 const rainPets=createRainPets({navigation:petNavigation,rainNavigation:petRainNavigation,canopies:rainCanopies,trees:TREE_LAYOUT});
 const rainSystem=createRainSystem({canopies:[...rainCanopies,musicRoomRainCanopy(),{kind:'table',left:LOUNGE_LAYOUT.table.solid.x,columns:new Float32Array(LOUNGE_LAYOUT.table.solid.w).fill(202),groundMin:LOUNGE_LAYOUT.table.solid.y,groundMax:LOUNGE_LAYOUT.table.depth}],excludeRects:[...RAIN_EXCLUSIONS,{x:560,y:40,w:236,h:199}]});
 function walkTo(destination,kind=null){
@@ -304,7 +305,7 @@ function arriveAtTarget(){
  else if(kind==='room'){enterRoom();return;}
 }
 function blocked(x,y,allowGarden=false){return roomBlocks(x,y)||(Math.abs(x-stand.x)<=14&&Math.abs(y-stand.y)<=4)||LOUNGE_SOLIDS.some(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)||x<30||x>930||y<130||y>542||(x<275&&y>380)||(!allowGarden&&x>730&&x<910&&y>395)||(x>174&&x<330&&y>170&&y<240);}
-function update(dt){
+function update(dt,idleDt=dt){
  const teacher=teacherActor.update(dt,{practiceActive:practiceOpen&&dlg.open,dialogOpen:dlg.open,holdForInteraction:quietChat.active||lounge.state.borrowed||target?.kind==='npc',reducedMotion:reducedMotion.matches,player});
  loungePose=lounge.update(dt,{teacher,player,playerSeated,playerSeatIndex:(playerSeated||waitingForChair||target?.kind==='chair')?selectedChair:null,practice:practiceOpen&&dlg.open,dialog:(dlg.open&&!practiceOpen)||quietChat.active,questApproach:target?.kind==='npc',rain:gameWeather.key==='rain',reduced:reducedMotion.matches});
  Object.assign(npc,loungePose.borrowed?loungePose.pose:teacher);
@@ -332,8 +333,8 @@ function update(dt){
  if(doorApproach.step({x:oldX,y:oldY},player,dy<0&&keys.has('up'))){enterRoom();return;}
  player.walking=Math.hypot(player.x-oldX,player.y-oldY)>.00001;
  player.facing=facingForMotion(player.facing,player.x-oldX,player.y-oldY);if(player.x!==oldX)player.dir=player.x>oldX?1:-1;if(playerSeated){player.facing=chairs[selectedChair].facing;player.walking=false;}
- if(teacherApproach.update(dt,{before:{x:oldX,y:oldY},player,teacher:npc,input:keys.size>0,navigating:!!target,blocked:dlg.open||enteringRoom||playerSeated||practiceOpen})){talk();}
- quietChatPose=quietChat.update(dt,{teacher:npc,player,input:keys.size>0,navigating:!!target,modal:dlg.open,practice:practiceOpen,seatedChat:loungePose.chat,seated:playerSeated,reduced:reducedMotion.matches});
+ const idleChat=teacherApproach.update(idleDt,{before:{x:oldX,y:oldY},player,teacher:npc,input:keys.size>0,navigating:!!target,blocked:dlg.open||enteringRoom||playerSeated||practiceOpen||quietChat.active||standWithinReach()});
+ quietChatPose=quietChat.update(dt,{teacher:npc,player,input:keys.size>0,navigating:!!target,modal:dlg.open,practice:practiceOpen,idleChat,seatedChat:loungePose.chat,seated:playerSeated,reduced:reducedMotion.matches});
  if(quietChatPose.facing&&!playerSeated)player.facing=quietChatPose.facing;
  near=playerSeated?'seated':standWithinReach()?'stand':teacherWithinReach()?'npc':gardenWithinReach()?'garden':chairs.some(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y)<38)?'chair':null;
  const atDoor=roomDoorNearby(player)&&!playerSeated;
@@ -341,7 +342,7 @@ function update(dt){
 }
 const approachRoom=()=>{if(!dlg.open)walkTo(ROOM_ENTRY,'room');};
 function interact(){if(dlg.open)return;if(!playerSeated&&roomDoorNearby(player)){approachRoom();return;}if(playerSeated){standUp();return;}if(near==='chair'){const index=chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y)).indexOf(Math.min(...chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y))));requestChair(index);return;}if(near==='npc')talk();else if(near==='stand')practice();else if(near==='garden')openGarden();else toast('再靠近老師、戶外譜架或花園入口一點。');}
-const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open||enteringRoom)return;if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;teacherApproach.cancel();});canvas.onpointerdown=e=>{if(dlg.open||enteringRoom)return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{if(document.hidden){teacherApproach.cancel();pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});function loop(t){const dt=Math.min((t-last)/1000,.04);last=t;if(!document.hidden){update(dt);draw(t);}requestAnimationFrame(loop);}render();requestAnimationFrame(loop);setTimeout(()=>$('toast').style.opacity=0,6000);
+const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open||enteringRoom)return;if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;teacherApproach.cancel();});canvas.onpointerdown=e=>{if(dlg.open||enteringRoom)return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{idleLast=null;if(document.hidden){teacherApproach.cancel();pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});let idleLast=null;function loop(t){const dt=Math.min((t-last)/1000,.04),idleDt=idleLast===null?0:Math.max(0,(t-idleLast)/1000);last=t;idleLast=document.hidden?null:t;if(!document.hidden){update(dt,idleDt);draw(t);}requestAnimationFrame(loop);}render();requestAnimationFrame(loop);setTimeout(()=>$('toast').style.opacity=0,6000);
 
 
 setInterval(()=>{const nextWeather=weatherAt();if(nextWeather.key===gameWeather.key)return;gameWeather=nextWeather;document.querySelector('.topline span').textContent=gameWeather.name+' · 練琴日';if(dlg.open&&$('garden-view'))$('garden-view').innerHTML=gardenScene(state,gameWeather);},1000);

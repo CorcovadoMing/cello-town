@@ -7,7 +7,7 @@ export function createQuietChat(){
   const sequence=[{from:.15,to:2.25,speaker:'teacher',symbol:variant%2?'curious':'note'},{from:2.65,to:4.65,speaker:'player',symbol:'smile'},{from:5,to:6.5,speaker:'teacher',symbol:'spark'}];
   return sequence.filter(f=>elapsed>=f.from&&elapsed<=f.to).map(f=>({...f,alpha:reduced?1:Math.min(1,(elapsed-f.from)/.25,(f.to-elapsed)/.3)}));
  };
- function update(dt,{teacher,player,input=false,navigating=false,modal=false,practice=false,seatedChat=false,seated=false,reduced=false}={}){
+ function update(dt,{teacher,player,input=false,navigating=false,modal=false,practice=false,idleChat=false,seatedChat=false,seated=false,reduced=false}={}){
   dt=Number.isFinite(dt)?Math.max(0,Math.min(.05,dt)):0;
   cooldown=Math.max(0,cooldown-dt);approachWindow=Math.max(0,approachWindow-dt);
   const distance=Math.hypot(teacher.x-player.x,teacher.y-player.y);
@@ -21,7 +21,7 @@ export function createQuietChat(){
   // Looking at the teacher is independent of the bubble cadence.
   let facing=arrived?teacherFacing(player.facing,teacher.x-player.x,teacher.y-player.y):null;
   if(arrived)approachWindow=0;
-  if(cooldown===0&&((arrived&&!consumed)||seatedChat)){
+  if((idleChat&&elapsed<0)||(cooldown===0&&((arrived&&!consumed)||seatedChat))){
    elapsed=0;cooldown=24;consumed=true;approachWindow=0;variant++;
    facing=teacherFacing(player.facing,teacher.x-player.x,teacher.y-player.y);
   }else if(elapsed>=0){elapsed+=dt;if(elapsed>6.6)elapsed=-1;}

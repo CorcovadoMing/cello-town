@@ -1,18 +1,16 @@
-// A player-owned approach, not proximity alone, earns one unhurried greeting.
+// Idle proximity earns one ambient greeting, never ownership of the task dialogue.
 export const TEACHER_TALK_RADIUS=65;
 export function createTeacherApproach(){
- let armed=false,waiting=false,elapsed=0;
- const reset=()=>{armed=false;waiting=false;elapsed=0;};
+ let elapsed=0,consumed=false;
+ const reset=()=>{elapsed=0;consumed=false;};
  return {cancel:reset,update(dt,{before,player,teacher,input=false,navigating=false,blocked=false}){
   const distance=Math.hypot(player.x-teacher.x,player.y-teacher.y);
-  if(blocked||distance>=TEACHER_TALK_RADIUS){reset();return false;}
+  if(distance>=TEACHER_TALK_RADIUS){reset();return false;}
   const moved=Math.hypot(player.x-before.x,player.y-before.y)>.00001;
-  const crossed=moved&&Math.hypot(before.x-teacher.x,before.y-teacher.y)>=TEACHER_TALK_RADIUS;
-  if(crossed){armed=true;waiting=false;elapsed=0;}
-  if(!armed)return false;
-  if(moved||input||navigating){if(waiting)reset();return false;}
-  waiting=true;elapsed+=Math.max(0,Math.min(.05,dt));
+  if(blocked||moved||input||navigating||player.walking||teacher.walking){elapsed=0;return false;}
+  if(consumed)return false;
+  elapsed+=Number.isFinite(dt)?Math.max(0,dt):0;
   if(elapsed+1e-9<3)return false;
-  reset();return true;
+  consumed=true;elapsed=0;return true;
  }};
 }
