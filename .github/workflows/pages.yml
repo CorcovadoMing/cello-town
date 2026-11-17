@@ -55,6 +55,27 @@ jobs:
           cp .preview-3d/3D/{index.html,style.css,app.js,state.js,room-polish.js,window-landscape.js,rural-window.webp} _site/3D/
           cp .preview-3d/3D/vendor/{three.module.js,SVGRenderer.js,Projector.js,THREE-LICENSE.txt} _site/3D/vendor/
           test -s _site/3D/index.html
+      - name: Profile direct town and 3D exit with three controlled variants
+        if: github.ref == 'refs/heads/3d'
+        timeout-minutes: 6
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          CELLO_QA_MODE: transition
+          CELLO_QA_ONE_CASE: '1'
+          CELLO_QA_LATENCY_MS: '80'
+        run: |
+          a=0; b=0; c=0
+          CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-exit-ab/released" node .preview-3d/3D/tests/browser-exit-ab.cjs _site || a=$?
+          CELLO_QA_FREEZE_EXIT=1 CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-exit-ab/freeze" node .preview-3d/3D/tests/browser-exit-ab.cjs _site || b=$?
+          CELLO_QA_NO_WARMUP=1 CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-exit-ab/no-warmup" node .preview-3d/3D/tests/browser-exit-ab.cjs _site || c=$?
+          test "$a" = 0 && test "$b" = 0 && test "$c" = 0
+      - name: Upload direct town versus room handoff profile
+        if: always() && github.ref == 'refs/heads/3d'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cello-exit-ab
+          path: ${{ runner.temp }}/cello-exit-ab
+          if-no-files-found: error
       - name: Verify WebGL performance and room return
         if: github.ref == 'refs/heads/3d'
         timeout-minutes: 7
