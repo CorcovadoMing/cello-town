@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import fs from 'node:fs';import vm from 'node:vm';const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8'),ctx={};vm.createContext(ctx);vm.runInContext(app.split('// BEGIN ARRIVAL CONTRACT')[1].split('// END ARRIVAL CONTRACT')[0]+';globalThis.arrivalView=arrivalView;',ctx);const {arrivalView,doorArrivalState:at}=ctx;
+// Distance to full leaf rectangle in hinge-local XZ including its inset panels/handle.
+function leafDistance(p){const dx=p.x+.58,dz=p.z-2.24,c=Math.cos(p.angle),s=Math.sin(p.angle);const x=c*dx-s*dz,z=s*dx+c*dz;const ex=Math.max(0,-x,x-1.14),ez=Math.max(0,-.035-z,z-.125);return Math.hypot(ex,ez);}
+test('4 ms samples retain .44 m avatar cylinder clearance from real leaf',()=>{let min=Infinity;for(let t=0;t<=4200;t+=4){const p=at(t);min=Math.min(min,leafDistance(p));assert.ok(leafDistance(p)>.44,`overlap at ${t}: ${JSON.stringify(p)}`);}console.log('minimum leaf clearance',min);});
+test('leaf fully open before entry, entire avatar clear before closing',()=>{assert.equal(at(850).angle,Math.PI*.49);assert.equal(at(950).z,2.88);for(let t=2450;t<3000;t+=5){const p=at(t);assert.ok(Math.hypot(p.x+.58,p.z-2.24)>1.14+.125+.44);}});
+test('threshold passage stays between jambs, settle exact and oblique view',()=>{for(let t=0;t<4200;t+=5){const p=at(t);if(Math.abs(p.z-2.24)<.44)assert.ok(Math.abs(p.x)+.44<.605);}assert.ok(at(4200).done);assert.ok(Math.abs(at(4200).z-.65)<1e-9);assert.equal(at(4200).x,.10);const [x,y,z]=arrivalView.position;const pitch=Math.atan2(y-.9,Math.hypot(x,z-1.65))*180/Math.PI;assert.ok(pitch>30&&pitch<45);assert.ok(Math.atan2(x,z-1.65)*180/Math.PI>30);});
+
+test('turn back after crossing, watch door close, then face room and stay planted',()=>{assert.equal(at(2050).heading,Math.PI);for(let t=2450;t<=3000;t+=5){assert.equal(at(t).heading,0);assert.ok(Math.abs(at(t).z-.65)<1e-9);}assert.equal(at(3400).heading,Math.PI);assert.equal(at(3400).moving,false);});
+
+test('after entering, no backwards settle or walking cue before control returns',()=>{for(let t=2050;t<=4500;t++){const p=at(t);assert.equal(p.x,.10);assert.equal(p.z,.65);assert.equal(p.moving,false);}assert.ok(at(4200).done);});

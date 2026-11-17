@@ -1,0 +1,11 @@
+{
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {},
+  "description": "Static vendored Three.js dressing-room prototype",
+  "dependencies": {
+    "three": "0.160.1"
+  }
+}
