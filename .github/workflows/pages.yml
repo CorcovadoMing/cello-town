@@ -39,6 +39,7 @@ jobs:
           test -s _site/index.html
           cmp _site/index.html rpg/index.html
           test ! -e _site/rpg
+          node rpg/scripts/preload-town.mjs _site
       - name: Test and package the isolated 3D preview
         shell: bash
         run: |
