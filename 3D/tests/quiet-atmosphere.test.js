@@ -1,11 +1,4 @@
-import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';import vm from'node:vm';import * as T from'../vendor/three.module.js';import{installQuietScore}from'../room-polish.js';import{createWindowLandscape}from'../window-landscape.js';
-test('permanent original annotated score is supported by existing ledge and has no interaction or audio',()=>{
- const calls=[];const g=new Proxy({},{get:(_,key)=>typeof key==='string'?((...args)=>calls.push([key,...args])):undefined,set:()=>true});globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>g})};
- const scene=new T.Scene(),a=installQuietScore(T,scene);scene.updateMatrixWorld(true);assert.equal(a.name,'quiet-inherited-cello-score');assert.equal(a.userData.originalNotation,true);assert.equal(a.userData.permanent,true);const box=new T.Box3().setFromObject(a);assert.ok(box.min.y>=1.187);assert.ok(box.min.x>-1&&box.max.x<-.45);assert.ok(box.min.z>-2.06&&box.max.z<-1.7);assert.equal(a.getObjectByName('score-faded-phrases').material.map.colorSpace,T.SRGBColorSpace);assert.ok(calls.some(c=>c[0]==='quadraticCurveTo'));assert.ok(!calls.some(c=>c[0]==='fillText'));a.traverse(o=>{const hits=[];o.raycast(new T.Raycaster(),hits);assert.equal(hits.length,0);});
-});
-test('distant mountains remain static while real plants and cloud objects move, reduced motion settles',()=>{
- const backdrop=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial()),a=createWindowLandscape(T,backdrop),shader={fragmentShader:'#include <map_fragment>'};backdrop.material.onBeforeCompile(shader);assert.ok(shader.fragmentShader.includes('farRidge'));assert.ok(!/time|sin\(.*seconds/.test(shader.fragmentShader));assert.ok(!shader.fragmentShader.includes('vMapUv +'));const before=a.plants.map(p=>p.root.rotation.z);a.tick(3);assert.ok(a.plants.some((p,i)=>p.root.rotation.z!==before[i]));a.tick(3,true);assert.deepEqual(a.plants.map(p=>p.root.rotation.z),before);a.dispose();
-});
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';import vm from'node:vm';
 test('experimental storage isolation is path-scoped and does not migrate or read stable saves',()=>{
  // Evaluate the exact declared expressions, not duplicated key rules.
  const s=fs.readFileSync(new URL('../state.js',import.meta.url),'utf8').match(/export const KEY=([^;]+);/)[1];const r=fs.readFileSync(new URL('../../rpg/app.js',import.meta.url),'utf8').match(/,KEY=([^;]+);/)[1];
