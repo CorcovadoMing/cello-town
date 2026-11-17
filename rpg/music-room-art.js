@@ -15,12 +15,12 @@ export function drawMusicRoom(g){
  g.save();
  // Subtle foundation, cream timber and shaded side post. Flat pixel clusters.
  r(g,576,238,206,5,'#65744b33');r(g,580,126,196,113,'#8d775b');
- r(g,586,128,184,105,'#dfd4b7');r(g,586,132,184,5,'#c5b48c');
+ r(g,586,128,184,105,'#e0d0a6');r(g,586,132,184,5,'#c5b48c');
  for(let x=595,i=0;x<766;x+=18,i++){
-  r(g,x,141,2,86,'#d6c9ac');r(g,x+2,143,1,81,'#ece1c5');
+  r(g,x,141,2,86,'#cebd96');r(g,x+2,143,1,81,'#e9dbb6');
   // Restrained long grain and short knots, never noisy individual pixels.
-  r(g,x+7,145+(i%3)*9,1,19+i%2*8,'#d7ccb0');
-  r(g,x+9,211-(i%2)*7,1,13,'#d7ccb0');
+  r(g,x+7,145+(i%3)*9,1,19+i%2*8,'#d4c39b');
+  r(g,x+9,211-(i%2)*7,1,13,'#d4c39b');
   if(i%3===1){r(g,x+5,216,4,1,'#c7b48a');r(g,x+6,215,2,3,'#d2bf95');}
  }
  // Layered carved cornice, quiet dado rail and pegged structural posts.
@@ -58,23 +58,15 @@ export function drawMusicRoom(g){
  r(g,687,203,3,3,'#e0bb6f');r(g,d.x-2,d.y+d.h,d.w+4,5,'#d3bd90');
  for(const x of[601,720]){
   // Deep timber recess, four quiet glass planes and a projecting sill.
-  r(g,x-2,156,38,46,'#a77a4e');r(g,x-1,157,36,44,'#ba9465');
-  r(g,x,158,34,42,'#805c3d');r(g,x+3,161,28,34,'#8eae9d');
+  r(g,x-2,156,38,46,'#b39a72');r(g,x-1,157,36,44,'#ead9af');
+  r(g,x,158,34,42,'#796a52');r(g,x+3,161,28,34,'#8eae9d');
   r(g,x+4,162,11,14,'#c4d7bc');r(g,x+18,162,12,14,'#abc5ad');
   r(g,x+4,180,11,14,'#9dbca7');r(g,x+18,180,12,14,'#7f9f90');
   // Small upper glints remain broad stepped pixels, not sharp diagonal streaks.
   r(g,x+5,163,7,2,'#dce5cb');r(g,x+19,163,6,1,'#cbdcc0');
-  r(g,x+15,160,3,36,'#ae8558');r(g,x+2,177,30,3,'#ae8558');
+  r(g,x+15,160,3,36,'#ecdfb9');r(g,x+2,177,30,3,'#ecdfb9');
   r(g,x+17,161,1,15,'#b4ad88');r(g,x+3,180,27,1,'#789385');
-  // Stepped timber arch, inside the original frame rectangle: same opening identity as indoors.
-  // Only paint changes; sills, shutters, facade silhouette and portal stay in place.
-  for(let row=0;row<19;row++){
-   const outer=Math.floor(Math.sqrt(Math.max(0,19*19-(19-row)**2))),inner=Math.floor(Math.sqrt(Math.max(0,14*14-(19-row)**2))),cy=156+row,cx=x+17;
-   r(g,x-2,cy,19-outer,1,'#dfd4b7');r(g,cx+outer,cy,19-outer,1,'#dfd4b7');
-   if(outer>inner){r(g,cx-outer,cy,outer-inner,1,'#a77a4e');r(g,cx+inner,cy,outer-inner,1,'#a77a4e');}
-   if(outer>2)r(g,cx-outer,cy,1,1,'#c39b6b');
-  }
-  r(g,x-3,199,40,5,'#946d4c');r(g,x-3,199,40,2,'#c39b6b');r(g,x-1,204,36,2,'#ab916b');
+  r(g,x-3,199,40,5,'#b49a70');r(g,x-3,199,40,2,'#e0c79a');r(g,x-1,204,36,2,'#ab916b');
   for(const side of[-1,1]){const sx=side<0?x-9:x+36;r(g,sx,160,6,37,'#6b8160');r(g,sx,160,5,2,'#a1b087');for(const y of[167,175,183,191])r(g,sx+1,y,4,1,'#8fa17a');}
  }
  // A small hanging music-note plaque, recognizable without tiny text.

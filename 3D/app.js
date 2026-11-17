@@ -1,7 +1,7 @@
-import {createWindowLandscape} from './window-landscape.js?v=exp2';
-import {decoratePerformanceRoom,installWestRoomDetail} from './room-polish.js?v=exp2';
+import {createWindowLandscape} from './window-landscape.js?v=exp3';
+import {decoratePerformanceRoom,installWestRoomDetail} from './room-polish.js?v=exp3';
 import * as T from './vendor/three.module.js';
-import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=exp1';
+import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=exp3';
 const $=id=>document.getElementById(id),area=$('scene'),status=$('save-status');let state=defaults();try{state=normalize(JSON.parse(localStorage.getItem(KEY)));}catch{status.textContent='無法讀取本機設定，仍可自由試穿。';}
 installPullToRefreshGuard();
 const HAIR_ACCESSORY={bow:'#c88f83',beret:'#718f83',tie:'#d9b77d'};
@@ -82,7 +82,7 @@ function controls(focusKey=null){
 }
 let renderer,software=false;try{renderer=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});}catch{const{SVGRenderer}=await import('./vendor/SVGRenderer.js');renderer=new SVGRenderer();renderer.setQuality('high');software=true;status.textContent='簡化 3D 模式（此瀏覽器未啟用 WebGL）；穿搭仍可儲存。';const note=document.createElement('span');note.className='render-mode sr-only';note.textContent='簡化 3D · SVG';area.append(note);}
 if(!software){renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.setClearColor(0x000000,0);}area.append(renderer.domElement);$('loading').remove();renderer.domElement.setAttribute('aria-hidden','true');
-const scene=new T.Scene(),camera=new T.OrthographicCamera(-4.5,4.5,4, -4,.1,60);camera.position.set(5.8,5.3,8.2);camera.lookAt(0,1,0);scene.add(new T.HemisphereLight(0xfff9df,0x9cbaaa,software?.65:2.4));const sun=new T.DirectionalLight(0xffe5bd,software?.65:3.1);sun.name='window-sunlight';sun.position.set(-2.15,4.38,-5.04);sun.target.position.set(-.65,.38,-.04);scene.add(sun.target);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.radius=2.35;sun.shadow.camera.left=-5;sun.shadow.camera.right=5;sun.shadow.camera.top=5;sun.shadow.camera.bottom=-5;sun.shadow.bias=-.00005;sun.shadow.normalBias=.002;scene.add(sun);scene.add(new T.AmbientLight(0xf0f0ed,.48));
+const scene=new T.Scene(),camera=new T.OrthographicCamera(-4.5,4.5,4, -4,.1,60);camera.position.set(5.8,5.3,8.2);camera.lookAt(0,1,0);scene.add(new T.HemisphereLight(0xfff9df,0x9cbaaa,software?.65:2.4));const sun=new T.DirectionalLight(0xffefd0,software?.65:3.1);sun.name='window-sunlight';sun.position.set(-2.15,4.38,-5.04);sun.target.position.set(-.65,.38,-.04);scene.add(sun.target);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.radius=2.75;sun.shadow.camera.left=-5;sun.shadow.camera.right=5;sun.shadow.camera.top=5;sun.shadow.camera.bottom=-5;sun.shadow.bias=-.00005;sun.shadow.normalBias=.002;scene.add(sun);scene.add(new T.AmbientLight(0xf0f0ed,.48));
 // Single camera, continuously varying lens. The normalized perspective matrix
 // shares w=1 with the orthographic matrix on the final focus plane.
 let performanceLens=0,performanceLensFov=50.18,performanceLensDistance=2.925;
@@ -112,8 +112,8 @@ function roomFinish(o,kind,repeatX=1,repeatY=1){
   const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
   g.fillStyle='#ffffff';g.fillRect(0,0,128,128);
   let n=531;const rand=()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;return n/4294967296;};
-  if(kind==='oak'||kind==='walnut'||kind==='aged-elm'){
-   for(let j=0;j<25;j++){const y=rand()*128;g.strokeStyle='rgba(91,62,33,'+(kind==='aged-elm'?(.08+rand()*.13):(.03+rand()*.09))+')';g.lineWidth=.5+rand()*.8;g.beginPath();g.moveTo(0,y);for(let x=0;x<=128;x+=8)g.lineTo(x,y+Math.sin(x*.045+j)*(.6+rand()*1.8));g.stroke();}
+  if(kind==='oak'||kind==='walnut'){
+   for(let j=0;j<25;j++){const y=rand()*128;g.strokeStyle='rgba(91,62,33,'+(.03+rand()*.09)+')';g.lineWidth=.5+rand()*.8;g.beginPath();g.moveTo(0,y);for(let x=0;x<=128;x+=8)g.lineTo(x,y+Math.sin(x*.045+j)*(.6+rand()*1.8));g.stroke();}
    for(let j=0;j<2;j++){g.strokeStyle='rgba(105,71,38,.10)';g.beginPath();g.ellipse(25+j*72,32+j*57,13,2.8,0,0,Math.PI*2);g.stroke();}
   }else if(kind==='linen'||kind==='woven'){
    for(let i=0;i<128;i+=4){g.fillStyle='rgba(98,81,59,.055)';g.fillRect(i,0,1,128);g.fillRect(0,i,128,1);}
@@ -125,7 +125,7 @@ function roomFinish(o,kind,repeatX=1,repeatY=1){
  }
  // Clone a bounded swatch per distinct material scale, never per frame.
  const scaleKey=kind+':'+repeatX+':'+repeatY;let map=roomTextureScales.get(scaleKey);if(!map){map=texture.clone();map.repeat.set(repeatX,repeatY);map.needsUpdate=true;roomTextureScales.set(scaleKey,map);}
- const materialKey=o.material.color.getHexString()+':'+scaleKey;let finish=roomMaterials.get(materialKey);if(!finish){finish=o.material.clone();finish.map=map;finish.roughness=kind==='aged-elm'?.78:kind==='walnut'?.72:.93;roomMaterials.set(materialKey,finish);}o.material=finish;o.name=o.name||'room-finish-'+kind;
+ const materialKey=o.material.color.getHexString()+':'+scaleKey;let finish=roomMaterials.get(materialKey);if(!finish){finish=o.material.clone();finish.map=map;finish.roughness=kind==='walnut'?.72:.93;roomMaterials.set(materialKey,finish);}o.material=finish;o.name=o.name||'room-finish-'+kind;
  return o;
 }
 // Batch only static room detail that has no station or animated descendants.
@@ -152,12 +152,12 @@ const floorDetails=[];for(let col=0;col<11;col++)for(let row=0;row<4;row++){
 batchRoomDetails(floorDetails,'handcrafted-oak-boards');
 // Rendered walls sit exactly on the finished floor (top y=.015).
 const FLOOR_TOP=.015;
-const rearWall=box(0,FLOOR_TOP+3.1/2,-2.35,6.2,3.1,.13,'#dfd4b7');rearWall.name='rear-wall-grounded';rearWall.castShadow=false;if(software)rearWall.renderOrder=-20;
-const sideWall=box(-3.05,FLOOR_TOP+1.55/2,0,.12,1.55,4.7,'#e8ddc1');sideWall.name='side-wall-grounded';roomFinish(rearWall,'plaster',5,3);roomFinish(sideWall,'plaster',4,2);
+const rearWall=box(0,FLOOR_TOP+3.1/2,-2.35,6.2,3.1,.13,'#c4d1b2');rearWall.name='rear-wall-grounded';rearWall.castShadow=false;if(software)rearWall.renderOrder=-20;
+const sideWall=box(-3.05,FLOOR_TOP+1.55/2,0,.12,1.55,4.7,'#d7ddc2');sideWall.name='side-wall-grounded';roomFinish(rearWall,'plaster',5,3);roomFinish(sideWall,'plaster',4,2);
 // A low shadow-only sill keeps a short attached contact shadow on the real floor receiver.
 const wallCaster=box(0,FLOOR_TOP+.14/2,-2.35,6.2,.14,.13,'#c4d1b2');wallCaster.name='rear-wall-shadow-proxy';wallCaster.material=wallCaster.material.clone();wallCaster.material.colorWrite=false;wallCaster.material.depthWrite=false;wallCaster.material.shadowSide=T.DoubleSide;wallCaster.receiveShadow=false;wallCaster.raycast=()=>{};if(software)wallCaster.visible=false;
-const rearSkirting=box(0,FLOOR_TOP+.095,-2.245,6.12,.19,.13,'#b39a73');rearSkirting.name='rear-wall-base';
-const sideSkirting=box(-2.955,FLOOR_TOP+.095,0,.13,.19,4.7,'#b39a73');sideSkirting.name='side-wall-base';
+const rearSkirting=box(0,FLOOR_TOP+.095,-2.245,6.12,.19,.13,'#dddcc3');rearSkirting.name='rear-wall-base';
+const sideSkirting=box(-2.955,FLOOR_TOP+.095,0,.13,.19,4.7,'#dddcc3');sideSkirting.name='side-wall-base';
 for(const o of[rearSkirting,sideSkirting])o.castShadow=false;
 // Tiny moulding and inset panels lend the miniature an intentional joinery.
 box(0,.235,-2.16,6.08,.025,.025,'#eee6cb').castShadow=false;
@@ -224,8 +224,8 @@ const WINDOW_APERTURE={half:.76,spring:.93,outerHalf:.87,sill:.025};
 function windowProfile(half,bottom){const p=new T.Shape();p.moveTo(-half,bottom);p.lineTo(half,bottom);p.lineTo(half,WINDOW_APERTURE.spring);p.absarc(0,WINDOW_APERTURE.spring,half,0,Math.PI,false);p.lineTo(-half,bottom);p.closePath();return p;}
 const windowOuter=windowProfile(WINDOW_APERTURE.outerHalf,0),windowAperture=windowProfile(WINDOW_APERTURE.half,.1);
 const apertureHole=new T.Path();apertureHole.moveTo(-.76,.1);apertureHole.lineTo(-.76,.93);apertureHole.absarc(0,.93,.76,Math.PI,0,true);apertureHole.lineTo(.76,.1);apertureHole.closePath();windowOuter.holes.push(apertureHole);
-const windowFrame=mesh(new T.ExtrudeGeometry(windowOuter,{depth:.07,bevelEnabled:true,bevelThickness:.005,bevelSize:.004,bevelSegments:2,curveSegments:32}),'#a77a4e',0,0,.04,windowGroup);
-windowFrame.name='window-continuous-frame';windowFrame.renderOrder=7;roomFinish(windowFrame,'aged-elm',2,3);
+const windowFrame=mesh(new T.ExtrudeGeometry(windowOuter,{depth:.08,bevelEnabled:false,curveSegments:32}),'#f4edcf',0,0,.04,windowGroup);
+windowFrame.name='window-continuous-frame';windowFrame.renderOrder=7;
 function windowLayer(shape,color,z,name){const o=new T.Mesh(new T.ShapeGeometry(shape,32),new T.MeshBasicMaterial({color,side:T.DoubleSide}));o.position.z=z;o.renderOrder=1+z*100;o.name=name;windowGroup.add(o);return o;}
 windowLayer(windowAperture,'#a5cfca',0,'window-sky');
 const windowSun=new T.Shape();windowSun.absarc(-.3,1.17,.16,0,Math.PI*2);const fixedWindowSun=windowLayer(windowSun,'#fff1bd',.05,'window-sun');
@@ -254,17 +254,9 @@ for(let i=0;i<ruralPos.count;i++)ruralUV.setXY(i,(ruralPos.getX(i)+.76)/1.52,(ru
 const livingLandscape=createWindowLandscape(T,previewLandscape);windowGroup.add(livingLandscape.group);livingLandscape.group.visible=false;
 new T.TextureLoader().load('./rural-window.webp?v=22',tex=>{tex.colorSpace=T.SRGBColorSpace;previewLandscape.material.map=tex;previewLandscape.material.needsUpdate=true;previewLandscape.userData.ready=true;},undefined,()=>{previewLandscape.userData.ready=false;});
 // Mullions are in front of every scenery layer, joined inside the same arch.
-function elmCrossbar(x,y,w,h,name){
- const shape=new T.Shape();shape.moveTo(-w/2+.004,-h/2+.004);shape.lineTo(w/2-.004,-h/2+.004);shape.lineTo(w/2-.004,h/2-.004);shape.lineTo(-w/2+.004,h/2-.004);shape.closePath();
- const o=mesh(new T.ExtrudeGeometry(shape,{depth:.037,bevelEnabled:true,bevelSize:.004,bevelThickness:.004,bevelSegments:2}),'#ae8558',x,y,.0625,windowGroup);o.name=name;o.renderOrder=8;roomFinish(o,'aged-elm',1,2);return o;
-}
-const elmVertical=elmCrossbar(0,.895,.05,1.59,'window-elm-vertical');
-const elmHorizontal=elmCrossbar(0,.88,1.52,.05,'window-elm-horizontal');
-const elmSill=box(0,.025,.13,1.94,.1,.36,'#b58d5c',windowGroup);elmSill.name='window-elm-sill';elmSill.renderOrder=9;roomFinish(elmSill,'aged-elm',2,1);
-// One narrow timber bead catches daylight; no extra lattice blocks the view.
-const elmBead=mesh(new T.TorusGeometry(.815,.008,6,64,Math.PI),'#c49b69',0,.93,.122,windowGroup);elmBead.name='window-elm-arch-bead';elmBead.renderOrder=8;
-for(const x of[-.815,.815]){const o=box(x,.465,.122,.016,.93,.016,'#c49b69',windowGroup);o.name='window-elm-upright-bead';o.renderOrder=8;}
-
+box(0,.895,.085,.05,1.59,.045,'#f7eed7',windowGroup).renderOrder=8;
+box(0,.88,.085,1.52,.05,.045,'#f7eed7',windowGroup).renderOrder=8;
+box(0,.025,.13,1.94,.1,.36,'#e7d5b5',windowGroup).renderOrder=9;
 const curtainTop=WINDOW_APERTURE.spring+WINDOW_APERTURE.outerHalf+.14,curtainBottom=WINDOW_APERTURE.sill+.07;
 const curtains=new T.Group();curtains.name='curtains-soft-tiebacks';windowGroup.add(curtains);
 const curtainOuter=WINDOW_APERTURE.outerHalf+.26,tieY=WINDOW_APERTURE.spring-.26;
@@ -329,21 +321,19 @@ curtains.traverse(o=>{if(o.isMesh){
 if(typeof software!=='undefined'&&software)windowGroup.traverse(o=>{if(o.isMesh)o.renderOrder-=12;});
 // Keep the window scenery, but no artificial pane-shaped wall/floor light motif.
 windowGroup.traverse(o=>{if(o.isMesh)o.castShadow=false;});
-// Real joinery casts directional shadows, never a screen-space pane overlay.
-for(const o of[windowFrame,elmVertical,elmHorizontal,elmSill])o.castShadow=!software;
 // Wardrobe and hanging cloth, little shelf.
 const wardrobeStart=scene.children.length;
-box(2.1,1.02,-1.85,1.25,2,.65,'#946d4c');box(2.1,1.04,-1.5,1.1,1.77,.035,'#ae8961');box(2.1,1.04,-1.46,.025,1.78,.02,'#907054');for(const x of [1.98,2.23])ball(x,1.08,-1.41,.035,.035,.035,'#f4d99c');box(2.1,2.07,-1.85,1.4,.13,.77,'#b2956d');
+box(2.1,1.02,-1.85,1.25,2,.65,'#a6805f');box(2.1,1.04,-1.5,1.1,1.77,.035,'#c3a57d');box(2.1,1.04,-1.46,.025,1.78,.02,'#907054');for(const x of [1.98,2.23])ball(x,1.08,-1.41,.035,.035,.035,'#f4d99c');box(2.1,2.07,-1.85,1.4,.13,.77,'#b2956d');
 // Inset door panels and brass hinges, attached rather than floating ornaments.
 for(const x of[1.82,2.38]){
  box(x,1.10,-1.43,.42,1.48,.025,'#b99a73');
  roomFinish(box(x,1.10,-1.412,.36,1.39,.018,'#c9ac82'),'walnut',1,2);
 }
 for(const x of[1.59,2.61])for(const y of[.56,1.53])box(x,y,-1.425,.025,.09,.016,'#b59b6d');
-scene.children.slice(wardrobeStart).forEach(o=>{o.userData.station='wardrobe';if(o.isMesh&&!o.material.map&&o.geometry.type==='BoxGeometry')roomFinish(o,'aged-elm',1,2);});
+scene.children.slice(wardrobeStart).forEach(o=>{o.userData.station='wardrobe';if(o.isMesh&&!o.material.map&&o.geometry.type==='BoxGeometry')roomFinish(o,'walnut',1,2);});
 // A small vanity with a framed oval mirror, deliberately not a reflective render pass.
 const vanity=new T.Group();vanity.position.set(.65,0,-1.65);vanity.scale.setScalar(.88);scene.add(vanity);
-box(0,.78,0,1.05,.12,.5,'#ab8057',vanity);box(0,.68,0,.87,.16,.4,'#bc9a73',vanity);
+box(0,.78,0,1.05,.12,.5,'#bc9874',vanity);box(0,.68,0,.87,.16,.4,'#d4b590',vanity);
 for(const x of [-.4,.4])for(const z of [-.16,.16])rod([x,.68,z],[x,.04,z],.035,'#a98160',vanity);
 // Tabletop mirror: weighted oval foot touches table y=.84; short brass neck meets frame.
 const mirrorBase=ball(0,.863,-.15,.24,.026,.105,'#b59565',vanity);mirrorBase.name='mirror-tabletop-base';
@@ -371,7 +361,7 @@ cylinder(.31,.89,.05,.075,.065,.16,'#dbc5a4',vanity);
 // A shallow drawer front, framed lip and a fitted brass pull.
 box(0,.685,.217,.73,.105,.018,'#bea07d',vanity);
 box(0,.69,.232,.10,.018,.018,'#cbb17b',vanity);
-vanity.traverse(o=>{o.userData.station='vanity';if(o.isMesh&&o.geometry.type==='BoxGeometry')roomFinish(o,'aged-elm',1,1);});
+vanity.traverse(o=>{o.userData.station='vanity';if(o.isMesh&&o.geometry.type==='BoxGeometry')roomFinish(o,'walnut',1,1);});
 // Rug center and stitched border.
 const rug=mesh(new T.RingGeometry(0,1.6,48,8),'#c4c7a4',0,.045,.45);rug.rotation.x=-Math.PI/2;rug.scale.y=.72;const rugLine=ring(0,.065,.45,1.45,.018,'#ece8cb');rugLine.rotation.x=Math.PI/2;rugLine.scale.y=.72;roomFinish(rug,'woven',5,5);
 // Nested stitched border, with a muted sage edge rather than a shiny disc.
