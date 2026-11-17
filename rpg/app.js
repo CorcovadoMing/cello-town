@@ -24,7 +24,7 @@ import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,
 installPullToRefreshGuard();
 let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
-const $=id=>document.getElementById(id), canvas=$('world'),g=canvas.getContext('2d'),dlg=$('dialog'),KEY='cello-town-rpg-v1';
+const $=id=>document.getElementById(id), canvas=$('world'),g=canvas.getContext('2d'),dlg=$('dialog'),KEY=/\/experimental(?:\/|$)/.test(globalThis.location?.pathname||'')?'cello-town-experimental-rpg-v1':'cello-town-rpg-v1';
 const townFont=getComputedStyle(document.documentElement).getPropertyValue('--town-font').trim()||'system-ui';
 let state=fresh(),storeOK=true;try{const raw=localStorage.getItem(KEY);if(raw)state=normalize(JSON.parse(raw));}catch{storeOK=false;}
 const player={x:460,y:425,dir:1,facing:'front',walking:false};const npc={x:303,y:290,kind:'teacher'},stand={x:615,y:404},garden={x:710,y:460};let keys=new Set(),target=null,last=0,near=null,task='listen',revealed=false,demoDone=false,practiced=false,context,timer,mode=null,voices=new Set(),step=0,next=0,generation=0,demoUntil=0,releaseSession=()=>{},clockTime=0,clockSeen=0,audioNode=null,workletAck=null;

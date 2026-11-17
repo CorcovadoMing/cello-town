@@ -16,10 +16,23 @@ export function createWindowLandscape(T, backdrop) {
     float foliage=treeRegion*leafChroma*yellowGreen;
     skyMask*=1.-foliage;
     vec3 clearSky=mix(vec3(.36,.66,.68),vec3(.22,.57,.66),smoothstep(.66,1.,vMapUv.y));
-    diffuseColor*=vec4(mix(land.rgb,clearSky,skyMask),land.a);
+    // Borrowed distant hills, not a new room or a moving background card.
+    // Analytic, static silhouettes leave the path, tree and meadow untouched.
+    float farRidge=.717+.019*sin(vMapUv.x*9.4)+.014*sin(vMapUv.x*19.0+.8);
+    float midRidge=.685+.022*sin(vMapUv.x*7.2+1.0)+.008*sin(vMapUv.x*23.0);
+    float nearRidge=.661+.016*sin(vMapUv.x*11.1+2.1);
+    float distant=(1.-smoothstep(farRidge-.006,farRidge+.006,vMapUv.y));
+    float middle=(1.-smoothstep(midRidge-.004,midRidge+.004,vMapUv.y));
+    float nearest=(1.-smoothstep(nearRidge-.003,nearRidge+.003,vMapUv.y));
+    vec3 distanceWash=mix(clearSky,vec3(.48,.61,.58),distant*.45);
+    distanceWash=mix(distanceWash,vec3(.36,.51,.46),middle*.35);
+    distanceWash=mix(distanceWash,vec3(.30,.45,.36),nearest*.25);
+    float borrowedSky=(1.-foliage)*smoothstep(.635,.675,vMapUv.y);
+    vec3 landscape=mix(land.rgb,distanceWash,max(skyMask,borrowedSky*.76));
+    diffuseColor*=vec4(landscape,land.a);
    #endif`);
   };
-  backdrop.material.customProgramCacheKey=()=> 'static-landscape-clear-sky-v8-clean-silhouette';backdrop.material.needsUpdate=true;
+  backdrop.material.customProgramCacheKey=()=> 'quiet-layered-distance-exp1';backdrop.material.needsUpdate=true;
  }
  const mats=['#647f3c','#84974c','#9daa57','#a7b765'].map(color=>new T.MeshBasicMaterial({color,side:T.DoubleSide}));const petalMats=['#fff0bd','#efbf4a','#bd8fb5'].map(color=>new T.MeshBasicMaterial({color,side:T.DoubleSide}));const pollen=new T.MeshBasicMaterial({color:'#b98832',side:T.DoubleSide});const seedmat=new T.MeshBasicMaterial({color:'#d5c07b',side:T.DoubleSide});
  function blade(h,w,bend,mat){const p=[],ix=[];for(let k=0;k<7;k++){const t=k/6,xx=bend*t*t,ww=w*(1-t)*(.45+.55*Math.sin(Math.PI*t));p.push(xx-ww,h*t,0,xx+ww,h*t,0);if(k<6)ix.push(2*k,2*k+1,2*k+3,2*k,2*k+3,2*k+2);}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setIndex(ix);return new T.Mesh(g,mat);}

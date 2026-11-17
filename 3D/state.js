@@ -1,4 +1,4 @@
-export const KEY='cello-town-3d-avatar-v1';
+export const KEY=/\/experimental(?:\/|$)/.test(globalThis.location?.pathname||'')?'cello-town-experimental-3d-avatar-v1':'cello-town-3d-avatar-v1';
 export const OPTIONS={
 faceShape:['奶油小橢圓','軟軟鵝蛋','糯米小圓臉','蜜桃小愛心','吐司圓方臉','花生小豆臉','澎澎梨子臉','小杏仁臉'],
 face:['暖暖招呼','探頭好奇','滿足瞇瞇','溫柔陪伴','小聲哼歌','開心偷笑','發現驚喜','俏皮眨眼'],

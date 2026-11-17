@@ -130,3 +130,38 @@ export function installWestRoomDetail(T,scene){
  group.userData.wallSegment={minZ,maxZ,base:bottom,top};clock.userData.wallBackX=-2.990;clock.userData.permanent=true;plant.userData.wallBackX=-2.990;plant.userData.wallMounted=true;
  return {group,clock,wall,plant};
 }
+
+/** Experimental: an old practice score, kept in the same room through every view.
+ * Original abstract notation only: no quoted music, words, lyrics or audio.
+ */
+export function installQuietScore(T,scene){
+ const group=new T.Group();group.name='quiet-inherited-cello-score';scene.add(group);
+ // A low reading rest sits on the existing window ledge, beside the opening.
+ group.position.set(-.74,1.188,-1.915);group.rotation.y=-.08;
+ const paper=new T.MeshStandardMaterial({color:'#ede1ba',roughness:.96,side:T.DoubleSide});
+ const canvas=document.createElement('canvas');canvas.width=768;canvas.height=512;const g=canvas.getContext('2d');
+ g.fillStyle='#eadfbc';g.fillRect(0,0,768,512);
+ let seed=1937;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+ // Slightly unequal age marks, linen grain, an old fold and pale pencil traces.
+ for(let i=0;i<2600;i++){g.fillStyle=i%2?'rgba(112,88,55,.035)':'rgba(255,252,225,.11)';g.fillRect(random()*768,random()*512,1+random()*3,1);}
+ g.fillStyle='rgba(141,112,72,.15)';g.fillRect(382,0,4,512);
+ for(let page=0;page<2;page++)for(let system=0;system<4;system++){
+  const x=page*384+34,y=77+system*101;g.strokeStyle='rgba(99,90,68,.43)';g.lineWidth=1;
+  for(let line=0;line<5;line++){g.beginPath();g.moveTo(x,y+line*8);g.lineTo(x+307,y+line*8);g.stroke();}
+  for(let n=0;n<6;n++){const nx=x+26+n*48,ny=y+8*(1+((n*3+system+page)%4));g.fillStyle='rgba(72,72,55,.66)';g.beginPath();g.ellipse(nx,ny,5,3,-.24,0,Math.PI*2);g.fill();g.strokeStyle='rgba(72,72,55,.66)';g.beginPath();g.moveTo(nx+4,ny);g.lineTo(nx+4,ny-25);g.stroke();}
+  // Two hands over time: faded brown phrasing, lighter graphite rehearsal marks.
+  g.strokeStyle=system%2?'rgba(94,103,99,.44)':'rgba(143,101,66,.32)';g.lineWidth=1.8;g.beginPath();g.moveTo(x+23,y-13);g.quadraticCurveTo(x+120,y-36,x+215,y-13);g.stroke();
+  if(system===1||system===3){g.beginPath();g.ellipse(x+121,y+19,13,20,-.15,0,Math.PI*2);g.stroke();g.beginPath();g.moveTo(x+262,y+56);g.lineTo(x+270,y+61);g.lineTo(x+284,y+48);g.stroke();}
+ }
+ const tex=new T.CanvasTexture(canvas);tex.colorSpace=T.SRGBColorSpace;paper.map=tex;
+ const rest=new T.Mesh(new T.BoxGeometry(.43,.018,.13),new T.MeshStandardMaterial({color:'#b29c76',roughness:.87}));rest.name='score-low-wood-rest';rest.position.set(0,.009,0);group.add(rest);
+ const pages=new T.Group();pages.position.set(0,.025,.052);pages.rotation.x=-.55;group.add(pages);
+ for(const side of[-1,1]){
+  const geom=new T.PlaneGeometry(.215,.285,6,6),uv=geom.attributes.uv,pos=geom.attributes.position;
+  for(let i=0;i<uv.count;i++){uv.setX(i,(uv.getX(i)+(side>0?1:0))*.5);const x=pos.getX(i);pos.setZ(i,.005*Math.sin((x/.215+.5)*Math.PI));}geom.computeVertexNormals();
+  const page=new T.Mesh(geom,paper);page.name=side<0?'score-faded-phrases':'score-pencil-revisions';page.position.set(side*.108,.1425,0);page.rotation.y=side*.055;pages.add(page);
+ }
+ const ribbon=new T.Mesh(new T.BoxGeometry(.012,.102,.002),new T.MeshStandardMaterial({color:'#9f8a71',roughness:1}));ribbon.name='score-linen-bookmark';ribbon.position.set(.03,.014,.095);ribbon.rotation.x=Math.PI/2;group.add(ribbon);
+ group.traverse(o=>{o.raycast=()=>{};if(o.isMesh){o.castShadow=false;o.receiveShadow=true;}});
+ group.userData.originalNotation=true;group.userData.permanent=true;return group;
+}
