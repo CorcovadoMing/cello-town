@@ -72,8 +72,10 @@ jobs:
         env:
           CHROME_PATH: /usr/bin/google-chrome
         run: |
-          CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-release031/cat" node .preview-3d/3D/tests/browser-candidate.cjs _site
-          CELLO_QA_MODE=transition CELLO_QA_LATENCY_MS=80 CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-release031/door" node .preview-3d/3D/tests/browser-candidate.cjs _site
+          cat_status=0; door_status=0
+          CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-release031/cat" node .preview-3d/3D/tests/browser-candidate.cjs _site || cat_status=$?
+          CELLO_QA_MODE=transition CELLO_QA_LATENCY_MS=80 CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-release031/door" node .preview-3d/3D/tests/browser-candidate.cjs _site || door_status=$?
+          test "$cat_status" = 0 && test "$door_status" = 0
       - name: Save candidate browser evidence
         if: always() && github.ref == 'refs/heads/3d'
         uses: actions/upload-artifact@v4
