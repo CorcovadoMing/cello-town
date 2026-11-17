@@ -1022,7 +1022,11 @@ function performanceCamera(width=area.clientWidth){
  const catView=T.MathUtils.smoothstep(aspect,1.2,1.4),extraWide=Math.max(0,aspect-1.8);
  // Aspect-based leftward and slightly lower aim includes the nearby player and cello, while fitting the real window.
  const probe=camera.clone(),focus=new T.Vector3(-1.25-.25*portrait-wide-catView*(.48+.25*extraWide),1.68-.18*portrait-catView*(.28+.10*extraWide),-2.09);
- probe.position.set(-.08,1.67,.59);probe.lookAt(focus);probe.updateMatrixWorld(true);
+ const wideFrame=T.MathUtils.smoothstep(aspect,1.2,1.5);
+ // A lower real eye line separates the near player/cello from the far window.
+ // Portrait and ordinary tablet compositions retain their exact camera tuple.
+ focus.lerp(new T.Vector3(-1.8-1.3*Math.max(0,aspect-1.58),1.4,-2.09),wideFrame);
+ probe.position.set(-.08,1.67,.59).lerp(new T.Vector3(-.6,1.15,.3),wideFrame);probe.lookAt(focus);probe.updateMatrixWorld(true);
  const points=[];
  for(let i=0;i<=32;i++){const a=i*Math.PI/32;points.push(new T.Vector3(-1.25+.87*Math.cos(a),2.03+.87*Math.sin(a),-2.04));}
  for(const x of[-2.22,-.28])for(const y of[1.075,1.175])points.push(new T.Vector3(x,y,-1.98));
@@ -1034,7 +1038,7 @@ function performanceCamera(width=area.clientWidth){
  for(const x of[-2.22,-.28])for(const y of[1.075,1.175])for(const z of[-2.17,-1.81])clampPoints.push(new T.Vector3(x,y,z).applyMatrix4(probe.matrixWorldInverse));
  for(let i=0;i<=128;i++)for(const z of[-2.08,-2.00]){const a=i*Math.PI/128;clampPoints.push(new T.Vector3(-1.25+.87*Math.cos(a),2.03+.87*Math.sin(a),z).applyMatrix4(probe.matrixWorldInverse));}
  const leftShift=Math.max(0,Math.min(.12,...clampPoints.map(p=>(-p.z)*tangent*aspect*.99-p.x)));
- probe.position.add(new T.Vector3(-leftShift,0,0).applyQuaternion(probe.quaternion));
+ probe.position.add(new T.Vector3(-leftShift*(1-wideFrame),0,0).applyQuaternion(probe.quaternion));
  return{position:probe.position,quaternion:probe.quaternion,zoom,fov,distance,lens:1};
 }
 function animatePerformanceCamera(view,duration,restoring=false){

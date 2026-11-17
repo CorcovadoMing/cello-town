@@ -23,6 +23,12 @@ jobs:
           ref: ${{ github.ref == 'refs/heads/3d' && github.sha || '3d' }}
           path: .preview-3d
           persist-credentials: false
+      - name: Check out the released 3D composition
+        uses: actions/checkout@v4
+        with:
+          ref: ccf497bac3bf37219c6acfdbd43dbec9669017a7
+          path: .baseline-3d
+          persist-credentials: false
       - name: Record source snapshots
         run: |
           git rev-parse HEAD
@@ -56,22 +62,30 @@ jobs:
           cp .preview-3d/3D/{index.html,style.css,app.js,state.js,room-polish.js,window-landscape.js,rural-window.webp} _site/3D/
           cp .preview-3d/3D/vendor/{three.module.js,SVGRenderer.js,Projector.js,THREE-LICENSE.txt} _site/3D/vendor/
           test -s _site/3D/index.html
-      - name: Verify candidate cat and cold/warm door return in real Chromium
-        if: ${{ !cancelled() && github.ref == 'refs/heads/3d' && steps.package-3d.outcome == 'success' }}
-        timeout-minutes: 7
+      - name: Compare released and candidate compositions in real Chromium
+        if: github.ref == 'refs/heads/3d'
+        timeout-minutes: 6
         env:
           CHROME_PATH: /usr/bin/google-chrome
+          CELLO_COMPOSITION_APPEARANCE: '{"hair":7,"hairColor":2,"hat":3,"upper":0,"lower":0,"lowerColor":2,"color":0}'
         run: |
-          cat_status=0; door_status=0
-          CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-release031/cat" node .preview-3d/3D/tests/browser-candidate.cjs _site || cat_status=$?
-          CELLO_QA_MODE=transition CELLO_QA_LATENCY_MS=80 CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-release031/door" node .preview-3d/3D/tests/browser-candidate.cjs _site || door_status=$?
-          test "$cat_status" = 0 && test "$door_status" = 0
-      - name: Save candidate browser evidence
+          set -euo pipefail
+          mkdir -p _widebaseline
+          cp -R _site/3D _widebaseline/3D
+          cp .baseline-3d/3D/app.js _widebaseline/3D/app.js
+          evidence="$RUNNER_TEMP/cello-composition033"
+          old=0; new=0
+          CELLO_COMPOSITION_LABEL=baseline032 CELLO_SMOKE_ARTIFACTS="$evidence/old" node .preview-3d/3D/tests/browser-composition.cjs _widebaseline || old=$?
+          CELLO_COMPOSITION_LABEL=candidate033 CELLO_SMOKE_ARTIFACTS="$evidence/new" node .preview-3d/3D/tests/browser-composition.cjs _site || new=$?
+          test "$old" = 0 && test "$new" = 0
+          python .preview-3d/3D/tests/compare-composition.py "$evidence/old" "$evidence/new" > "$evidence/comparison.json"
+          cat "$evidence/comparison.json"
+      - name: Preserve real browser composition evidence
         if: always() && github.ref == 'refs/heads/3d'
         uses: actions/upload-artifact@v4
         with:
-          name: cello-release032-camera-recheck
-          path: ${{ runner.temp }}/cello-release031
+          name: cello-composition033
+          path: ${{ runner.temp }}/cello-composition033
           if-no-files-found: warn
       - uses: actions/upload-pages-artifact@v3
         with:
