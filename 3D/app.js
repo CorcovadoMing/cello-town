@@ -1373,24 +1373,40 @@ renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();r
 function scheduleTownReturnWarmup(){
  const connection=navigator.connection;
  if(connection?.saveData||/^(slow-2g|2g)$/.test(connection?.effectiveType||''))return;
- const controller=new AbortController();let started=false;
- const stop=()=>controller.abort();window.addEventListener('pagehide',stop,{once:true});
- document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
+ let loaded=document.readyState==='complete',suspended=false,completed=false,running=false,scheduled=false,epoch=0,controller=null,rearm=false;
+ const allowed=()=>loaded&&!suspended&&!document.hidden&&!completed;
+ const stop=()=>{epoch++;scheduled=false;controller?.abort();};
+ const ready=()=>{
+  if(!allowed()||scheduled)return;
+  if(running){rearm=true;return;}
+  scheduled=true;const ticket=epoch;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+   if(ticket!==epoch||!allowed())return;
+   const launch=()=>{if(ticket!==epoch||!allowed())return;scheduled=false;return run();};
+   if('requestIdleCallback'in window)window.requestIdleCallback(launch,{timeout:5000});else setTimeout(launch,1500);
+  }));
+ };
  const run=async()=>{
-  if(started||controller.signal.aborted||document.hidden)return;started=true;
+  if(running||!allowed())return;
+  running=true;rearm=false;const attempt=++epoch,abort=new AbortController();controller=abort;
+  const current=()=>attempt===epoch&&!abort.signal.aborted&&allowed();
   try{
-   const target=new URL('../?from=room',location.href),response=await fetch(target.href,{credentials:'same-origin',priority:'low',signal:controller.signal});
-   if(!response.ok)return;const html=await response.text();if(html.length>200000)return;
+   const target=new URL('../?from=room',location.href),response=await fetch(target.href,{credentials:'same-origin',priority:'low',signal:abort.signal});
+   if(!current()||!response.ok)return;const html=await response.text();if(!current()||html.length>200000)return;
    const doc=new DOMParser().parseFromString(html,'text/html'),base=new URL('./',target),urls=new Set();
    for(const node of doc.querySelectorAll('link[rel="modulepreload"],link[rel="stylesheet"],script[type="module"][src]')){
     const u=new URL(node.getAttribute('href')||node.getAttribute('src'),base);
     if(u.origin===base.origin&&u.pathname.startsWith(base.pathname)&&/\.(?:js|css)$/.test(u.pathname))urls.add(u.href);
     if(urls.size===32)break;
    }
-   const queue=[...urls];await Promise.all([0,1].map(async()=>{while(queue.length&&!controller.signal.aborted&&!document.hidden){const url=queue.shift();try{const r=await fetch(url,{credentials:'same-origin',cache:'force-cache',priority:'low',signal:controller.signal});if(r.ok)await r.arrayBuffer();}catch{}}}));
+   let success=true;const queue=[...urls];await Promise.all([0,1].map(async()=>{while(queue.length&&current()){const url=queue.shift();try{const r=await fetch(url,{credentials:'same-origin',cache:'force-cache',priority:'low',signal:abort.signal});if(r.ok)await r.arrayBuffer();else success=false;}catch{success=false;}}}));
+   if(current()&&success&&queue.length===0)completed=true;
   }catch{/* Optional warm-up must never affect room input or navigation. */}
+  finally{running=false;if(controller===abort)controller=null;if(rearm){rearm=false;ready();}}
  };
- const ready=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{if(controller.signal.aborted)return;if('requestIdleCallback'in window)window.requestIdleCallback(run,{timeout:5000});else setTimeout(run,1500);}));
- if(document.readyState==='complete')ready();else window.addEventListener('load',ready,{once:true});
+ window.addEventListener('pagehide',()=>{suspended=true;rearm=false;stop();});
+ window.addEventListener('pageshow',()=>{suspended=false;ready();});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){rearm=false;stop();}else ready();});
+ if(loaded)ready();else window.addEventListener('load',()=>{loaded=true;ready();},{once:true});
 }
 scheduleTownReturnWarmup();
