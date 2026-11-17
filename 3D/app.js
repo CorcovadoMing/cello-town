@@ -1019,8 +1019,9 @@ function performanceCamera(width=area.clientWidth){
  const aspect=(camera.right-camera.left)/(camera.top-camera.bottom);
  const portrait=T.MathUtils.smoothstep(1.4-aspect,0,.55);
  const wide=T.MathUtils.smoothstep(aspect,1.2,1.4)*(.10+1.3*Math.max(0,aspect-1.4));
+ const catView=T.MathUtils.smoothstep(aspect,1.2,1.4),extraWide=Math.max(0,aspect-1.8);
  // Aspect-based leftward and slightly lower aim includes the nearby player and cello, while fitting the real window.
- const probe=camera.clone(),focus=new T.Vector3(-1.25-.25*portrait-wide,1.68-.18*portrait,-2.09);
+ const probe=camera.clone(),focus=new T.Vector3(-1.25-.25*portrait-wide-catView*(.48+.25*extraWide),1.68-.18*portrait-catView*(.28+.10*extraWide),-2.09);
  probe.position.set(-.08,1.67,.59);probe.lookAt(focus);probe.updateMatrixWorld(true);
  const points=[];
  for(let i=0;i<=32;i++){const a=i*Math.PI/32;points.push(new T.Vector3(-1.25+.87*Math.cos(a),2.03+.87*Math.sin(a),-2.04));}
@@ -1366,3 +1367,30 @@ const westRoomDetail=installWestRoomDetail(T,scene);
 const realRoomPolish=software?null:decoratePerformanceRoom(T,scene);const realStool=performanceParts().stool;realStool.position.set(STOOL_CENTER.x,0,STOOL_CENTER.z);realStool.rotation.y=PERFORMANCE_YAW;realStool.scale.y=.455/.375;realStool.visible=true;
 requestAnimationFrame(frame);
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();release();$('scene-status').textContent='3D 畫面暫停，請重新整理恢復。';status.textContent='3D 顯示中斷，穿搭設定仍保留。請重新整理。';});
+
+// Warm only fetched bytes after the room is usable. Never execute town code/audio
+// or wait for this optional cache work when the door navigates.
+function scheduleTownReturnWarmup(){
+ const connection=navigator.connection;
+ if(connection?.saveData||/^(slow-2g|2g)$/.test(connection?.effectiveType||''))return;
+ const controller=new AbortController();let started=false;
+ const stop=()=>controller.abort();window.addEventListener('pagehide',stop,{once:true});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
+ const run=async()=>{
+  if(started||controller.signal.aborted||document.hidden)return;started=true;
+  try{
+   const target=new URL('../?from=room',location.href),response=await fetch(target.href,{credentials:'same-origin',priority:'low',signal:controller.signal});
+   if(!response.ok)return;const html=await response.text();if(html.length>200000)return;
+   const doc=new DOMParser().parseFromString(html,'text/html'),base=new URL('./',target),urls=new Set();
+   for(const node of doc.querySelectorAll('link[rel="modulepreload"],link[rel="stylesheet"],script[type="module"][src]')){
+    const u=new URL(node.getAttribute('href')||node.getAttribute('src'),base);
+    if(u.origin===base.origin&&u.pathname.startsWith(base.pathname)&&/\.(?:js|css)$/.test(u.pathname))urls.add(u.href);
+    if(urls.size===32)break;
+   }
+   const queue=[...urls];await Promise.all([0,1].map(async()=>{while(queue.length&&!controller.signal.aborted&&!document.hidden){const url=queue.shift();try{const r=await fetch(url,{credentials:'same-origin',cache:'force-cache',priority:'low',signal:controller.signal});if(r.ok)await r.arrayBuffer();}catch{}}}));
+  }catch{/* Optional warm-up must never affect room input or navigation. */}
+ };
+ const ready=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{if(controller.signal.aborted)return;if('requestIdleCallback'in window)window.requestIdleCallback(run,{timeout:5000});else setTimeout(run,1500);}));
+ if(document.readyState==='complete')ready();else window.addEventListener('load',ready,{once:true});
+}
+scheduleTownReturnWarmup();

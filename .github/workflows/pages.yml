@@ -39,6 +39,7 @@ jobs:
           test -s _site/index.html
           cmp _site/index.html rpg/index.html
           test ! -e _site/rpg
+          node .preview-3d/3D/scripts/preload-town.mjs _site
       - name: Test and package the isolated 3D preview
         shell: bash
         run: |
@@ -64,6 +65,21 @@ jobs:
           name: cello-browser-smoke
           path: ${{ runner.temp }}/cello-browser-smoke
           if-no-files-found: ignore
+      - name: Verify candidate cat and cold/warm door return in real Chromium
+        if: github.ref == 'refs/heads/3d'
+        timeout-minutes: 7
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: |
+          CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-release031/cat" node .preview-3d/3D/tests/browser-candidate.cjs _site
+          CELLO_QA_MODE=transition CELLO_QA_LATENCY_MS=80 CELLO_SMOKE_ARTIFACTS="$RUNNER_TEMP/cello-release031/door" node .preview-3d/3D/tests/browser-candidate.cjs _site
+      - name: Save candidate browser evidence
+        if: always() && github.ref == 'refs/heads/3d'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cello-release031-browser
+          path: ${{ runner.temp }}/cello-release031
+          if-no-files-found: warn
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
