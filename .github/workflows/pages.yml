@@ -41,6 +41,7 @@ jobs:
           test ! -e _site/rpg
           node .preview-3d/3D/scripts/preload-town.mjs _site
       - name: Test and package the isolated 3D preview
+        id: package-3d
         shell: bash
         run: |
           set -euo pipefail
@@ -66,7 +67,7 @@ jobs:
           path: ${{ runner.temp }}/cello-browser-smoke
           if-no-files-found: ignore
       - name: Verify candidate cat and cold/warm door return in real Chromium
-        if: github.ref == 'refs/heads/3d'
+        if: ${{ !cancelled() && github.ref == 'refs/heads/3d' && steps.package-3d.outcome == 'success' }}
         timeout-minutes: 7
         env:
           CHROME_PATH: /usr/bin/google-chrome
