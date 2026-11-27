@@ -1,4 +1,4 @@
-import {makeTownWebGL} from './town-webgl.js?v=world-3d-001';
+import {makeTownWebGL} from './town-webgl.js?v=world-3d-002-fixed';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';
@@ -252,15 +252,13 @@ function drawQuestMarker(t){
  if(key!==teacherBadgeKey){teacherBadgeKey=key;teacherBadge.dataset.kind=key;teacherBadge.dataset.tone=key&&markerTone==='gold'?'gold':'gray';}
  if(!key)return;
  const y=npc.y-65+(reducedMotion.matches?0:Math.sin(t/420)*2);
- const p=webglTown?.project(npc.x,npc.y,77)||{x:npc.x,y};
- const next=`translate(${p.x.toFixed(2)} ${p.y.toFixed(2)})`;
+ const next=`translate(${npc.x.toFixed(2)} ${y.toFixed(2)})`;
  if(next!==teacherBadgePosition){teacherBadgePosition=next;teacherBadge.setAttribute('transform',next);}
 }
 function drawStandMarker(t){
  if(state.phase!=='active'||state.steps.length===3)return;
- const b=webglTown?.project(stand.x,stand.y,3)||stand;
- const x=b.x,y=b.y+(reducedMotion.matches?0:Math.sin(t/600)*2);
- label('來這裡練習',x,y-85,'#f4db91');
+ const x=stand.x,y=stand.y+(reducedMotion.matches?0:Math.sin(t/600)*2);
+ label('來這裡練習',x,stand.y-85,'#f4db91');
  g.save();g.translate(x,y);g.beginPath();
  g.moveTo(-6,-72);g.lineTo(6,-72);g.lineTo(6,-62);g.lineTo(13,-62);
  g.lineTo(0,-48);g.lineTo(-13,-62);g.lineTo(-6,-62);g.closePath();
@@ -285,27 +283,6 @@ function drawPracticeStand(){
 }
 function setTownView(view){
  webglTown=view;last3DPaint=-Infinity;canvas.dataset.renderer=view?'webgl':'canvas';
- const p=view?.project(MUSIC_ROOM_DOOR.x+MUSIC_ROOM_DOOR.w/2,MUSIC_ROOM.depth-2,35);
- for(const axis of ['x','y']){
-  const at=p?p[axis]/(axis==='x'?canvas.width:canvas.height)*100:doorFocus[axis];
-  doorStage.style.setProperty(`--door-origin-${axis}`,`${at}%`);
-  doorStage.style.setProperty(`--door-shift-${axis}`,`${50-at}%`);
- }
-}
-function projectTownTap(x,y){
- const v=webglTown;if(!v)return {x,y};
- // Elevated objects need a screen-space target before raycasting the ground.
- // Routes and final reach checks still use the exact 2D world hotspots.
- const spot=(px,py,h,rx,ry)=>{
-  const p=v.project(px,py,h);
-  return Math.abs(p.x-x)<=rx&&Math.abs(p.y-y)<=ry;
- };
- const doorX=MUSIC_ROOM_DOOR.x+MUSIC_ROOM_DOOR.w/2;
- if(spot(doorX,MUSIC_ROOM.depth-2,35,24,23))return {x:doorX,y:198};
- if(spot(stand.x,stand.y,42,21,18))return {x:stand.x,y:stand.y-19};
- if(spot(npc.x,npc.y,27,23,29))return {x:npc.x,y:npc.y-20};
- for(const c of chairs)if(spot(c.x,c.y,16,12,15))return {x:c.x,y:c.y-10};
- return v.inverse(x,y);
 }
 function drawWebGLTown(t,rainFrame,petFrame,moisture){
  const v=webglTown;if(!v)return false;
@@ -441,7 +418,7 @@ function update(dt,idleDt=dt){
 }
 const approachRoom=()=>{if(!dlg.open)walkTo(ROOM_ENTRY,'room');};
 function interact(){if(dlg.open)return;if(!playerSeated&&roomDoorNearby(player)){approachRoom();return;}if(playerSeated){standUp();return;}if(near==='chair'){const index=chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y)).indexOf(Math.min(...chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y))));requestChair(index);return;}if(near==='npc')talk();else if(near==='stand')practice();else if(near==='garden')openGarden();else toast('再靠近老師、戶外譜架或花園入口一點。');}
-const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open||enteringRoom)return;if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;teacherApproach.cancel();});canvas.onpointerdown=e=>{if(dlg.open||enteringRoom)return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),p=projectTownTap((e.clientX-r.left)*960/r.width,(e.clientY-r.top)*560/r.height);if(!p)return;const {x,y}=p;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{idleLast=null;if(document.hidden){teacherApproach.cancel();pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});let idleLast=null;function loop(t){const dt=Math.min((t-last)/1000,.04),idleDt=idleLast===null?0:Math.max(0,(t-idleLast)/1000);last=t;idleLast=document.hidden?null:t;if(!document.hidden){
+const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open||enteringRoom)return;if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;teacherApproach.cancel();});canvas.onpointerdown=e=>{if(dlg.open||enteringRoom)return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{idleLast=null;if(document.hidden){teacherApproach.cancel();pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});let idleLast=null;function loop(t){const dt=Math.min((t-last)/1000,.04),idleDt=idleLast===null?0:Math.max(0,(t-idleLast)/1000);last=t;idleLast=document.hidden?null:t;if(!document.hidden){
  if(pending3DTown&&worldInView&&!target&&!keys.size&&!enteringRoom&&!dlg.open){
   const view=pending3DTown;pending3DTown=null;
   try{if(view.render(gameWeather.key))setTownView(view);else view.discard();}catch{view.discard();}

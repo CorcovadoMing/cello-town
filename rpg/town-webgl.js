@@ -5,9 +5,21 @@ export const ROOM_WIDTH=960,ROOM_HEIGHT=560;
 const W=ROOM_WIDTH,H=ROOM_HEIGHT;
 const local=(x,z)=>[x-W/2,z-H/2];
 
+// The art remains 3D, but every ground vertex follows the former Canvas
+// identity projection. Elevation alone projects left/up; no yaw across the
+// map, perspective scaling, camera tracking or touch offsets are introduced.
+const VIEW_X=.17,VIEW_Z=.88;
 export function makeTownCamera(T){
- const camera=new T.PerspectiveCamera(32.8,W/H,2,4200);
- camera.position.set(205,1050,730);camera.lookAt(0,-13,48);camera.updateMatrixWorld();
+ const camera=new T.OrthographicCamera(-W/2,W/2,H/2,-H/2,2,4200);
+ camera.position.set(1000*VIEW_X,1000,1000*VIEW_Z);camera.lookAt(0,0,0);camera.updateMatrixWorld();
+ // Keep the orthographic clipping-depth row from Three.js; use exact screen
+ // coefficients for the first two rows of the combined world-to-clip matrix.
+ const worldToClip=new T.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
+ const m=worldToClip.elements;
+ m[0]=2/W;m[4]=-2*VIEW_X/W;m[8]=0;m[12]=0;
+ m[1]=0;m[5]=2*VIEW_Z/H;m[9]=-2/H;m[13]=0;
+ camera.projectionMatrix.multiplyMatrices(worldToClip,camera.matrixWorld);
+ camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
  return camera;
 }
 export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
@@ -28,7 +40,9 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  Object.assign(sun.shadow.camera,{left:-660,right:660,top:550,bottom:-550,near:40,far:1540});
  sun.shadow.camera.updateProjectionMatrix();sun.shadow.bias=-.0007;sun.shadow.normalBias=2.2;
  const fill=new T.HemisphereLight('#e8f3f0','#b8a183',1.34);
- scene.add(sun,fill);
+ const porchFill=new T.DirectionalLight('#fff0db',.43);
+ porchFill.position.set(70,260,610);
+ scene.add(sun,fill,porchFill);
  const geometry={
   box:new T.BoxGeometry(1,1,1), sphere:new T.IcosahedronGeometry(1,1),
   trunk:new T.CylinderGeometry(.36,.51,1,7), cone:new T.ConeGeometry(1,1,5),
@@ -48,7 +62,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  function plane(x,z,y,sx,sz,tint,alpha){
   const [dx,dz]=local(x,z);
   const mesh=new T.Mesh(geometry.circle,new T.MeshBasicMaterial({color:tint,transparent:true,opacity:alpha,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1}));
-  mesh.position.set(dx,y,dz);mesh.rotation.x=-Math.PI/2;mesh.scale.set(sx,sz,1);scene.add(mesh);
+  mesh.position.set(dx,y,dz);mesh.rotation.x=-Math.PI/2;mesh.scale.set(sx,sz,1);scene.add(mesh);return mesh;
  }
  let seed=21841;const rng=()=>{seed=(Math.imul(1664525,seed)+1013904223)>>>0;return seed/4294967296;};
  // The stage is an actual stand-alone little landscape model. No CSS
@@ -105,6 +119,48 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   const dx=x-w*.43+rng()*w*.86,dz=z-d*.41+rng()*d*.82;
   box(dx,4.2,dz,4+rng()*10,.65,1+rng()*4,['#d5bb8e','#ecd6ab','#cbb187'][i%3],0,(rng()-.5)*.55);
  }
+ // Broad pigment islands break the upper meadow into ground, sun and
+ // orchard shade, without filling the readable centre with extra objects.
+ plane(360,162,1.53,89,42,'#829956',.22);
+ plane(470,177,1.57,89,39,'#c0bb7a',.30);
+ plane(525,129,1.51,65,38,'#8aa570',.19);
+ plane(391,251,1.53,67,31,'#bac783',.23);
+ const wornBand=(points,y,tint,a)=>{
+  const q=new T.Shape();
+  const complete=points.map(([x,z,w])=>[x,z-w]).concat(points.slice().reverse().map(([x,z,w])=>[x,z+w]));
+  complete.forEach(([x,z],i)=>i?q.lineTo(x-W/2,H/2-z):q.moveTo(x-W/2,H/2-z));q.closePath();
+  const mesh=new T.Mesh(new T.ShapeGeometry(q),new T.MeshLambertMaterial({color:tint,transparent:true,opacity:a,depthWrite:false}));
+  mesh.rotation.x=-Math.PI/2;mesh.position.y=y;mesh.receiveShadow=true;scene.add(mesh);
+ };
+ wornBand([[181,320,1],[210,321,5],[256,324,8],[302,319,7],[362,319,8],[421,322,7],[471,320,5],[522,316,5],[577,316,7],[641,319,7],[698,316,7],[746,324,6],[781,325,1]],4.36,'#bf9e6c',.48);
+ wornBand([[193,344,1],[227,342,5],[267,345,7],[311,348,8],[371,349,7],[444,347,9],[507,346,6],[576,342,7],[626,343,5],[685,345,7],[733,344,6],[763,347,1]],4.37,'#c1a477',.43);
+ // Worn tracks, not scattered noise: two lighter walking lanes converge
+ // at the junction; thin moss and rough stones stay close to the margins.
+ const tracks=[
+  {walk:[[183,323],[217,325],[256,328],[290,330],[332,331],[373,331],[415,332],[465,333],[501,331],[548,329],[590,327],[629,330],[676,331],[713,333],[756,330],[779,331]],span:7},
+  {walk:[[455,369],[451,392],[452,420],[457,449],[457,473],[458,503],[453,528],[454,551]],span:5},
+  {walk:[[685,246],[686,258],[682,278],[681,300],[678,318]],span:5}
+ ];
+ for(const {walk,span} of tracks)for(const [i,[x,z]] of walk.entries()){
+  for(const d of [-1,1]){
+   const vertical=span===5,ox=vertical?d*span:3,oz=vertical?3:d*span;
+   box(x+ox,4.03,z+oz,vertical?2.8+rng()*6:14+rng()*12,.22,vertical?12+rng()*9:2.5+rng()*4.4,
+    ['#ccb181','#d6b98b','#ecd2a3','#dbc095'][(i+2+(d>0?1:0))%4],0,(rng()-.5)*.18);
+  }
+ }
+ for(const [x,z,rx,rz,n] of [[202,301,19,6,8],[277,367,25,7,10],[339,298,22,5,9],[401,370,18,7,8],[529,367,24,6,8],[577,300,25,7,11],[735,367,28,7,12],[782,332,9,18,9],[430,441,6,26,8],[498,498,7,26,7],[711,281,7,14,7]]){
+  for(let i=0;i<n;i++){
+   const dx=x+(rng()-.5)*rx*2,dz=z+(rng()-.5)*rz*2;
+   if(i%4===0)sphere(dx,3.8,dz,2.5+rng()*3,1.5+rng(),1.8+rng()*3,i%2?'#a8996e':'#baa786',0,rng());
+   else box(dx,4.2,dz,2.2+rng()*6,.4,1.1+rng()*4,['#aebb81','#9eaf73','#b3be84'][i%3],0,rng()*.8);
+  }
+ }
+ const puddles=[];
+ for(const [x,z,a,b] of [[213,348,17,4],[505,352,12,3.6],[455,517,7,12],[697,291,10,4]]){
+  puddles.push(plane(x,z,4.52,a,b,'#526c6d',.30));
+  puddles.push(plane(x+2,z-1,4.57,a*.62,b*.39,'#c2d2cc',.28));
+ }
+ puddles.forEach(m=>m.visible=false);
  // Low stone platform under the existing bench and slender lounge furniture.
  box(250,6,211,154,12,55,'#a39673');box(250,12,211,156,4,57,'#c9b78b');
  for(let x=179;x<326;x+=20)box(x,5,240,1.2,9,1,'#817b63');
@@ -215,6 +271,33 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  box(cx,96,fr+3,2,12,1.5,cream);box(cx,96,fr+3,12,2,1.5,cream);
  for(const [dy,w] of [[8,52],[16,46],[24,39]])box(cx,3,fr+dy,w,6,7,wood);
  plane(cx-25,fr+20,2.9,73,24,'#3e503e',.26);
+ // Rural story clusters: firewood and a rain barrel by the cabin;
+ // a patched bank fence and stepping-stone alcove at the pond; little
+ // clover, shrubs and gravel at the garden. All lie off interaction routes.
+ box(754,3,213,30,5,14,'#8c7554');
+ for(const [x,z,k] of [[744,210,0],[752,210,1],[760,210,2],[749,216,3],[756,216,4]]){
+  shape('trunk',x,7+(k>2?3:0),z,6,17,6,k%2?'#946e4c':'#aa8058',Math.PI/2);
+  box(x,7+(k>2?3:0),z+8.3,3,2.3,.4,'#cfaa76');
+ }
+ shape('trunk',770,7,221,10,16,10,'#9a774e');
+ box(770,14.5,221,9.6,1.2,8.1,'#ad9064');
+ for(const yy of [4.5,11.5])box(770,yy,225,7,1.1,1.1,'#706957');
+ for(const [x,z,h] of [[581,217,14],[590,212,16],[602,205,10],[765,248,9],[773,242,14]]){
+  sphere(x,h*.52,z,9+h*.25,h,8+h*.12,'#789b62',.12,rng());
+  sphere(x+4,h*.82,z-4,5+h*.17,h*.45,5,'#a0af71',.08,rng());
+  if(h>12)sphere(x+4,h*1.04,z,2,1.6,2,'#e5d1a4');
+ }
+ for(const [x,z,len]of[[14,382,27],[17,360,24],[22,538,24]]){
+  for(const dx of [-9,9])box(x+dx,8,z,2.6,17,3,'#9d8159');
+  box(x,11,z,len,2.2,2,'#b4976a',0,(z%3-1)*.17,.055);
+ }
+ for(const [x,z,sz] of [[21,395,7],[28,401,5],[34,395,5],[271,402,7],[281,393,6],[275,396,4],[722,437,5],[723,445,5],[907,406,5],[916,412,6],[916,421,4],[739,512,6]]){
+  sphere(x,2,z,sz,2.1,sz*.62,'#a49d78',.1,rng());
+ }
+ for(const [x,z,green]of[[350,252,'#94a879'],[355,253,'#7e9c68'],[364,249,'#a2ae75'],[329,455,'#88a472'],[337,460,'#a1b179'],[698,479,'#8ea779'],[706,483,'#a6b47c'],[710,476,'#859d6a'],[912,511,'#91a573'],[920,516,'#859c6d']]){
+  sphere(x,3.8,z,7+rng()*5,5+rng()*2,7,green,.16,rng());
+  for(let j=0;j<3;j++){const xx=x+j*4-3,zz=z+8+j%2;shape('cone',xx,2.2,zz,1.7,5.5,1.6,'#809f6b');if(j%2===0)sphere(xx,4.4,zz,1.6,1.4,1.4,'#ecdb9f');}
+ }
  // Wooden stand is another readable full-volume landmark.
  box(stand.x,22,stand.y,4,42,4,edge);
  for(const xx of [-12,12])box(stand.x+xx*.53,7,stand.y+3,3,21,3,wood,0,0,xx>0?.54:-.54);
@@ -231,8 +314,14 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   if(sprites.has(id))return sprites.get(id);
   const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
   const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;texture.magFilter=T.NearestFilter;texture.minFilter=T.NearestFilter;texture.generateMipmaps=false;
-  const mat=new T.SpriteMaterial({map:texture,alphaTest:.22,depthWrite:true,transparent:false,fog:false});
-  const sprite=new T.Sprite(mat);sprite.center.set(.5,0);sprite.scale.set(w,h,1);
+  // True depth-tested billboards, with geometry chosen so the pixel
+  // silhouettes stay vertical even under the oblique view.
+  const mat=new T.MeshBasicMaterial({map:texture,alphaTest:.22,depthWrite:true,transparent:false,fog:false,side:T.DoubleSide});
+  const quad=new T.BufferGeometry(),h3=h/VIEW_Z,slant=VIEW_X*h3;
+  quad.setAttribute('position',new T.Float32BufferAttribute([-w/2,0,0,w/2,0,0,w/2+slant,h3,0,-w/2+slant,h3,0],3));
+  quad.setAttribute('uv',new T.Float32BufferAttribute([0,0,1,0,1,1,0,1],2));
+  quad.setIndex([0,1,2,0,2,3]);
+  const sprite=new T.Mesh(quad,mat);
   const res={canvas,ctx:canvas.getContext('2d'),texture,sprite};scene.add(sprite);sprites.set(id,res);return res;
  };
  function drawSprite(id,x,y,w,h,paint,lift=0){
@@ -269,7 +358,9 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
     scene.background.set(weather==='rain'?'#c7c6bc':'#eee3d5');
     sun.intensity=weather==='sun'?2.05:weather==='breeze'?1.48:.49;
     fill.intensity=weather==='rain'?1.78:1.34;
+    porchFill.intensity=weather==='rain'?.22:.43;
     fill.color.set(weather==='rain'?'#dceef2':'#e8f3f0');
+    puddles.forEach(m=>m.visible=weather==='rain');
     renderer.shadowMap.needsUpdate=true;
    }
    renderer.render(scene,camera);return true;
