@@ -6,7 +6,7 @@ const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 test('optional table score has one stable id and names the discovery only after activation',()=>{
  assert.match(html,/<button id="manuscript-access" hidden type="button" aria-label="查看小木桌上泛黃的樂譜">/);
  assert.match(html,/<dialog id="manuscript-observation" data-discovery-id="found-score-001" aria-labelledby="manuscript-title" aria-describedby="manuscript-line">/);
- assert.match(html,/<h2 id="manuscript-title" lang="en">When the Question Fades<\/h2>/);
+ assert.match(html,/<h2 id="manuscript-title" class="sr-only" lang="en">When the Question Fades<\/h2>/);
  assert.match(html,/<p id="manuscript-line">是誰把這張譜留在這裡的？<\/p>/);
  const prop=app.split('// BEGIN SIDE TABLE MANUSCRIPT')[1].split('// END SIDE TABLE MANUSCRIPT')[0];
  assert.match(prop,/manuscript\.position\.set\(.+\);manuscript\.rotation/);

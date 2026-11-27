@@ -601,18 +601,20 @@ const SCORE_TABLE_FOOTPRINT={minX:1.64,maxX:2.66,minZ:1.12,maxZ:1.98};
 const manuscriptAccess=$('manuscript-access'),manuscriptObservation=$('manuscript-observation');
 const manuscript=new T.Group();manuscript.name=manuscriptObservation.dataset.discoveryId;
 manuscript.position.set(-.015,.611,.008);manuscript.rotation.y=-.13;scoreTable.add(manuscript);
-const oldSheet=box(0,0,0,.40,.012,.225,'#dcbf83',manuscript);
-oldSheet.receiveShadow=false;
-box(0,.007,0,.385,.002,.211,'#ebd59e',manuscript);
+const wornShape=new T.Shape();
+const wornOutline=[[-.196,-.100],[-.12,-.107],[-.047,-.103],[.036,-.109],[.118,-.104],[.177,-.108],[.194,-.085],[.191,-.012],[.199,.063],[.194,.078],[.145,.109],[.058,.106],[-.023,.112],[-.096,.107],[-.168,.109],[-.198,.083],[-.192,.042],[-.200,-.022]];
+wornOutline.forEach(([x,z],i)=>i?wornShape.lineTo(x,-z):wornShape.moveTo(x,-z));wornShape.closePath();
+const oldSheet=mesh(new T.ShapeGeometry(wornShape),'#d3b77d',0,.006,0,manuscript);
+oldSheet.rotation.x=-Math.PI/2;oldSheet.receiveShadow=false;
 const manuscriptNotehead=new T.CircleGeometry(1,10);
 for(let staff=0;staff<2;staff++){
  const z=-.050+staff*.080;
- for(let line=0;line<5;line++)box(0,.010,z+line*.007,.300,.001,.0016,'#716145',manuscript);
+ for(let line=0;line<5;line++)box(line%2?.010:-.008,.009,z+line*.007,.265-(line%3)*.019,.001,.0014,line%2?'#b09769':'#946f47',manuscript);
  for(let i=0;i<5;i++){
   const x=-.125+i*.058,n=z+[.025,.011,.018,.008,.021][(i+staff)%5];
-  const head=mesh(manuscriptNotehead,'#5f503b',x,.011,n,manuscript);
+  const head=mesh(manuscriptNotehead,'#9d7a51',x,.011,n,manuscript);
   head.rotation.set(-Math.PI/2,0,-.22);head.scale.set(.009,.004,1);head.castShadow=false;
-  box(x+.007,.011,n-.011,.0016,.001,.022,'#5f503b',manuscript);
+  box(x+.007,.011,n-.011,.0016,.001,.022,'#a08762',manuscript);
  }
 }
 const manuscriptProjection=new T.Vector3(), manuscriptSpot={x:1.47,z:1.36};
