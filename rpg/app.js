@@ -4,13 +4,13 @@ import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDo
 import {createTerrainArt} from './terrain-art.js?v=32';
 import {createRainSystem} from './rain-system.js?v=35';
 import {treeRainCanopies,umbrellaPose} from './rain-geometry.js?v=35';
-import {MUSIC_ROOM,MUSIC_ROOM_DOOR,roomBlocks,drawMusicRoom,musicRoomRainCanopy} from './music-room-art.js?v=exp3';
+import {MUSIC_ROOM,MUSIC_ROOM_DOOR,roomBlocks,drawMusicRoom,musicRoomRainCanopy} from './music-room-art.js?v=diorama-002';
 import {createLounge} from './lounge-state.js?v=46';
 import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella} from './lounge-art.js?v=48';
 import {createWetSoil,drawWetSoil} from './wet-soil.js?v=exp3';
 const RAIN_EXCLUSIONS=Object.freeze([{x:410,y:175,w:160,h:95}]);
 const wetSoil=createWetSoil({excludeRects:RAIN_EXCLUSIONS});
-import {createTownDepth} from './town-depth.js?v=hd2d-001';
+import {createTownDepth} from './town-depth.js?v=diorama-002';
 import {createTownArt,drawBackFence} from './art-slice.js?v=exp3';
 import {createNavigation} from './navigation.js?v=51';
 import {createTeacher,drawTeacher,teacherFacing} from './teacher.js?v=48';

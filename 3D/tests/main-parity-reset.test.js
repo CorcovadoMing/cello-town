@@ -7,14 +7,17 @@ function normalized(s){
   .replace('pos=guardedMove(pos,guardedMove(pos,move(pos,wx,wz,dt),SCORE_TABLE_FOOTPRINT),STOOL_COLLIDER);','pos=guardedMove(pos,move(pos,wx,wz,dt),STOOL_COLLIDER);')
   .replace(/\n\/\* BEGIN SIDE TABLE MANUSCRIPT \*\/[\s\S]*?\/\* END SIDE TABLE MANUSCRIPT \*\/\n$/,'')
   .replace("positionManuscript();if(reading&&reading.phase!=='walking'){if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}", 'positionManuscript();')
+  .replace(/  \/\/ BEGIN INTERIOR MATERIAL SWATCHES[\s\S]*?  \/\/ END INTERIOR MATERIAL SWATCHES\n/,'')
+  .replace(/\/\/ BEGIN INTERIOR SURFACE FINISH[\s\S]*? \/\/ END INTERIOR SURFACE FINISH\n/,'')
   .replace('tickRoomCamera(t,dt);positionManuscript();roomCat.animateCat','tickRoomCamera(t,dt);roomCat.animateCat');
  return intact.replace(/\.js\?v=[^'"\s]+/g,'.js').replace(/KEY=\/[^;]+;/g,m=>m.includes('3d-avatar')?"KEY='cello-town-3d-avatar-v1';":"KEY='cello-town-rpg-v1';");}
 // Preserve the main parity fixture: allow only the exact tested experimental
 // outdoor drawing revision and its accompanying module, not future drift.
 const outdoorVisualHashes={
- 'rpg/app.js':'438e28089a327e5505ece83121296d44a42176da6dafec3ac8e865e6f04339c3',
- 'rpg/index.html':'7d8d9579c2e688ee094b0e481e04c9a1d8823be15f679ac56d1bc65d196d2f80',
- 'rpg/town-depth.js':'28da7ccfb4996f0e61a18363de9b4e9de4035cb21d081c6679e0ad3749812c85'
+ 'rpg/app.js':'1bbebc919c4bab3a3810139df242de3a55cf7ae5537200feeb92cd44c29b2081',
+ 'rpg/index.html':'cd682eb4572efd7a7accb7cc8ebff3d35de4d589f684a39e7fc9e9f501917d71',
+ 'rpg/town-depth.js':'3b082ca07119d517e0b747dd8ba8433c3aed0aa14bd18d07b2df6451c8efc7af',
+ 'rpg/music-room-art.js':'00011725eb971e6e7e7811f0898983c5c798c7808e47f7e9af9e31d25affbb6b'
 };
 const sha256=text=>crypto.createHash('sha256').update(text).digest('hex');
 test('experimental matches exact main snapshot except the scoped storage, manuscript and outdoor art',()=>{

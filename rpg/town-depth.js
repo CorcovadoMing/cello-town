@@ -34,6 +34,20 @@ export function createTownDepth(makeCanvas,trees,room){
   distance.addColorStop(.50,`rgba(168,197,182,${.16*p.distance})`);
   distance.addColorStop(1,'rgba(168,197,182,0)');
   g.fillStyle=distance;g.fillRect(0,0,W,335);
+  // The map ends in a low cutaway turf edge in front of the south meadow;
+  // the north-south path has a continuous ramp through the open centre.
+  for(const side of [
+   [[0,545],[76,547],[129,551],[216,548],[279,550],[339,546],[417,546],[417,560],[0,560]],
+   [[502,546],[580,548],[639,546],[720,550],[816,544],[885,546],[960,541],[960,560],[502,560]]
+  ]){
+   face(g,side,'#70755a');
+   const brow=side.slice(0,-2);face(g,[...brow,...brow.slice().reverse().map(([x,y])=>[x,y+3])],'#a5ae77');
+  }
+  for(const [x,y,s] of [[8,552,1.45],[23,554,.81],[933,550,1.09],[956,543,1.42],[900,557,.95]]){
+   face(g,[[x-10*s,y],[x-7*s,y-7*s],[x+2*s,y-11*s],[x+10*s,y-5*s],[x+8*s,y+1]],'#718275');
+   face(g,[[x-7*s,y-7*s],[x+2*s,y-11*s],[x+10*s,y-5*s],[x+3*s,y-4*s]],'#a8b692');
+   face(g,[[x+3*s,y-4*s],[x+10*s,y-5*s],[x+8*s,y+1],[x-10*s,y]],'#596f66');
+  }
   // Low-contrast woodland bands peek over the fence, separated from the
   // in-focus orchard by one short strip of open ground.
   face(g,[[0,0],[960,0],[960,26],[906,23],[879,16],[829,22],[771,13],[711,22],[644,15],[590,21],[528,11],[469,19],[417,15],[369,21],[288,13],[216,21],[167,11],[97,20],[42,13],[0,20]],'rgba(95,139,125,.24)');
@@ -51,6 +65,13 @@ export function createTownDepth(makeCanvas,trees,room){
   }
   cast(g,room.x+room.w*.50,room.depth,room.w*.94,88,p.cast*.78);
   glow(g,room.x+room.w*.5,room.depth+2,room.w*.59,18,'34,39,42',.76*p.contact);
+  // The non-walkable bench footprint reads as a little stone terrace.
+  // Exposed low riser and sides leave the path clear at y>240.
+  face(g,[[174,208],[184,194],[307,194],[329,206],[329,230],[319,239],[177,239],[170,230]],'#777c63');
+  face(g,[[174,208],[184,194],[307,194],[329,206],[326,226],[177,226]],'#bdba98');
+  face(g,[[170,224],[177,226],[326,226],[329,230],[319,239],[177,239],[170,230]],'#9c997d');
+  face(g,[[177,230],[322,230],[319,239],[177,239]],'#86836b');
+  for(const x of [181,203,225,247,269,291,313])face(g,[[x,231],[x+1,231],[x-1,238],[x-2,238]],'#6e735c');
   cast(g,252,229,124,25,p.cast*.63);
   cast(g,485,245,89,27,p.cast*.69);
   cast(g,615,407,18,35,p.cast*.68);
@@ -67,7 +88,7 @@ export function createTownDepth(makeCanvas,trees,room){
   const variant=key==='sun'?'sun':'overcast';
   if(variant!==lastFacade){
    fx.clearRect(0,0,245,209);fx.save();fx.translate(-555,-35);
-   drawRoomDepth(fx,key,()=>drawFacade(fx));fx.restore();lastFacade=variant;
+   drawFacade(fx,key);fx.restore();lastFacade=variant;
   }
   g.drawImage(facade,555,35);
  },drawActorContact(g,x,y,key){
@@ -79,26 +100,4 @@ export function createTownDepth(makeCanvas,trees,room){
 }
 function face(g,points,color){
  g.fillStyle=color;g.beginPath();points.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.fill();
-}
-export function drawRoomDepth(g,key,drawFacade){
- const sun=key==='sun';
- // North light catches a narrow right-hand return and its exposed plinth.
- // The return recedes into already decorative terrain above the existing
- // ground line; the front wall, door and navigable landing never move.
- face(g,[[768,126],[795,114],[795,218],[768,239]],sun?'#a28d66':'#857a65');
- face(g,[[768,221],[795,203],[795,218],[768,239]],'#70694f');
- for(const y of [145,170,195,217])face(g,[[770,y],[794,y-13],[794,y-11],[770,y+2]],'#6c63474f');
- face(g,[[789,122],[795,119],[795,216],[789,221]],'#c3ac79');
- drawFacade();
- // Split the established banded roof into lit slope, hip and fascia.
- // Paint only the permitted rain silhouette; keep original tiles showing.
- g.save();g.beginPath();
- for(const [x,y,w,h] of [[560,114,236,12],[572,100,211,14],[587,86,181,14],[603,73,150,13],[620,62,116,11]])g.rect(x,y,w,h);
- g.clip();
- face(g,[[620,61],[677,63],[645,125],[560,125]],'#23383562');
- face(g,[[677,63],[734,62],[793,123],[645,125]],sun?'#f2de9036':'#cedbb822');
- face(g,[[734,62],[756,78],[796,124],[779,126]],'#3d5b4548');
- // A fine hip catches the sky at the join of the two slopes.
- face(g,[[676,65],[680,65],[650,125],[644,125]],'#b4c09479');
- g.restore();
 }
