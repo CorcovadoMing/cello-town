@@ -582,7 +582,66 @@ const pinContact=new T.Group();pinContact.name='cello-endpin-contact';pinContact
 if(!software){const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d'),fade=g.createRadialGradient(16,16,0,16,16,16);fade.addColorStop(0,'rgba(63,61,50,.42)');fade.addColorStop(.28,'rgba(63,61,50,.25)');fade.addColorStop(1,'rgba(63,61,50,0)');g.fillStyle=fade;g.fillRect(0,0,32,32);const map=new T.CanvasTexture(c),o=new T.Mesh(new T.PlaneGeometry(.072,.072),new T.MeshBasicMaterial({map,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1}));o.rotation.x=-Math.PI/2;o.raycast=()=>{};pinContact.add(o);}else{for(const[r,opacity]of[[.028,.06],[.013,.12]]){const o=new T.Mesh(new T.CircleGeometry(r,16),new T.MeshBasicMaterial({color:'#565349',transparent:true,opacity,depthWrite:false}));o.rotation.x=-Math.PI/2;o.raycast=()=>{};pinContact.add(o);}}
 
 
-function plant(x,z,variant=0){const start=scene.children.length;const pot=variant?'#ba927e':'#c7b49a';cylinder(x,.27,z,variant?.20:.24,variant?.16:.18,.48,pot);cylinder(x,.51,z,variant?.205:.245,variant?.205:.245,.035,pot);cylinder(x,.53,z,.18,.18,.012,'#776c4d');for(let n=0;n<(variant?8:6);n++){const a=n*2.4,r=variant?.19:.23,y=variant?.84+(n%3)*.13:.78+(n%2)*.10;rod([x,.53,z],[x+Math.cos(a)*r,y,z+Math.sin(a)*r],.012,'#7d946e');const leaf=ball(x+Math.cos(a)*r,y,z+Math.sin(a)*r,variant?.085:.14,variant?.27:.24,.065,n%2?'#839d75':'#a1b58b');leaf.rotation.z=Math.cos(a)*(variant?.5:.7);leaf.rotation.y=-a;}const group=new T.Group();group.position.set(x,0,z);for(const o of scene.children.slice(start)){o.position.x-=x;o.position.z-=z;group.add(o);}scene.add(group);return group;}plant(2.5,.65);const westFloorPlant=plant(-2.6,1.3,1);westFloorPlant.name='west-floor-plant';cylinder(2.15,.38,1.55,.4,.4,.12,'#b78b61');for(const dx of [-.23,.23])for(const dz of [-.2,.2])rod([2.15+dx,.35,1.55+dz],[2.15+dx*1.2,.01,1.55+dz*1.2],.035,'#a27d57');box(2.15,.48,1.55,.48,.08,.3,'#d6a29a');box(2.12,.54,1.55,.43,.05,.3,'#eee4c9');
+function plant(x,z,variant=0){const start=scene.children.length;const pot=variant?'#ba927e':'#c7b49a';cylinder(x,.27,z,variant?.20:.24,variant?.16:.18,.48,pot);cylinder(x,.51,z,variant?.205:.245,variant?.205:.245,.035,pot);cylinder(x,.53,z,.18,.18,.012,'#776c4d');for(let n=0;n<(variant?8:6);n++){const a=n*2.4,r=variant?.19:.23,y=variant?.84+(n%3)*.13:.78+(n%2)*.10;rod([x,.53,z],[x+Math.cos(a)*r,y,z+Math.sin(a)*r],.012,'#7d946e');const leaf=ball(x+Math.cos(a)*r,y,z+Math.sin(a)*r,variant?.085:.14,variant?.27:.24,.065,n%2?'#839d75':'#a1b58b');leaf.rotation.z=Math.cos(a)*(variant?.5:.7);leaf.rotation.y=-a;}const group=new T.Group();group.position.set(x,0,z);for(const o of scene.children.slice(start)){o.position.x-=x;o.position.z-=z;group.add(o);}scene.add(group);return group;}plant(2.5,.65);const westFloorPlant=plant(-2.6,1.3,1);westFloorPlant.name='west-floor-plant';
+// BEGIN SIDE TABLE MANUSCRIPT
+// A low wood table replaces the two decorative towels at the same room edge.
+const scoreTable=new T.Group();scoreTable.name='score-side-table';
+scoreTable.position.set(2.15,FLOOR_TOP,1.55);scene.add(scoreTable);
+box(0,.45,0,.67,.065,.51,'#b88f65',scoreTable);
+box(0,.409,0,.59,.044,.43,'#9f7955',scoreTable);
+for(const x of [-.265,.265])for(const z of [-.185,.185])
+ box(x,.21,z,.052,.42,.052,'#a3815b',scoreTable);
+const SCORE_TABLE_FOOTPRINT={minX:1.64,maxX:2.66,minZ:1.12,maxZ:1.98};
+// Geometry renders the ink even in the SVG fallback; it is not a playable transcription.
+const manuscriptAccess=$('manuscript-access'),manuscriptObservation=$('manuscript-observation');
+const manuscript=new T.Group();manuscript.name=manuscriptObservation.dataset.discoveryId;
+manuscript.position.set(-.015,.490,.008);manuscript.rotation.y=-.13;scoreTable.add(manuscript);
+const oldSheet=box(0,0,0,.40,.012,.225,'#dcbf83',manuscript);
+oldSheet.receiveShadow=false;
+box(0,.007,0,.385,.002,.211,'#ebd59e',manuscript);
+const manuscriptNotehead=new T.CircleGeometry(1,10);
+for(let staff=0;staff<2;staff++){
+ const z=-.050+staff*.080;
+ for(let line=0;line<5;line++)box(0,.010,z+line*.007,.300,.001,.0016,'#716145',manuscript);
+ for(let i=0;i<5;i++){
+  const x=-.125+i*.058,n=z+[.025,.011,.018,.008,.021][(i+staff)%5];
+  const head=mesh(manuscriptNotehead,'#5f503b',x,.011,n,manuscript);
+  head.rotation.set(-Math.PI/2,0,-.22);head.scale.set(.009,.004,1);head.castShadow=false;
+  box(x+.007,.011,n-.011,.0016,.001,.022,'#5f503b',manuscript);
+ }
+}
+const manuscriptProjection=new T.Vector3();
+let manuscriptTimer=null;
+function hideManuscript(){
+ if(manuscriptTimer!==null)clearTimeout(manuscriptTimer);
+ manuscriptTimer=null;manuscriptObservation.hidden=true;
+}
+function showManuscript(){
+ if(manuscriptAccess.hidden||previewMode||celloPerformance||watchingCat||doorArrival)return;
+ hideManuscript();
+ manuscriptObservation.hidden=false;
+ $('scene-status').textContent=[...manuscriptObservation.children].map(node=>node.textContent).join('。');
+ manuscriptTimer=setTimeout(hideManuscript,6500);
+}
+manuscriptAccess.addEventListener('click',showManuscript);
+window.addEventListener('keydown',event=>{if(event.key==='Escape')hideManuscript();});
+window.addEventListener('pagehide',hideManuscript);
+function positionManuscript(){
+ if(previewMode||celloPerformance||watchingCat||doorArrival){
+  manuscriptAccess.hidden=true;hideManuscript();return;
+ }
+ camera.updateMatrixWorld();
+ manuscript.getWorldPosition(manuscriptProjection).project(camera);
+ const x=(manuscriptProjection.x+1)/2*area.clientWidth,y=(1-manuscriptProjection.y)/2*area.clientHeight;
+ if(x<22||y<22||x>area.clientWidth-22||y>area.clientHeight-22||Math.abs(manuscriptProjection.z)>1){
+  manuscriptAccess.hidden=true;hideManuscript();return;
+ }
+ manuscriptAccess.hidden=false;
+ manuscriptAccess.style.transform=`translate(${Math.round(x-22)}px,${Math.round(y-22)}px)`;
+}
+
+// END SIDE TABLE MANUSCRIPT
+
 // Soft matte avatar assembled from genuine 3D geometry.
 // Standalone original procedural prop for Cello Town 006. No imports or side effects.
 // Paste before scene construction; call after mesh/ball/rod exist. Time is milliseconds.
@@ -1366,7 +1425,7 @@ function animateIdle(t,moving){
  faceRig.mouth.scale.set(fm.mouthX,fm.mouthY,1);head.rotation.z+=fm.tilt;
 
 }
-function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;watchPerformanceApproach(dt);if(celloPerformance?.phase==='approach'&&!destination){destination={...stationSpots.cello};pendingStation='cello';}tickDoorArrival(t);tickDoorCutaway(dt);tickRoomCamera(t,dt);roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode==='performance'){tickPerformance(dt,t);if(!software||t-lastDraw>100){renderPerformanceView(t);lastDraw=t;}return;}if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){destination=clearPoint(destination,STOOL_COLLIDER);const next=stoolRouteStep(pos,destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=guardedMove(pos,move(pos,wx,wz,dt),STOOL_COLLIDER);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}
+function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;watchPerformanceApproach(dt);if(celloPerformance?.phase==='approach'&&!destination){destination={...stationSpots.cello};pendingStation='cello';}tickDoorArrival(t);tickDoorCutaway(dt);tickRoomCamera(t,dt);positionManuscript();roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode==='performance'){tickPerformance(dt,t);if(!software||t-lastDraw>100){renderPerformanceView(t);lastDraw=t;}return;}if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){destination=clearPoint(destination,STOOL_COLLIDER);destination=clearPoint(destination,SCORE_TABLE_FOOTPRINT);const tableRoute=segmentBlocked(pos,destination,SCORE_TABLE_FOOTPRINT)?routeAroundStool(pos,destination,SCORE_TABLE_FOOTPRINT):null;const next=stoolRouteStep(pos,tableRoute?.[0]||destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=guardedMove(pos,guardedMove(pos,move(pos,wx,wz,dt),SCORE_TABLE_FOOTPRINT),STOOL_COLLIDER);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}}
 const westRoomDetail=installWestRoomDetail(T,scene);
 const realRoomPolish=software?null:decoratePerformanceRoom(T,scene);const realStool=performanceParts().stool;realStool.position.set(STOOL_CENTER.x,0,STOOL_CENTER.z);realStool.rotation.y=PERFORMANCE_YAW;realStool.scale.y=.455/.375;realStool.visible=true;
 requestAnimationFrame(frame);
