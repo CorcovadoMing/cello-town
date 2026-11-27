@@ -75,8 +75,13 @@ html,body{overscroll-behavior-y:none}
    outlined only on hover/focus. The idle line never intercepts room input. */
 #manuscript-access{position:absolute;top:0;left:0;z-index:2;inline-size:44px;block-size:44px;padding:0;border:0;background:transparent;border-radius:7px;touch-action:manipulation}
 @media(hover:hover){#manuscript-access:hover{box-shadow:inset 0 0 0 1px #816339aa}}
-#manuscript-observation{position:absolute;z-index:3;inset-inline:12px;bottom:18px;width:max-content;max-width:calc(100% - 24px);margin-inline:auto;padding:8px 14px;border:1px solid #d6c5a4;border-radius:10px;background:#fff8eade;color:#453921;text-align:center;line-height:1.4;pointer-events:none}
-#manuscript-observation strong,#manuscript-observation span{display:block}
-#manuscript-observation strong{font:italic .85rem/1.35 Georgia,serif}
-#manuscript-observation span{font-size:.875rem}
+#manuscript-observation{position:fixed;overflow:visible;margin:auto;border:0;padding:0;background:none;color:#fff9e9;text-align:center;max-width:calc(100vw - 32px);max-height:calc(100dvh - 20px)}
+#manuscript-observation::backdrop{background:#28241752}
+#manuscript-paper{position:relative;width:clamp(190px,54vw,305px);max-width:100%;aspect-ratio:4/5;isolation:isolate;background:linear-gradient(155deg,#d9bd83 0%,#eddaa6 24%,#e8d19a 63%,#c6a46d 100%);border:1px solid #a98453;border-radius:2px 4px 8px 2px;box-shadow:0 4px 18px #33230e80,inset 0 0 29px #936e38aa;color:#624b2d}
+#manuscript-paper::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(161deg,transparent 67.5%,#8a613220 68%,#fff3c83d 68.4%,transparent 69%)}
+#manuscript-paper h2{position:absolute;z-index:1;top:15%;margin:0;padding:0 8px;width:100%;color:#6c5435;font:italic 600 clamp(.9rem,3.4vw,1.22rem)/1.3 Georgia,serif}
+#manuscript-paper svg{position:absolute;inset:0;width:100%;height:100%;opacity:.78}
+#manuscript-line{margin:12px 0 4px;font-size:.925rem;font-weight:650;text-shadow:0 1px 3px #302519,0 1px 5px #302519}
+#manuscript-close{min-height:44px;margin:4px;padding:6px 14px;border:1px solid #d6c5a4;border-radius:9px;background:#fff4da;color:#493a25}
+@media(max-height:540px){#manuscript-paper{width:clamp(125px,38dvh,225px)}}
 /* END SIDE TABLE MANUSCRIPT */
