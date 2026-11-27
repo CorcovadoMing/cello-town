@@ -1,3 +1,4 @@
+import {makeTownWebGL} from './town-webgl.js?v=world-3d-001';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';
@@ -18,14 +19,21 @@ import {facingForMotion,drawPlayer} from './avatar.js?v=42';
 import {resumeFromTap,requestPlaybackSession,clockStalled} from './audio-start.js?v=23';
 import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=23';
 import {installPullToRefreshGuard} from './scroll-guard.js?v=23';
-import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawTownWeather,drawBenchLife,drawRainFrame,createRainPets,createPetTrunkBlocker,drawRainDog,drawRainBenchCat,drawPetPondContact} from './ambience.js?v=51';
+import {foliageWind,fishVariants,drawPondLife,pondLife,drawGardenLife,drawGardenCat,drawGardenVisitor,drawTownWeather,drawBenchLife,drawRainFrame,createRainPets,createPetTrunkBlocker,drawRainDog,drawRainBenchCat,drawPetPondContact} from './ambience.js?v=51';
 import {gardenScene,gardenPlants,townPlantPosition,drawPreparedSoil,weatherAt} from './garden.js?v=32';
 import {DEV_TOOLS} from './config.js?v=23';
 import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,clearStoredRecords,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=23';
 installPullToRefreshGuard();
 let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
-const $=id=>document.getElementById(id), canvas=$('world'),g=canvas.getContext('2d'),dlg=$('dialog'),KEY=/\/experimental(?:\/|$)/.test(globalThis.location?.pathname||'')?'cello-town-experimental-rpg-v1':'cello-town-rpg-v1';
+const $=id=>document.getElementById(id), canvas=$('world'),dlg=$('dialog'),KEY=/\/experimental(?:\/|$)/.test(globalThis.location?.pathname||'')?'cello-town-experimental-rpg-v1':'cello-town-rpg-v1';
+let g=canvas.getContext('2d'),webglTown=null,pending3DTown=null,last3DPaint=-Infinity;
+const compactTown=matchMedia('(max-width: 600px)');
+let worldInView=true;
+if(typeof IntersectionObserver==='function'){
+ const observer=new IntersectionObserver(([entry])=>{worldInView=entry.isIntersecting;});
+ observer.observe(canvas);
+}
 const townFont=getComputedStyle(document.documentElement).getPropertyValue('--town-font').trim()||'system-ui';
 let state=fresh(),storeOK=true;try{const raw=localStorage.getItem(KEY);if(raw)state=normalize(JSON.parse(raw));}catch{storeOK=false;}
 const player={x:460,y:425,dir:1,facing:'front',walking:false};const npc={x:303,y:290,kind:'teacher'},stand={x:615,y:404},garden={x:710,y:460};let keys=new Set(),target=null,last=0,near=null,task='listen',revealed=false,demoDone=false,practiced=false,context,timer,mode=null,voices=new Set(),step=0,next=0,generation=0,demoUntil=0,releaseSession=()=>{},clockTime=0,clockSeen=0,audioNode=null,workletAck=null;
@@ -244,13 +252,15 @@ function drawQuestMarker(t){
  if(key!==teacherBadgeKey){teacherBadgeKey=key;teacherBadge.dataset.kind=key;teacherBadge.dataset.tone=key&&markerTone==='gold'?'gold':'gray';}
  if(!key)return;
  const y=npc.y-65+(reducedMotion.matches?0:Math.sin(t/420)*2);
- const next=`translate(${npc.x.toFixed(2)} ${y.toFixed(2)})`;
+ const p=webglTown?.project(npc.x,npc.y,77)||{x:npc.x,y};
+ const next=`translate(${p.x.toFixed(2)} ${p.y.toFixed(2)})`;
  if(next!==teacherBadgePosition){teacherBadgePosition=next;teacherBadge.setAttribute('transform',next);}
 }
 function drawStandMarker(t){
  if(state.phase!=='active'||state.steps.length===3)return;
- const x=stand.x,y=stand.y+(reducedMotion.matches?0:Math.sin(t/600)*2);
- label('來這裡練習',x,stand.y-85,'#f4db91');
+ const b=webglTown?.project(stand.x,stand.y,3)||stand;
+ const x=b.x,y=b.y+(reducedMotion.matches?0:Math.sin(t/600)*2);
+ label('來這裡練習',x,y-85,'#f4db91');
  g.save();g.translate(x,y);g.beginPath();
  g.moveTo(-6,-72);g.lineTo(6,-72);g.lineTo(6,-62);g.lineTo(13,-62);
  g.lineTo(0,-48);g.lineTo(-13,-62);g.lineTo(-6,-62);g.closePath();
@@ -273,7 +283,93 @@ function drawPracticeStand(){
  for(const [xx,yy]of[[-11,-35],[-7,-32],[5,-34],[10,-31]]){p(xx,yy,2,2,'#657251');p(xx+1,yy-3,1,3,'#657251');}
  p(11,-25,2,7,'#ad7054');p(-17,-25,2,3,'#c7af79');p(15,-24,2,3,'#c7af79');
 }
-function draw(t){const rainFrame=rainSystem.sample(t,gameWeather.key,[player,npc],reducedMotion.matches);const petFrame=rainPets.update(t,{weather:gameWeather.key,player,playerUmbrella:umbrellaPose(player,rainFrame.actorOpen[0]),reduced:reducedMotion.matches});const moisture=wetSoil.update(t,gameWeather.key,reducedMotion.matches,rainFrame);townArt.drawGround(g);townDepth.drawGround(g,gameWeather.key);drawWetSoil(g,moisture,'road');
+function setTownView(view){
+ webglTown=view;last3DPaint=-Infinity;canvas.dataset.renderer=view?'webgl':'canvas';
+ const p=view?.project(MUSIC_ROOM_DOOR.x+MUSIC_ROOM_DOOR.w/2,MUSIC_ROOM.depth-2,35);
+ for(const axis of ['x','y']){
+  const at=p?p[axis]/(axis==='x'?canvas.width:canvas.height)*100:doorFocus[axis];
+  doorStage.style.setProperty(`--door-origin-${axis}`,`${at}%`);
+  doorStage.style.setProperty(`--door-shift-${axis}`,`${50-at}%`);
+ }
+}
+function projectTownTap(x,y){
+ const v=webglTown;if(!v)return {x,y};
+ // Elevated objects need a screen-space target before raycasting the ground.
+ // Routes and final reach checks still use the exact 2D world hotspots.
+ const spot=(px,py,h,rx,ry)=>{
+  const p=v.project(px,py,h);
+  return Math.abs(p.x-x)<=rx&&Math.abs(p.y-y)<=ry;
+ };
+ const doorX=MUSIC_ROOM_DOOR.x+MUSIC_ROOM_DOOR.w/2;
+ if(spot(doorX,MUSIC_ROOM.depth-2,35,24,23))return {x:doorX,y:198};
+ if(spot(stand.x,stand.y,42,21,18))return {x:stand.x,y:stand.y-19};
+ if(spot(npc.x,npc.y,27,23,29))return {x:npc.x,y:npc.y-20};
+ for(const c of chairs)if(spot(c.x,c.y,16,12,15))return {x:c.x,y:c.y-10};
+ return v.inverse(x,y);
+}
+function drawWebGLTown(t,rainFrame,petFrame,moisture){
+ const v=webglTown;if(!v)return false;
+ if(compactTown.matches&&t-last3DPaint<30)return true;
+ last3DPaint=t;
+ const key=gameWeather.key,reduced=reducedMotion.matches;
+ v.hideSprites();
+ const sprite=(id,x,y,w,h,paint,alt=0)=>v.drawSprite(id,x,y,w,h,c=>{
+  const before=g;g=c;
+  try{paint();}finally{g=before;}
+ },alt);
+ sprite('player',player.x,player.y+4,56,68,()=>person(player.x,player.y,t,player),playerSeated?13:0);
+ sprite('teacher',npc.x,npc.y+4,56,68,()=>person(npc.x,npc.y,t,{teacher:true}),loungePose.mode==='seated'?13:0);
+ const {cat,visitor}=petFrame.life;
+ if(cat)sprite('cat',cat.x,cat.groundY+6,64,52,()=>drawGardenCat(g,cat));
+ if(visitor)sprite('visitor',visitor.x,visitor.y+25,45,47,()=>drawGardenVisitor(g,visitor),27);
+ if(petFrame.dogActive){const d=petFrame.dog;sprite('dog',d.x,d.y+5,68,49,()=>drawRainDog(g,d));}
+ if(petFrame.benchCatActive){const c=petFrame.benchCat;sprite('bench-cat',c.x,c.y+6,62,53,()=>drawRainBenchCat(g,c),c.mode==='home'?31:0);}
+ else sprite('bench-cat',222,220,66,34,()=>drawBenchLife(g,t,reduced,petFrame),32);
+ for(let i=0;i<2;i++)if(rainFrame.actorStage[i]!=='closed'){
+  const a=i===0?player:npc;
+  sprite('umbrella'+i,a.x,a.y+10,105,111,()=>drawRainUmbrella(g,{...a,kind:i===1?'teacher':'player'},rainFrame.actorOpen[i],rainFrame.actorStage[i]));
+ }
+ for(const f of gardenPlants(state)){
+  const {x,y}=townPlantPosition(f.species);sprite('bloom'+f.species,x,y+6,43,53,()=>gardenBloom(x,y,f),9);
+ }
+ if(!v.render(key))return false;
+ g.drawImage(v.output,0,0);
+ // The same game-clock pond and wind/rain state remains visible. Project their
+ // ground/height coordinates, not a second simulation with unrelated timings.
+ const project=v.project;
+ for(const [i,f] of pondLife(t,reduced).entries()){
+  const p=project(f.x,f.y,3);g.save();g.translate(p.x,p.y);g.scale(f.dir,1);
+  g.fillStyle=townFish[i]?.color||'#dac27e';g.globalAlpha=.88;
+  g.beginPath();g.ellipse(0,0,8,3.2,-.15,0,Math.PI*2);g.fill();g.beginPath();
+  g.moveTo(-6,0);g.lineTo(-12,-3+f.tail);g.lineTo(-12,3+f.tail);g.closePath();g.fill();g.restore();
+ }
+ if(key==='rain'){
+  g.save();g.strokeStyle='#eef6ee';g.fillStyle='#dbe8da';
+  for(const b of moisture){
+   if(b.kind==='verge'&&b.level<1.5)continue;
+   const p=project(b.x+b.w/2,b.y+b.h/2,b.kind==='bed'?10:3);
+   g.globalAlpha=Math.min(.19,b.level*.05);g.fillStyle='#4e615a';g.fillRect(p.x-1.6,p.y,3.2,1.6);
+  }
+  for(const d of rainFrame.drops){
+   const x=d.phase==='impact'?d.impactX:d.x,z=d.landingY;
+   const h=Math.max(0,z-(d.phase==='impact'?d.impactY:d.y));
+   const p=project(x,z,h);
+   if(d.phase==='fall'){const q=project(x,z,h+d.length);g.globalAlpha=d.opacity;g.lineWidth=d.width*.7;g.beginPath();g.moveTo(p.x,p.y);g.lineTo(q.x,q.y);g.stroke();}
+   else if(d.phase==='impact'){g.globalAlpha=(1-d.progress)*.45;g.lineWidth=1;g.beginPath();g.ellipse(p.x,p.y,1+d.progress*6,.5+d.progress,0,0,Math.PI*2);g.stroke();}
+  }
+  g.restore();
+ }
+ const teacher=project(npc.x,npc.y+18,0),flowers=project(821,391,0);
+ label('老師',teacher.x,teacher.y+6);label('你的花園',flowers.x,flowers.y);
+ drawQuestMarker(t);drawStandMarker(t);
+ if(!dlg.open)drawQuietChat(g,quietChatPose.bubbles,{teacher:project(npc.x,npc.y,3),player:project(player.x,player.y,3)});
+ if(near&&!['chair','seated'].includes(near)){
+  const a=near==='npc'?npc:near==='garden'?garden:stand,p=project(a.x,a.y,4);
+  g.strokeStyle='#fff2c3';g.lineWidth=2;g.beginPath();g.ellipse(p.x,p.y,22,8,0,0,Math.PI*2);g.stroke();
+ }
+ return true;
+}
+function draw(t){const rainFrame=rainSystem.sample(t,gameWeather.key,[player,npc],reducedMotion.matches);const petFrame=rainPets.update(t,{weather:gameWeather.key,player,playerUmbrella:umbrellaPose(player,rainFrame.actorOpen[0]),reduced:reducedMotion.matches});const moisture=wetSoil.update(t,gameWeather.key,reducedMotion.matches,rainFrame);if(webglTown){try{if(drawWebGLTown(t,rainFrame,petFrame,moisture))return;}catch{webglTown?.discard();setTownView(null);}}townArt.drawGround(g);townDepth.drawGround(g,gameWeather.key);drawWetSoil(g,moisture,'road');
 // water
 terrainArt.drawPond(g);
 // Sparse bank planting stays outside the fish/ripple water clip.
@@ -345,7 +441,19 @@ function update(dt,idleDt=dt){
 }
 const approachRoom=()=>{if(!dlg.open)walkTo(ROOM_ENTRY,'room');};
 function interact(){if(dlg.open)return;if(!playerSeated&&roomDoorNearby(player)){approachRoom();return;}if(playerSeated){standUp();return;}if(near==='chair'){const index=chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y)).indexOf(Math.min(...chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y))));requestChair(index);return;}if(near==='npc')talk();else if(near==='stand')practice();else if(near==='garden')openGarden();else toast('再靠近老師、戶外譜架或花園入口一點。');}
-const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open||enteringRoom)return;if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;teacherApproach.cancel();});canvas.onpointerdown=e=>{if(dlg.open||enteringRoom)return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{idleLast=null;if(document.hidden){teacherApproach.cancel();pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});let idleLast=null;function loop(t){const dt=Math.min((t-last)/1000,.04),idleDt=idleLast===null?0:Math.max(0,(t-idleLast)/1000);last=t;idleLast=document.hidden?null:t;if(!document.hidden){update(dt,idleDt);draw(t);}requestAnimationFrame(loop);}render();requestAnimationFrame(loop);setTimeout(()=>$('toast').style.opacity=0,6000);
+const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open||enteringRoom)return;if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;teacherApproach.cancel();});canvas.onpointerdown=e=>{if(dlg.open||enteringRoom)return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),p=projectTownTap((e.clientX-r.left)*960/r.width,(e.clientY-r.top)*560/r.height);if(!p)return;const {x,y}=p;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{idleLast=null;if(document.hidden){teacherApproach.cancel();pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});let idleLast=null;function loop(t){const dt=Math.min((t-last)/1000,.04),idleDt=idleLast===null?0:Math.max(0,(t-idleLast)/1000);last=t;idleLast=document.hidden?null:t;if(!document.hidden){
+ if(pending3DTown&&worldInView&&!target&&!keys.size&&!enteringRoom&&!dlg.open){
+  const view=pending3DTown;pending3DTown=null;
+  try{if(view.render(gameWeather.key))setTownView(view);else view.discard();}catch{view.discard();}
+ }
+ update(dt,idleDt);if(!webglTown||(worldInView&&!dlg.open))draw(t);
+ }requestAnimationFrame(loop);}render();setTownView(null);requestAnimationFrame(loop);
+if(new URLSearchParams(location.search).get('flat')!=='1'){
+ const load=()=>makeTownWebGL({trees:TREE_LAYOUT,chairs,stand,room:MUSIC_ROOM,onLoss:()=>{pending3DTown=null;setTownView(null);}})
+  .then(view=>{pending3DTown=view;}).catch(()=>{setTownView(null);});
+ if(typeof requestIdleCallback==='function')requestIdleCallback(load,{timeout:600});else setTimeout(load,50);
+}
+setTimeout(()=>$('toast').style.opacity=0,6000);
 
 
 setInterval(()=>{const nextWeather=weatherAt();if(nextWeather.key===gameWeather.key)return;gameWeather=nextWeather;document.querySelector('.topline span').textContent=gameWeather.name+' · 練琴日';if(dlg.open&&$('garden-view'))$('garden-view').innerHTML=gardenScene(state,gameWeather);},1000);
