@@ -8,4 +8,22 @@ function normalized(s){
   .replace(/\n\/\* BEGIN SIDE TABLE MANUSCRIPT \*\/[\s\S]*?\/\* END SIDE TABLE MANUSCRIPT \*\/\n$/,'')
   .replace('tickRoomCamera(t,dt);positionManuscript();roomCat.animateCat','tickRoomCamera(t,dt);roomCat.animateCat');
  return intact.replace(/\.js\?v=[^'"\s]+/g,'.js').replace(/KEY=\/[^;]+;/g,m=>m.includes('3d-avatar')?"KEY='cello-town-3d-avatar-v1';":"KEY='cello-town-rpg-v1';");}
-test('experimental reset matches exact current-main visuals and gameplay except scoped storage/cache identities and the side table discovery',()=>{for(const [path,sha]of Object.entries(fixture.files)){const text=fs.readFileSync(new URL('../../'+path,import.meta.url),'utf8');assert.equal(crypto.createHash('sha256').update(normalized(text)).digest('hex'),sha,path+' matches '+fixture.main);}});
+// Preserve the main parity fixture: allow only the exact tested experimental
+// outdoor drawing revision and its accompanying module, not future drift.
+const outdoorVisualHashes={
+ 'rpg/app.js':'438e28089a327e5505ece83121296d44a42176da6dafec3ac8e865e6f04339c3',
+ 'rpg/index.html':'7d8d9579c2e688ee094b0e481e04c9a1d8823be15f679ac56d1bc65d196d2f80',
+ 'rpg/town-depth.js':'28da7ccfb4996f0e61a18363de9b4e9de4035cb21d081c6679e0ad3749812c85'
+};
+const sha256=text=>crypto.createHash('sha256').update(text).digest('hex');
+test('experimental matches exact main snapshot except the scoped storage, manuscript and outdoor art',()=>{
+ for(const [path,sha] of Object.entries(fixture.files)){
+  if(Object.hasOwn(outdoorVisualHashes,path))continue;
+  const text=fs.readFileSync(new URL('../../'+path,import.meta.url),'utf8');
+  assert.equal(sha256(normalized(text)),sha,path+' matches '+fixture.main);
+ }
+ for(const [path,sha] of Object.entries(outdoorVisualHashes)){
+  const text=fs.readFileSync(new URL('../../'+path,import.meta.url),'utf8');
+  assert.equal(sha256(text),sha,path+' matches reviewed experimental outdoor art');
+ }
+});
