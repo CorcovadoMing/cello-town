@@ -1,4 +1,4 @@
-import {makeTownWebGL} from './town-webgl.js?v=world-3d-003-upright';
+import {makeTownWebGL} from './town-webgl.js?v=world-3d-004-landscape';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';
@@ -19,7 +19,7 @@ import {facingForMotion,drawPlayer} from './avatar.js?v=42';
 import {resumeFromTap,requestPlaybackSession,clockStalled} from './audio-start.js?v=23';
 import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=23';
 import {installPullToRefreshGuard} from './scroll-guard.js?v=23';
-import {foliageWind,fishVariants,drawPondLife,pondLife,drawGardenLife,drawGardenCat,drawGardenVisitor,drawTownWeather,drawBenchLife,drawRainFrame,createRainPets,createPetTrunkBlocker,drawRainDog,drawRainBenchCat,drawPetPondContact} from './ambience.js?v=51';
+import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawGardenCat,drawGardenVisitor,drawTownWeather,drawBenchLife,drawRainFrame,createRainPets,createPetTrunkBlocker,drawRainDog,drawRainBenchCat,drawPetPondContact} from './ambience.js?v=51';
 import {gardenScene,gardenPlants,townPlantPosition,drawPreparedSoil,weatherAt} from './garden.js?v=32';
 import {DEV_TOOLS} from './config.js?v=23';
 import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,clearStoredRecords,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=23';
@@ -309,33 +309,15 @@ function drawWebGLTown(t,rainFrame,petFrame,moisture){
  for(const f of gardenPlants(state)){
   const {x,y}=townPlantPosition(f.species);sprite('bloom'+f.species,x,y+6,43,53,()=>gardenBloom(x,y,f),9);
  }
- if(!v.render(key))return false;
+ if(!v.render(key,moisture))return false;
  g.drawImage(v.output,0,0);
- // The same game-clock pond and wind/rain state remains visible. Project their
- // ground/height coordinates, not a second simulation with unrelated timings.
+ // Ground projection is the original Canvas identity, so the shared pond
+ // life and sheltered rain contacts stay aligned with the same landmarks.
+ drawPondLife(g,t,reduced,townFish);
+ drawPetPondContact(g,petFrame.pondContact);
+ if(key==='rain')drawRainFrame(g,rainFrame);
+ else drawTownWeather(g,t,key,reduced,RAIN_EXCLUSIONS);
  const project=v.project;
- for(const [i,f] of pondLife(t,reduced).entries()){
-  const p=project(f.x,f.y,3);g.save();g.translate(p.x,p.y);g.scale(f.dir,1);
-  g.fillStyle=townFish[i]?.color||'#dac27e';g.globalAlpha=.88;
-  g.beginPath();g.ellipse(0,0,8,3.2,-.15,0,Math.PI*2);g.fill();g.beginPath();
-  g.moveTo(-6,0);g.lineTo(-12,-3+f.tail);g.lineTo(-12,3+f.tail);g.closePath();g.fill();g.restore();
- }
- if(key==='rain'){
-  g.save();g.strokeStyle='#eef6ee';g.fillStyle='#dbe8da';
-  for(const b of moisture){
-   if(b.kind==='verge'&&b.level<1.5)continue;
-   const p=project(b.x+b.w/2,b.y+b.h/2,b.kind==='bed'?10:3);
-   g.globalAlpha=Math.min(.19,b.level*.05);g.fillStyle='#4e615a';g.fillRect(p.x-1.6,p.y,3.2,1.6);
-  }
-  for(const d of rainFrame.drops){
-   const x=d.phase==='impact'?d.impactX:d.x,z=d.landingY;
-   const h=Math.max(0,z-(d.phase==='impact'?d.impactY:d.y));
-   const p=project(x,z,h);
-   if(d.phase==='fall'){const q=project(x,z,h+d.length);g.globalAlpha=d.opacity;g.lineWidth=d.width*.7;g.beginPath();g.moveTo(p.x,p.y);g.lineTo(q.x,q.y);g.stroke();}
-   else if(d.phase==='impact'){g.globalAlpha=(1-d.progress)*.45;g.lineWidth=1;g.beginPath();g.ellipse(p.x,p.y,1+d.progress*6,.5+d.progress,0,0,Math.PI*2);g.stroke();}
-  }
-  g.restore();
- }
  const teacher=project(npc.x,npc.y+18,0),flowers=project(821,391,0);
  label('老師',teacher.x,teacher.y+6);label('你的花園',flowers.x,flowers.y);
  drawQuestMarker(t);drawStandMarker(t);

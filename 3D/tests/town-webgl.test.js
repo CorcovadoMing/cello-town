@@ -44,3 +44,18 @@ test('shared package, settings and gameplay are not initialized by the WebGL ren
  assert.match(app,/onLoss:\(\)=>\{pending3DTown=null;setTownView\(null\)/);
  assert.match(app,/if\(pending3DTown&&worldInView&&!target&&!keys.size&&!enteringRoom&&!dlg.open\)/);
 });
+test('outdoor WebGL applies the shared road, verge and bed moisture on every weather state',()=>{
+ const app=readFileSync(new URL('../../rpg/app.js',import.meta.url),'utf8');
+ const webgl=readFileSync(new URL('../../rpg/town-webgl.js',import.meta.url),'utf8');
+ const draw=app.slice(app.indexOf('function drawWebGLTown'),app.indexOf('function draw(t)'));
+ assert.match(draw,/v\.render\(key,moisture\)/);
+ assert.match(draw,/drawPondLife\(g,t,reduced,townFish\)/);
+ assert.match(draw,/drawPetPondContact\(g,petFrame\.pondContact\)/);
+ assert.match(draw,/if\(key==='rain'\)drawRainFrame\(g,rainFrame\)/);
+ assert.match(webgl,/if\(moisture===previousMoisture\)return/);
+ assert.match(webgl,/wetLayer\('road'[\s\S]+wetLayer\('bed'/);
+ assert.match(webgl,/kind==='road'&&c\.kind==='verge'/);
+ assert.match(webgl,/drawWetSoil\(ctx,moisture,kind\)/);
+ assert.match(webgl,/updateWetLayers\(moisture\);\s*renderer\.render/);
+ assert.doesNotMatch(webgl,/puddles\.forEach|render\(weather\)\{/);
+});

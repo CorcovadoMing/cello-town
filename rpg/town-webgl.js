@@ -1,6 +1,8 @@
+import {addOrchardTree,townSunVector} from './town-orchard.js?v=1';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
+import {drawWetSoil} from './wet-soil.js?v=exp3';
 export const ROOM_WIDTH=960,ROOM_HEIGHT=560;
 const W=ROOM_WIDTH,H=ROOM_HEIGHT;
 const local=(x,z)=>[x-W/2,z-H/2];
@@ -87,18 +89,9 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   box(x,-16-rng()*7,571,4+rng()*10,1.15,.85,i%3?'#cfbb91':'#8f795b');
   if(i<20)box(969,-18-rng()*5,27+i*25,1.05,.9,4+rng()*10,'#ceb88c');
  }
- // Unobtrusive, non-green linen under the model, with a fine weave that
- // catches the physical contact shadow. This is outside the playable board.
- const cloth=document.createElement('canvas');cloth.width=cloth.height=128;
- const linen=cloth.getContext('2d');
- linen.fillStyle='#f1e7da';linen.fillRect(0,0,128,128);
- for(let i=0;i<128;i+=4){
-  linen.fillStyle=i%8?'#c6af9780':'#fdf5ec';
-  linen.globalAlpha=.13;linen.fillRect(i,0,1,128);linen.fillRect(0,i,128,1);
- }
- const fabric=new T.CanvasTexture(cloth);fabric.colorSpace=T.SRGBColorSpace;
- fabric.wrapS=fabric.wrapT=T.RepeatWrapping;fabric.repeat.set(18,12);
- const clothMat=new T.MeshLambertMaterial({color:'#ede2d4',map:fabric});
+ // Quiet matte backdrop below the terrain; a repeated weave at this
+ // zoom reads as a grid rather than a natural miniature base.
+ const clothMat=new T.MeshLambertMaterial({color:'#ede2d4'});
  const plinth=new T.Mesh(new T.PlaneGeometry(5600,3600),clothMat);
  plinth.rotation.x=-Math.PI/2;plinth.position.y=-45;plinth.receiveShadow=true;scene.add(plinth);
  // The path is one junction, shaped and bevelled from its established
@@ -117,7 +110,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  }
  for(const [x,z,w,d] of [[480,333,620,72],[464,463,72,192],[676,268,76,53]])for(let i=0;i<Math.ceil(w*d/760);i++){
   const dx=x-w*.43+rng()*w*.86,dz=z-d*.41+rng()*d*.82;
-  box(dx,4.2,dz,4+rng()*10,.65,1+rng()*4,['#d5bb8e','#ecd6ab','#cbb187'][i%3],0,(rng()-.5)*.55);
+  sphere(dx,3.9,dz,1.15+rng()*3.6,.3,.65+rng()*1.55,['#d9c096','#e6cfa5','#d3bb90'][i%3],0,(rng()-.5)*1.4);
  }
  // Broad pigment islands break the upper meadow into ground, sun and
  // orchard shade, without filling the readable centre with extra objects.
@@ -134,19 +127,29 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  };
  wornBand([[181,320,1],[210,321,5],[256,324,8],[302,319,7],[362,319,8],[421,322,7],[471,320,5],[522,316,5],[577,316,7],[641,319,7],[698,316,7],[746,324,6],[781,325,1]],4.36,'#bf9e6c',.48);
  wornBand([[193,344,1],[227,342,5],[267,345,7],[311,348,8],[371,349,7],[444,347,9],[507,346,6],[576,342,7],[626,343,5],[685,345,7],[733,344,6],[763,347,1]],4.37,'#c1a477',.43);
- // Worn tracks, not scattered noise: two lighter walking lanes converge
- // at the junction; thin moss and rough stones stay close to the margins.
+ // Repeated straight-edged tread rectangles look like pavers. Use
+ // gently curved traces with irregular width and tapered ends instead.
  const tracks=[
-  {walk:[[183,323],[217,325],[256,328],[290,330],[332,331],[373,331],[415,332],[465,333],[501,331],[548,329],[590,327],[629,330],[676,331],[713,333],[756,330],[779,331]],span:7},
-  {walk:[[455,369],[451,392],[452,420],[457,449],[457,473],[458,503],[453,528],[454,551]],span:5},
-  {walk:[[685,246],[686,258],[682,278],[681,300],[678,318]],span:5}
+  {walk:[[184,324],[217,325],[256,329],[290,331],[332,331],[373,332],[415,333],[465,333],[501,332],[548,330],[590,329],[629,331],[673,332],[716,333],[753,334],[779,334]],span:7},
+  {walk:[[457,368],[453,392],[453,420],[457,449],[457,473],[454,500],[452,528],[454,551]],span:5},
+  {walk:[[684,246],[684,258],[682,278],[682,300],[679,318]],span:5}
  ];
- for(const {walk,span} of tracks)for(const [i,[x,z]] of walk.entries()){
-  for(const d of [-1,1]){
-   const vertical=span===5,ox=vertical?d*span:3,oz=vertical?3:d*span;
-   box(x+ox,4.03,z+oz,vertical?2.8+rng()*6:14+rng()*12,.22,vertical?12+rng()*9:2.5+rng()*4.4,
-    ['#ccb181','#d6b98b','#ecd2a3','#dbc095'][(i+2+(d>0?1:0))%4],0,(rng()-.5)*.18);
+ for(const {walk,span} of tracks)for(const side of [-1,1]){
+  const edges=[[],[]];
+  for(let i=0;i<walk.length;i++){
+   const [x,z]=walk[i],p=walk[Math.max(0,i-1)],n=walk[Math.min(walk.length-1,i+1)];
+   const dx=n[0]-p[0],dz=n[1]-p[1],len=Math.hypot(dx,dz),nx=-dz/len,nz=dx/len;
+   const off=side*span+(rng()-.5)*2.1;
+   const span1=1.7+rng()*1.55,span2=1.4+rng()*2.3;
+   const tip=Math.min(1,(i+.08)/1.5,(walk.length-i-.92)/1.5);
+   edges[0].push([x+nx*(off-span1*tip),z+nz*(off-span1*tip)]);
+   edges[1].push([x+nx*(off+span2*tip),z+nz*(off+span2*tip)]);
   }
+  const contour=edges[0].concat(edges[1].reverse()),path=new T.Shape();
+  contour.forEach(([x,z],i)=>i?path.lineTo(x-W/2,H/2-z):path.moveTo(x-W/2,H/2-z));
+  path.closePath();
+  const mesh=new T.Mesh(new T.ShapeGeometry(path),new T.MeshLambertMaterial({color:side>0?'#bf9f6a':'#c7a876',transparent:true,opacity:.16,depthWrite:false}));
+  mesh.rotation.x=-Math.PI/2;mesh.position.y=4.39;mesh.receiveShadow=true;scene.add(mesh);
  }
  for(const [x,z,rx,rz,n] of [[202,301,19,6,8],[277,367,25,7,10],[339,298,22,5,9],[401,370,18,7,8],[529,367,24,6,8],[577,300,25,7,11],[735,367,28,7,12],[782,332,9,18,9],[430,441,6,26,8],[498,498,7,26,7],[711,281,7,14,7]]){
   for(let i=0;i<n;i++){
@@ -155,17 +158,39 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    else box(dx,4.2,dz,2.2+rng()*6,.4,1.1+rng()*4,['#aebb81','#9eaf73','#b3be84'][i%3],0,rng()*.8);
   }
  }
- const puddles=[];
- for(const [x,z,a,b] of [[213,348,17,4],[505,352,12,3.6],[455,517,7,12],[697,291,10,4]]){
-  puddles.push(plane(x,z,4.52,a,b,'#526c6d',.30));
-  puddles.push(plane(x+2,z-1,4.57,a*.62,b*.39,'#c2d2cc',.28));
+ // Ground-located weather, beneath actors and roof, rather than
+ // screen-space dots or painted puddles toggled solely by rain status.
+ function wetLayer(kind,x,z,w,d,y){
+  const paper=document.createElement('canvas');paper.width=w;paper.height=d;
+  const raw=document.createElement('canvas');raw.width=w;raw.height=d;
+  const ctx=raw.getContext('2d'),soft=paper.getContext('2d'),map=new T.CanvasTexture(paper);
+  soft.filter='blur(1.4px)';
+  map.colorSpace=T.SRGBColorSpace;map.generateMipmaps=false;
+  map.minFilter=T.LinearFilter;map.magFilter=T.LinearFilter;
+  const material=new T.MeshBasicMaterial({map,transparent:true,depthWrite:false,alphaTest:.002});
+  const mesh=new T.Mesh(new T.PlaneGeometry(w,d),material);
+  const [dx,dz]=local(x+w/2,z+d/2);
+  mesh.rotation.x=-Math.PI/2;mesh.position.set(dx,y,dz);mesh.visible=false;
+  scene.add(mesh);
+  return {kind,x,z,w,d,ctx,soft,raw,map,mesh};
  }
- puddles.forEach(m=>m.visible=false);
- // Low stone platform under the existing bench and slender lounge furniture.
- box(250,6,211,154,12,55,'#a39673');box(250,12,211,156,4,57,'#c9b78b');
- for(let x=179;x<326;x+=20)box(x,5,240,1.2,9,1,'#817b63');
+ const wetLayers=[wetLayer('road',148,216,664,344,4.63),wetLayer('bed',742,410,158,97,9.75)];
+ let previousMoisture=null;
+ function updateWetLayers(moisture){
+  if(moisture===previousMoisture)return;
+  previousMoisture=moisture;
+  for(const {kind,x,z,w,d,ctx,soft,raw,map,mesh} of wetLayers){
+   mesh.visible=moisture.some(c=>(c.kind===kind||(kind==='road'&&c.kind==='verge'))&&c.level>0);
+   if(!mesh.visible)continue;
+   ctx.clearRect(0,0,w,d);
+   ctx.save();ctx.translate(-x,-z);drawWetSoil(ctx,moisture,kind);ctx.restore();
+   // Blur once per layer after compositing, not once per potentially wet cell.
+   soft.clearRect(0,0,w,d);soft.drawImage(raw,0,0);map.needsUpdate=true;
+  }
+ }
+ // Bare grass and genuine cast shadows under the wooden bench.
  const wood='#ad8150',edge='#735b41',warm='#d2aa69',cream='#ede0ae';
- for(const x of [190,309]){box(x,18,221,5,29,5,edge);box(x,24,197,5,45,5,edge);}
+ for(const x of [190,309]){box(x,15,221,5,30,5,edge);box(x,29,197,5,58,5,edge);}
  for(const z of [205,211,217,223])box(250,30,z,135,3,4,z%2?wood:warm);
  for(const y of [38,47,55])box(250,y,196,135,5,4,wood);
  function table(x,z,width=64,depth=32){
@@ -192,13 +217,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   }
  }
  for(const [i,[x,y,s]] of trees.entries()){
-  const z=y+46*s,scale=s*.88;
-  shape('trunk',x,25*scale,z,9*scale,51*scale,9*scale,'#76654b',0,0,(i%3-1)*.07);
-  const greens=[['#688f60','#80a976','#a0bb7b'],['#4f7962','#6d9579','#8bb194'],['#789555','#95ad68','#b3be79']][i%3];
-  for(const [dx,dy,dz,sz,row] of [[-13,55,4,22,0],[14,57,-2,21,0],[0,65,0,25,1],[-5,78,-9,19,2],[12,70,10,15,1]]){
-   sphere(x+dx*scale,dy*scale,z+dz*scale,sz*scale,sz*1.02*scale,sz*scale,greens[row],.12,i*.51);
-  }
-  plane(x-12*s,z+15*s,3.3,31*s,12*s,'#2c4738',.23);
+  addOrchardTree({shape,sphere},x,y+46*s,s*.88,i);
  }
  // Physical pond wall and a recessed, gently shaded water plane.
  box(146,-1,465,249,6,150,'#738773');
@@ -339,7 +358,8 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   ndc.set(x/W*2-1,1-y/H*2);ray.setFromCamera(ndc,camera);
   return ray.ray.intersectPlane(ground,sample)?{x:sample.x+W/2,y:sample.z+H/2}:null;
  }
- let alive=true,lastWeather='';
+ const dryMoisture=Object.freeze([]);
+ let alive=true,lastWeather='',lastLight=null;
  function discard(){
   if(!alive)return;
   alive=false;
@@ -351,7 +371,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  output.addEventListener('webglcontextlost',e=>{e.preventDefault();discard();},{once:true});
  return Object.freeze({output,project,inverse,drawSprite,
   hideSprites(){for(const s of sprites.values())s.sprite.visible=false;},
-  render(weather){
+  render(weather,moisture=dryMoisture,now=Date.now()){
    if(!alive)return false;
    if(weather!==lastWeather){
     lastWeather=weather;
@@ -360,9 +380,14 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
     fill.intensity=weather==='rain'?1.78:1.34;
     porchFill.intensity=weather==='rain'?.22:.43;
     fill.color.set(weather==='rain'?'#dceef2':'#e8f3f0');
-    puddles.forEach(m=>m.visible=weather==='rain');
     renderer.shadowMap.needsUpdate=true;
    }
+   const lamp=townSunVector(now);
+   if(!lastLight||Math.hypot(lamp.x-lastLight.x,lamp.y-lastLight.y,lamp.z-lastLight.z)>=1.8){
+    sun.position.set(lamp.x,lamp.y,lamp.z);lastLight=lamp;
+    renderer.shadowMap.needsUpdate=true;
+   }
+   updateWetLayers(moisture);
    renderer.render(scene,camera);return true;
   },
   stats:()=>({calls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),

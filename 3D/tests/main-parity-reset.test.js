@@ -14,11 +14,12 @@ function normalized(s){
 // Preserve the main parity fixture: allow only the exact tested experimental
 // outdoor drawing revision and its accompanying module, not future drift.
 const outdoorVisualHashes={
- 'rpg/app.js':'dd883966aec8adf9e17989ed9fc7d4456416211b39f93deace80c4a2492bc1f2',
- 'rpg/index.html':'b292076ca58dc2b8d767bb8f3144c0674c6d37c3a0cc4078bf8c4b27b596ed22',
+ 'rpg/app.js':'c01336fa12c9a7b2bda1241c079bf5b65829c2881055d9651a394d5e49ee9a20',
+ 'rpg/index.html':'44c06694478b703ce64943cd610dc71fe56e3470dd8789bce634aac3b4220c67',
  'rpg/town-depth.js':'3b082ca07119d517e0b747dd8ba8433c3aed0aa14bd18d07b2df6451c8efc7af',
  'rpg/music-room-art.js':'00011725eb971e6e7e7811f0898983c5c798c7808e47f7e9af9e31d25affbb6b',
- 'rpg/town-webgl.js':'9b342020787aeb485e716e12e3054260eb9ae475039d8970f0ef5efa17b207b1'
+ 'rpg/town-webgl.js':'e324ee0dd055bbd169d57b2903943a32a88a181bf966eecaaf697dbfff4bf17b',
+ 'rpg/town-orchard.js':'55ffb409bd5e0b4d9746f5e2a14362973d5d7e39bb08bc4ff190ad95b95dafb4'
 };
 const sha256=text=>crypto.createHash('sha256').update(text).digest('hex');
 test('experimental matches exact main snapshot except the scoped storage, manuscript and outdoor art',()=>{
