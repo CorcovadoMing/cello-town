@@ -204,6 +204,24 @@ function roomFinish(o,kind,repeatX=1,repeatY=1){
     const at=rand(),x=6+at*115,y=rand()*117,w=.55+rand()*1.15,h=2+rand()*8;
     g.fillStyle=i%4?'#fff9dd5c':'#8e755039';g.fillRect(x,y,w,h);
    }
+  }else if(kind==='wardrobe-veneer'){
+   // Bookmatched-style veneer on the existing two recessed door faces.
+   // A broad planed rim reads on the phone; the quieter cathedral marks
+   // in the middle follow the actual tall grain at a wide viewport.
+   const stain=g.createLinearGradient(0,0,128,0);
+   [[0,'#ab906b'],[.06,'#ece0be'],[.12,'#b89a71'],[.26,'#dabd96'],[.52,'#e4c9a2'],
+    [.74,'#d6b68d'],[.88,'#b99a70'],[.94,'#f0dfba'],[1,'#9c815c']].forEach(([p,col])=>stain.addColorStop(p,col));
+   g.fillStyle=stain;g.fillRect(0,0,128,128);
+   for(const [i,run] of Array.from({length:21},(_,i)=>[i,(i-10)*4.35])){
+    const crown=22+Math.abs(run)*.88,depth=39+Math.abs(run)*.62;
+    g.beginPath();g.moveTo(64+run*1.14,128);
+    g.bezierCurveTo(64+run*1.04,102,64+run*1.21,depth,64+run*.23,crown);
+    g.strokeStyle=i%4===0?'#946b485a':i%4===1?'#fff2c56b':'#af896448';g.lineWidth=i%4===0?1.3:.73;g.stroke();
+   }
+   const channel=(x,y,w,h,col,d)=>{g.strokeStyle=col;g.lineWidth=d;g.strokeRect(x,y,w,h);};
+   channel(6,4,116,120,'#9d775867',4);
+   channel(12,8,104,112,'#f3d7a48d',2);
+   channel(17,10,94,108,'#96654561',1.5);
   }else if(kind==='rug-medallion'){
    // One authored textile for the whole ellipse. Ink-dyed yarn feels
    // softer than a repeated grid; keep the center quiet for the avatars.
@@ -1794,7 +1812,8 @@ if(!software){
  }
  for(const part of scene.children.filter(o=>o.userData.station==='wardrobe'&&o.geometry?.type==='BoxGeometry')){
   const {height,width}=part.geometry.parameters;
-  if(height>1.35&&width>.3)roomFinish(part,'joinery-oil',1,1.05);
+  if(height===1.39&&width===.36)roomFinish(part,'wardrobe-veneer',1,1);
+  else if(height>1.35&&width>.3)roomFinish(part,'joinery-oil',1,1.05);
   else if(width>1.2)roomFinish(part,'joinery-oil',.73,.95);
  }
  const vanityTop=vanity.children.find(o=>o.geometry?.type==='BoxGeometry'&&o.position.y===.78);

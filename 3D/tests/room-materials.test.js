@@ -14,3 +14,13 @@ test('static floor and rug detail are batched; room interaction and established 
  assert.ok(app.includes("mirrorBase.name='mirror-tabletop-base'"));
  assert.ok(app.includes("rearWall.name='rear-wall-grounded'"));
 });
+
+test('wardrobe veneer is restricted to the two recessed fronts, with the oiled frame retained',()=>{
+ const branch=app.slice(app.indexOf("else if(kind==='wardrobe-veneer')"),app.indexOf("else if(kind==='rug-medallion')"));
+ assert.match(branch,/bezierCurveTo/);
+ assert.match(branch,/channel\(6,4,116,120/);
+ const installation=app.slice(app.indexOf('for(const part of scene.children.filter(o=>o.userData.station'),app.indexOf('const vanityTop='));
+ assert.match(installation,/height===1\.39&&width===\.36\)roomFinish\(part,'wardrobe-veneer',1,1\)/);
+ assert.match(installation,/else if\(height>1\.35&&width>\.3\)roomFinish\(part,'joinery-oil'/);
+ assert.doesNotMatch(installation,/\.position\.|\.rotation\.|new T\./);
+});

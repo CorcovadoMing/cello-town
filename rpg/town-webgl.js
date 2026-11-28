@@ -854,10 +854,15 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  for(const x of [190,309]){box(x,15,221,5,30,5,edge);box(x,29,197,5,58,5,edge);}
  for(const z of [205,BENCH_HOME_Z,217,223])woodDetail(250,BENCH_SLAT_CENTER_Y,z,135,BENCH_SLAT_THICKNESS,4,z%2?wood:warm);
  for(const y of [38,47,55])woodDetail(250,y,196,135,5,4,wood);
+ const tableTones=['#d2aa69','#c6a16a','#d1ac77','#c7a771','#d2ac70'];
  function table(x,z,width=64,depth=32){
-  for(const dx of [-width*.39,width*.39])for(const dz of [-depth*.36,depth*.36])box(x+dx,14,z+dz,4,28,4,edge);
-  box(x,27,z,width,5,depth,wood);
-  for(let dz=-depth/2+3;dz<depth/2;dz+=6)box(x,30,z+dz,width-1,.6,4.8,warm);
+  for(const dx of [-width*.39,width*.39])for(const dz of [-depth*.36,depth*.36])woodDetail(x+dx,14,z+dz,4,28,4,edge);
+  woodDetail(x,27,z,width,5,depth,wood);
+  for(let dz=-depth/2+3,i=0;dz<depth/2;dz+=6,i++)
+   woodDetail(x,30,z+dz,width-1,.6,4.8,tableTones[i%tableTones.length]);
+  // Restrained timber pegs rather than another material or floating marks.
+  for(const dx of [-width*.365,width*.365])for(const dz of [-depth*.5+3,depth*.5-5])
+   box(x+dx,30.32,z+dz,1.05,.045,.75,'#9e7649');
  }
  table(490,230);
  // One pixel-art page texture on the tabletop; scene depth owns its occlusion
@@ -884,8 +889,8 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   bookMap.needsUpdate=true;
  }
  for(const c of chairs){
-  box(c.x,LOUNGE_SEAT_CENTER,c.y,16,LOUNGE_SEAT_DEPTH,13,wood);for(const x of [-5,5])for(const z of [-4,4])box(c.x+x,7,c.y+z,2.6,14,2.5,edge);
-  const side=c.id==='left'?-1:1;box(c.x+side*7,24,c.y,3,20,13,wood);
+  woodDetail(c.x,LOUNGE_SEAT_CENTER,c.y,16,LOUNGE_SEAT_DEPTH,13,wood);for(const x of [-5,5])for(const z of [-4,4])woodDetail(c.x+x,7,c.y+z,2.6,14,2.5,edge);
+  const side=c.id==='left'?-1:1;woodDetail(c.x+side*7,24,c.y,3,20,13,wood);
  }
  // Real mossy volumes and two wooden portals lining the distant edge.
  const fenceTint=['#aa8656','#b18c5a','#a98553','#ab895a'];
