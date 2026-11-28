@@ -6,6 +6,23 @@ import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './to
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
 import {drawWetSoil} from './wet-soil.js?v=exp5';
+
+// Keep phase on high-refresh displays without repeatedly rounding from the
+// last paint. Allow jitter on a 60 Hz display; never queue a catch-up paint.
+export function createTownFramePacer(hz=60){
+ const ms=1000/hz,slack=2;
+ let deadline=NaN,seen=NaN;
+ return {reset(){deadline=seen=NaN;},paint(t){
+  if(!Number.isFinite(t))return false;
+  if(!Number.isFinite(seen)||t<seen||t-seen>100)deadline=t;
+  if(t===seen)return false;
+  seen=t;
+  if(t+slack<deadline)return false;
+  deadline+=ms*(1+Math.floor((Math.max(0,t-deadline)+1e-7)/ms));
+  return true;
+ }};
+}
+
 import {addBenchGardenCraft,addCabinAndPondCraft} from './town-craft.js?v=1';
 export const ROOM_WIDTH=960,ROOM_HEIGHT=560;
 const W=ROOM_WIDTH,H=ROOM_HEIGHT;

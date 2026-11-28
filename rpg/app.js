@@ -1,4 +1,4 @@
-import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,makeTownWebGL} from './town-webgl.js?v=world-3d-023-pets-link';
+import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,createTownFramePacer,makeTownWebGL} from './town-webgl.js?v=world-3d-024-frame-pacer';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';
@@ -27,7 +27,8 @@ installPullToRefreshGuard();
 let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
 const $=id=>document.getElementById(id), canvas=$('world'),dlg=$('dialog'),KEY=/\/experimental(?:\/|$)/.test(globalThis.location?.pathname||'')?'cello-town-experimental-rpg-v1':'cello-town-rpg-v1';
-let g=canvas.getContext('2d'),webglTown=null,pending3DTown=null,last3DPaint=-Infinity;
+let g=canvas.getContext('2d'),webglTown=null,pending3DTown=null;
+const compactPacer=createTownFramePacer();
 const firstMapNotice=$('world-loading');
 const FLAT_TOWN=new URLSearchParams(location.search).get('flat')==='1';
 const TOWN_BOOT_DEADLINE_MS=4200;
@@ -49,7 +50,7 @@ const playHint=mapHint.innerHTML;
 function selectWatchView(next,reset=false){
  if((!reset&&(!webglTown||dlg.open||enteringRoom))||!watchButtons.some(b=>b.dataset.watchView===next))return;
  watchView=next;keys.clear();target=null;player.walking=false;teacherApproach.cancel();
- watchStage.dataset.watch=watchView;last3DPaint=-Infinity;
+ watchStage.dataset.watch=watchView;compactPacer.reset();
  for(const b of watchButtons)b.setAttribute('aria-pressed',String(b.dataset.watchView===watchView));
  mapHint.innerHTML=watchView==='play'?playHint:'景物照常流動，選「俯視遊玩」即可繼續';
 }
@@ -309,14 +310,13 @@ function drawPracticeStand(){
 }
 function setTownView(view){
  if(!view&&webglTown&&watchView!=='play')selectWatchView('play',true);
- webglTown=view;last3DPaint=-Infinity;if(firstMapPainted)canvas.dataset.renderer=view?'webgl':'canvas';
+ webglTown=view;compactPacer.reset();if(firstMapPainted)canvas.dataset.renderer=view?'webgl':'canvas';
  watchBar.hidden=!view;watchStage.dataset.watch=watchView;
 
 }
 function drawWebGLTown(t,rainFrame,petFrame,moisture){
  const v=webglTown;if(!v)return false;
- if(compactTown.matches&&t-last3DPaint<30)return true;
- last3DPaint=t;
+ if(compactTown.matches&&!compactPacer.paint(t))return true;
  const key=gameWeather.key,reduced=reducedMotion.matches;
  v.hideSprites();
  const sprite=(id,x,y,w,h,paint,alt=0)=>v.drawSprite(id,x,y,w,h,c=>{
