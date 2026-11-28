@@ -27,3 +27,17 @@ test('reaction is continuous, finite, noncontact and search follows miss',()=>{f
 
 test('every fish group has distinct colors; load seed still varies assignment',()=>{for(let seed=0;seed<200;seed++)assert.equal(new Set(fishVariants(seed).map(f=>f.color)).size,3);});
 test('cat aims with two hip wiggles then bursts, without changing idle',()=>{assert.ok(gardenLife(13750).cat.aim>.9);assert.equal(gardenLife(15000).cat.burst,1);assert.equal(gardenLife(25000).cat.burst,0);const signs=[13187.5,13562.5,13937.5,14312.5].map(t=>Math.sign(gardenLife(t).cat.wiggle));assert.deepEqual(signs,[1,-1,1,-1]);assert.equal(gardenLife(15000,true).cat.burst,0);});
+
+test('pond sprites have different moving tails, colored bodies and symmetric direction',async()=>{
+ const {drawPondFish}=await import('../ambience.js');
+ const sprite=(fin,tail,dir=1)=>{
+  const rows=[],g=new Proxy({},{get:(t,k)=> (...a)=>rows.push([k,...a]),set:(t,k,v)=>{rows.push([k,v]);return true;}});
+  drawPondFish(g,{x:160,y:460,dir,tail},{size:.9,length:1.1,girth:.8,fin,color:'#e59958'});
+  return rows;
+ };
+ const a=sprite('round',0),b=sprite('round',2),fork=sprite('fork',0),plain=sprite('none',0);
+ assert.deepEqual(a[0],['save']);assert.deepEqual(a.at(-1),['restore']);
+ assert.notDeepEqual(a,b);assert.notDeepEqual(a,fork);assert.notDeepEqual(a,plain);
+ assert.ok(a.some(row=>row[0]==='fillStyle'&&row[1]==='#e59958'));
+ assert.equal(sprite('fork',0,-1).find(row=>row[0]==='scale')[1],-fork.find(row=>row[0]==='scale')[1]);
+});

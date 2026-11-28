@@ -720,21 +720,41 @@ function createCello() {
   bar('bow-screw',[bx,.124,bz],[bx,.088,bz],.012,colors.metal);
   bar('bow-tip',[bx,1.626,bz],[bx-.025,1.583,bz],.012,colors.bow);
 
-  // Merge static parts by material. Eight draw calls, no shader/texture dependency,
-  // and the official SVG fallback receives ordinary BufferGeometry triangles.
+  // The hand-varnished spruce face follows the length of the instrument;
+  // the separate maple back/ribs show shallow transverse flame, not a
+  // uniform tan coat. Baked vertex pigments keep the same parts and draws.
   const batches=new Map();
   for(const {part,color,name} of parts) {
     part.updateMatrix();const g=part.geometry.index?part.geometry.toNonIndexed():part.geometry.clone();
-    g.applyMatrix4(part.matrix);const b=batches.get(color)||{positions:[],normals:[],names:[]};
+    g.applyMatrix4(part.matrix);const b=batches.get(color)||{positions:[],normals:[],tints:[],names:[]};
     const start=b.positions.length/3;
     b.positions.push(...g.attributes.position.array);b.normals.push(...g.attributes.normal.array);
+    if(color===colors.maple||color===colors.ribs){
+      const p=g.attributes.position;
+      for(let i=0;i<p.count;i++){
+        const x=p.getX(i),y=p.getY(i),z=p.getZ(i),a=Math.abs(x);
+        let grain=1;
+        if(name==='arched-top-with-two-f-holes'){
+          const late=Math.sin(a*83+Math.sin(y*8+a*6)*.54);
+          const fleck=Math.sin(a*169-y*2.5),edge=Math.min(1,(a/.30)**1.75);
+          grain=1+.112*late+.040*fleck-.105*edge+.064*Math.sin(y*8.3-1.5);
+        }else if(name==='ribs-and-back'){
+          const flame=Math.sin(y*89+a*12+Math.sin(a*31+z*23)*1.24);
+          grain=1.015+.102*flame+.068*Math.sin(y*37-a*16+z*7);
+        }else grain=1+.045*Math.sin(y*31+x*3);
+        b.tints.push(grain*1.025,grain,grain*.948);
+      }
+    }
     b.names.push({name,start,count:g.attributes.position.count});batches.set(color,b);
     part.geometry.dispose();g.dispose();
   }
   for(const [color,b] of batches) {
     const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(b.positions,3));
-    g.setAttribute('normal',new T.Float32BufferAttribute(b.normals,3));g.computeBoundingBox();g.computeBoundingSphere();
-    const m=new T.Mesh(g,new T.MeshStandardMaterial({color,roughness:.79,metalness:color===colors.metal?.18:0}));
+    g.setAttribute('normal',new T.Float32BufferAttribute(b.normals,3));
+    const varnish=b.tints.length>0;
+    if(varnish)g.setAttribute('color',new T.Float32BufferAttribute(b.tints,3));
+    g.computeBoundingBox();g.computeBoundingSphere();
+    const m=new T.Mesh(g,new T.MeshStandardMaterial({color,vertexColors:varnish,roughness:varnish?.67:.79,metalness:color===colors.metal?.18:0}));
     m.name=`cello-material-${color}`;m.userData.parts=b.names;
     m.castShadow=color===colors.maple||color===colors.ribs;m.receiveShadow=true;root.add(m);
   }
@@ -1434,9 +1454,9 @@ function performanceParts(){
  const instrument=new T.Group(),bow=new T.Group();instrument.name='performance-cello';bow.name='performance-bow';
  const performanceSource=cello;
  for(const source of performanceSource.children){
-  const buckets=new Map();
-  for(const part of source.userData.parts||[]){const parent=part.name.startsWith('bow-')?bow:instrument,values=buckets.get(parent)||{position:[],normal:[]};for(const key of['position','normal'])values[key].push(...source.geometry.attributes[key].array.slice(part.start*3,(part.start+part.count)*3));buckets.set(parent,values);}
-  for(const[parent,values]of buckets){const g=new T.BufferGeometry();for(const key of['position','normal'])g.setAttribute(key,new T.Float32BufferAttribute(values[key],3));const mesh=new T.Mesh(g,source.material);mesh.name=parent===instrument?'performance-cello-'+source.material.color.getHexString():'performance-bow-'+source.material.color.getHexString();mesh.userData.partNames=(source.userData.parts||[]).filter(p=>p.name.startsWith('bow-')===(parent===bow)).map(p=>p.name);mesh.castShadow=source.castShadow;mesh.receiveShadow=true;mesh.raycast=()=>{};parent.add(mesh);}
+  const buckets=new Map(),attributes=['position','normal',...(source.geometry.hasAttribute('color')?['color']:[])];
+  for(const part of source.userData.parts||[]){const parent=part.name.startsWith('bow-')?bow:instrument,values=buckets.get(parent)||Object.fromEntries(attributes.map(k=>[k,[]]));for(const key of attributes)values[key].push(...source.geometry.attributes[key].array.slice(part.start*3,(part.start+part.count)*3));buckets.set(parent,values);}
+  for(const[parent,values]of buckets){const g=new T.BufferGeometry();for(const key of attributes)g.setAttribute(key,new T.Float32BufferAttribute(values[key],3));const mesh=new T.Mesh(g,source.material);mesh.name=parent===instrument?'performance-cello-'+source.material.color.getHexString():'performance-bow-'+source.material.color.getHexString();mesh.userData.partNames=(source.userData.parts||[]).filter(p=>p.name.startsWith('bow-')===(parent===bow)).map(p=>p.name);mesh.castShadow=source.castShadow;mesh.receiveShadow=true;mesh.raycast=()=>{};parent.add(mesh);}
  }
  for(const child of bow.children)child.geometry.translate(-.399,-.208,-.047);
  const stool=new T.Group();stool.name='performance-stool';for(const x of[-.17,.17])for(const z of[-.13,.13])box(x,.17,z,.045,.32,.045,'#967650',stool);box(0,.345,0,.48,.06,.40,'#b99a6c',stool);stool.traverse(o=>o.userData.station='cello');

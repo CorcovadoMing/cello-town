@@ -196,7 +196,40 @@ export function drawGardenCat(g,c){
  if(vertical&&!back&&!tucked){g.fillStyle='#fff0cb';g.fillRect(5,4,1,1);g.fillRect(8,4,1,1);}
  g.restore();if(c.wetShake?.spray>.14)drawPetShake(g,c.x,c.groundY??c.y,c.wetShake);
 }
-export function drawPondLife(g,time,reduced,variants=defaultFish){g.save();g.beginPath();g.rect(48,388,187,135);g.clip();for(const [i,f] of pondLife(time,reduced).entries()){const v=variants[i];g.save();g.translate(f.x,f.y);g.scale(f.dir*v.size*v.length,v.size*v.girth);g.fillStyle=v.color;g.globalAlpha=.92;g.beginPath();g.ellipse(0,0,9,4,0,0,Math.PI*2);g.fill();if(v.fin!=='none'){g.beginPath();g.moveTo(-7,0);if(v.fin==='round'){g.quadraticCurveTo(-20,-9+f.tail,-15,f.tail);g.quadraticCurveTo(-20,9+f.tail,-7,0);}else{g.lineTo(-15,-5+f.tail);g.lineTo(-12,f.tail);g.lineTo(-15,5+f.tail);}g.closePath();g.fill();}g.fillStyle='#fff1c0';g.fillRect(0,-2,4,2);g.fillStyle='#567f79';g.fillRect(6,-1,1.5,1.5);g.restore();if(f.surface!==null){g.globalAlpha=(1-f.surface)*.55;g.strokeStyle='#e2f0d9';g.lineWidth=1.2;g.beginPath();g.ellipse(f.x,f.y,5+f.surface*19,2+f.surface*7,0,0,Math.PI*2);g.stroke();g.globalAlpha=1;}}g.restore();}
+// Small pond sprites retain a crisp painted edge at the original map scale.
+export function drawPondFish(g,f,v){
+ g.save();g.translate(f.x,f.y);g.scale(f.dir*v.size*v.length,v.size*v.girth);
+ const path=(color,coords,opacity=.9)=>{
+  g.fillStyle=color;g.globalAlpha=opacity;g.beginPath();
+  g.moveTo(coords[0],coords[1]);for(let i=2;i<coords.length;i+=2)g.lineTo(coords[i],coords[i+1]);
+  g.closePath();g.fill();
+ };
+ const tail=f.tail;
+ if(v.fin==='round')path(v.color,[-6,-1,-13,-4+tail,-16,-2+tail,-16,2+tail,-13,5+tail,-6,1],.69);
+ if(v.fin==='fork')path(v.color,[-6,-1,-16,-5+tail,-15,-1+tail,-12,tail,-15,1+tail,-16,5+tail,-6,1],.72);
+ if(v.fin==='none')path(v.color,[-6,-1,-12,-2+tail,-14,tail,-12,2+tail,-6,1],.70);
+ path(v.color,[1,-3,4,-3,2,-6,-1,-5,-4,-3],.59);
+ path(v.color,[3,2,1,5,-3,5,-4,3],.66);
+ path(v.color,[-9,-1,-6,-2,-4,-3,0,-4,5,-4,7,-3,9,-1,9,1,7,2,5,3,0,4,-4,3,-7,2,-9,1]);
+ // Species keep their existing seeded pigments; transparent accents catch
+ // the small reflective highlights without flattening the whole body.
+ g.globalAlpha=.39;g.fillStyle='#243c42';g.fillRect(-4,2,7,1);g.fillRect(3,1,1,2);
+ g.globalAlpha=.45;g.fillStyle='#fff0bc';g.fillRect(-4,-2,4,1);g.fillRect(0,-3,3,1);
+ if(v.fin==='round'){g.fillRect(-4,0,2,1);g.fillRect(1,-1,2,1);}
+ if(v.fin==='fork'){g.globalAlpha=.39;g.fillStyle='#364744';g.fillRect(-3,-1,2,2);g.fillRect(0,-1,1,2);}
+ g.globalAlpha=.82;g.fillStyle='#253839';g.fillRect(6,-1,1.4,1.4);
+ g.globalAlpha=.62;g.fillStyle='#fff4cf';g.fillRect(6,-1,.6,.6);
+ g.restore();
+}
+export function drawPondLife(g,time,reduced,variants=defaultFish){
+ g.save();g.beginPath();g.rect(48,388,187,135);g.clip();
+ for(const [i,f] of pondLife(time,reduced).entries()){
+  drawPondFish(g,f,variants[i]);
+  if(f.surface!==null){g.globalAlpha=(1-f.surface)*.55;g.strokeStyle='#e2f0d9';g.lineWidth=1.2;
+   g.beginPath();g.ellipse(f.x,f.y,5+f.surface*19,2+f.surface*7,0,0,Math.PI*2);g.stroke();g.globalAlpha=1;}
+ }
+ g.restore();
+}
 // Authored tiny visitors: species-specific markings ride the existing wingbeat.
 // No spawn, trajectory, timing, direction or attention-state changes here.
 export function drawGardenVisitor(g,v){
