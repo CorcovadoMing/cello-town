@@ -1,6 +1,6 @@
 import {makeCountryside} from './town-countryside.js?v=4';
 import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=open-southwest-2';
-import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=valley-sky-3';
+import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=valley-sky-4';
 import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './town-orchard.js?v=9';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
@@ -423,7 +423,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const scene=new T.Scene();
  const mapBackground=new T.Color('#eee3d5');
  scene.background=mapBackground;
- const horizons={sun:makePondHorizon(T,'sun'),rain:makePondHorizon(T,'rain'),breeze:null};
+ const horizons={sun:null,rain:null,breeze:null};
  const mapCamera=makeTownCamera(T);
  const pondCamera=new T.PerspectiveCamera(POND_SHOT.fov,W/H,2,2350);
  const [ex,ey,ez]=POND_SHOT.eye,[lx,ly,lz]=POND_SHOT.target;
@@ -1097,8 +1097,9 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    updateGrass(clock,weather,motion);
    updateShore(weather,close);
    updateCountryside(close,clock,motion);
-   if(close&&weather==='breeze'&&!horizons.breeze)horizons.breeze=makePondHorizon(T,'breeze');
-   scene.background=close?(horizons[weather]||horizons.sun):mapBackground;
+   const sky=weather==='rain'||weather==='breeze'?weather:'sun';
+   if(close&&!horizons[sky])horizons[sky]=makePondHorizon(T,sky);
+   scene.background=close?horizons[sky]:mapBackground;
    if(weather!==lastWeather){
     lastWeather=weather;
     mapBackground.set(weather==='rain'?'#dcd8cd':'#eee5d6');

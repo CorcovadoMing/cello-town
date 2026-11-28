@@ -73,21 +73,58 @@ export function makePondHorizon(T,weather){
   for(const [at,color] of stops)ink.addColorStop(at,color);
   g.fillStyle=ink;g.fillRect(-1,-1,2,2);g.restore();
  }
- // Different lobe sizes and vertical overlap keep even a still sky legible
- // from the phone while leaving openings between its low banks.
+ // Paint a soft density field with directional light. Coarse folds form
+ // the body; a separate fine turbulence breaks up the edge and washes it
+ // into the sky. This is baked once into the weather texture, never per frame.
+ const wisps=[[-.84,.12,.35,.21],[-.52,.02,.41,.31],[-.23,-.18,.40,.39],
+  [.07,-.19,.42,.36],[.34,-.09,.35,.32],[.62,.03,.40,.26],[.86,.11,.26,.19]];
+ const sunnyPuffs=[[-.83,.19,.34,.23],[-.58,.04,.39,.38],[-.36,-.12,.35,.47],[-.13,-.29,.37,.47],
+  [.16,-.49,.39,.54],[.43,-.26,.43,.45],[.68,-.03,.42,.31],[.87,.14,.26,.20]];
+ const banks=[[-.86,.12,.37,.33],[-.59,-.07,.38,.43],[-.30,-.28,.42,.55],
+  [.02,-.40,.43,.58],[.32,-.26,.43,.57],[.59,-.10,.36,.43],[.84,.07,.35,.34]];
+ const clamp01=x=>Math.max(0,Math.min(1,x));
+ const fade=x=>{const t=clamp01(x);return t*t*(3-2*t);};
+ function byteColor(h){return [1,3,5,7].map((i,k)=>h.length>i?parseInt(h.slice(i,i+2),16):k===3?255:0);}
  function cloud(x,y,w,h,shape,core,mid,edge){
-  g.save();g.translate(x,y);g.scale(w,h);
-  const ink=g.createLinearGradient(0,-1,0,.75);
-  for(const [at,color] of [[0,edge],[.26,mid],[.58,core],[1,edge]])ink.addColorStop(at,color);
-  g.fillStyle=ink;g.beginPath();
-  g.moveTo(-1,.12);
-  shape.forEach(points=>g.bezierCurveTo(...points));
-  g.bezierCurveTo(.54,.53,-.52,.72,-1,.12);
-  g.fill();g.restore();
+  const width=Math.max(48,Math.min(202,Math.round(w*.94)));
+  const height=Math.max(18,Math.min(73,Math.round(h*.88)));
+  const layer=document.createElement('canvas');layer.width=width;layer.height=height;
+  const ctx=layer.getContext('2d'),pixels=ctx.createImageData(width,height);
+  const a=byteColor(core),b=byteColor(mid),c=byteColor(edge),salt=(x*.024+y*.046);
+  const heavy=shape===banks;
+  const fields=shape.map(([xx,yy,rx,ry],k)=>{
+   const wobble=Math.sin(salt+k*2.41)*.055;
+   return [xx+wobble,yy+wobble*.64,1/rx,1/ry];
+  });
+  for(let j=0;j<height;j++)for(let i=0;i<width;i++){
+   const u=(i+.5)/width*2.50-1.25,v=(j+.5)/height*2.48-1.24;
+   let body=0,mix=0;
+   for(let k=0;k<fields.length;k++){
+    const f=fields[k],du=(u-f[0])*f[2],dv=(v-f[1])*f[3];
+    const q=Math.max(0,1-du*du-dv*dv);
+    body=Math.max(q,body);mix+=q;
+   }
+   const curl=.10*Math.sin(u*18+v*23+salt)+.07*Math.sin(v*36-u*33+salt*1.7)
+             +.043*Math.sin(u*64+Math.sin(v*28+salt)*1.6)+.025*Math.sin(v*107-u*113+salt*2.3);
+   const coherence=.09*Math.sin(u*8+Math.sin(v*8)*1.7+salt)+.04*Math.cos(u*13-v*18+salt);
+   const density=body*.76+Math.min(.37,mix*.20)+curl+coherence;
+   const outline=fade((density-(heavy?.075:.11))/ (heavy?.42:.49));
+   if(outline===0)continue;
+   const opacity=heavy?.90:.81;
+   const depth=clamp01(body*.56+mix*.18);
+   const lit=clamp01(.60-v*.52+curl*.66+coherence*.32);
+   const bodyMix=clamp01(.35+depth*.45-lit*.34);
+   const rim=lit*lit*.25+(1-outline)*.17;
+   const p=(j*width+i)*4;
+   for(let k=0;k<3;k++){
+    const mass=b[k]+(a[k]-b[k])*bodyMix;
+    pixels.data[p+k]=mass+(c[k]-mass)*rim+(lit-.43)*(heavy?20:13);
+   }
+   pixels.data[p+3]=outline*opacity*(.57+depth*.43)*Math.max(a[3],b[3]);
+  }
+  ctx.putImageData(pixels,0,0);
+  g.drawImage(layer,x-w*1.25,y-h*1.24,w*2.50,h*2.48);
  }
- const wisps=[[-.85,-.08,-.64,.03,-.54,-.18],[-.38,-.40,-.14,-.37,-.02,-.20],[.19,-.37,.34,-.19,.45,-.22],[.67,-.20,.91,.03,1,.10]];
- const banks=[[-.96,-.04,-.84,-.22,-.72,-.21],[-.64,-.68,-.35,-.76,-.24,-.46],[-.08,-.94,.21,-.84,.30,-.43],
-  [.47,-.69,.65,-.58,.72,-.28],[.85,-.21,.97,-.12,1,.10]];
  if(breeze){
   // No sharp sun disk; long feathered veils streak in one direction.
   // This remains a dry sky, visibly different from the low rain banks.
@@ -106,8 +143,9 @@ export function makePondHorizon(T,weather){
   g.fillStyle=disc;g.beginPath();g.arc(728,88,15.6,0,Math.PI*2);g.fill();
   cloud(158,107,193,27,wisps,'#fff7dfdc','#f8f2d99c','#f7fbf000');
   cloud(233,124,168,19,wisps,'#f9ebd59b','#f9f8e67a','#f8f8ec00');
-  cloud(411,65,107,15,wisps,'#f7f5e9bc','#f8f8ea91','#f8f8ed00');
-  cloud(894,127,161,32,wisps,'#fff5dcda','#fcf5e498','#f5f6e900');
+  cloud(404,65,112,23,sunnyPuffs,'#bac7d1bd','#fff9ebea','#f5ece28a');
+  cloud(897,119,123,22,sunnyPuffs,'#c4c9c9ad','#fff6e8da','#f1ede377');
+  cloud(864,138,167,13,wisps,'#fff5dcad','#fcf5e483','#f5f6e900');
   cloud(571,143,106,12,wisps,'#fffbeb9c','#fffbef67','#ffffff00');
  }else{
   glow(648,133,281,133,[[0,'#fff0d2c8'],[.32,'#efe2d08e'],[1,'#d7cbbb00']]);

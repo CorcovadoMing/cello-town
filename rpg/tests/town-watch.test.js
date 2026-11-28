@@ -27,7 +27,11 @@ test('each weather sky has its own silhouette with a solar disk only on sunny da
   const read=weather=>{
    const calls=[],gradient={addColorStop(...a){calls.push(['stop',...a]);}};
    const c=new Proxy({}, {get(o,k){if(k in o)return o[k];
-     return (...v)=>{calls.push([k,...v]);return String(k).includes('Gradient')?gradient:undefined;};}});
+     return (...v)=>{
+      if(k==='createImageData')return {data:new Uint8ClampedArray(v[0]*v[1]*4)};
+      if(k==='putImageData'){calls.push([k,v[0].data.some((x,i)=>i%4===3&&x>40)]);return;}
+      calls.push([k,...v]);return String(k).includes('Gradient')?gradient:undefined;
+    };}});
    globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>c})};
    const T={CanvasTexture:class{constructor(source){this.image=source;}},SRGBColorSpace:'srgb'};
    const texture=makePondHorizon(T,weather);
@@ -38,7 +42,8 @@ test('each weather sky has its own silhouette with a solar disk only on sunny da
   const n=(list,op)=>list.filter(c=>c[0]===op).length;
   assert.deepEqual([n(sun,'arc'),n(breeze,'arc'),n(rain,'arc')],[1,0,0]);
   assert.deepEqual([n(sun,'rotate'),n(breeze,'rotate'),n(rain,'rotate')],[0,1,0]);
-  assert.ok(n(rain,'bezierCurveTo')>n(breeze,'bezierCurveTo'));
+  assert.ok(n(rain,'drawImage')>n(breeze,'drawImage'));
+  for(const branch of [sun,breeze,rain])assert.ok(branch.filter(c=>c[0]==='putImageData').every(c=>c[1]));
  }finally{
   if(prior===undefined)delete globalThis.document;
   else globalThis.document=prior;
