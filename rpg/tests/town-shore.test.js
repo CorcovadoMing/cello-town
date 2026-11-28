@@ -5,6 +5,8 @@ import {groundContactSeeds} from '../town-shore.js';
 test('pondside contact shades stay anchored under objects and preserve a translucent feather',()=>{
  const seeds=groundContactSeeds([[65,250,1.8],[340,476,1.2]],{x:580,depth:239});
  assert.ok(seeds.some(([x,z,...rest])=>x===65&&z===250+46*1.8&&rest[2]>.3));
+ const house=seeds.filter(([x])=>x>580);
+ assert.deepEqual(house,[[676,240,61,3.5,.19]]);
  assert.ok(seeds.some(([x,z])=>x===250&&z===462)); // partly over submerged bank supports
  assert.ok(seeds.every(([x,z,rx,rz,a])=>x>0&&x<960&&z>0&&z<560&&rx>0&&rz>0&&a>=.15&&a<.5));
  const s=readFileSync(new URL('../town-shore.js',import.meta.url),'utf8');

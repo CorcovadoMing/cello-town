@@ -11,9 +11,9 @@ const SHADOWS=Object.freeze([
 export function groundContactSeeds(trees,room){
  return [...SHADOWS,
   ...trees.map(([x,z,s])=>[x,z+46*s,11*s,8*s,.34]),
-  [room.x+104,room.depth+1,91,31,.41],
-  [room.x+78,room.depth+6,23,11,.31],
-  [room.x+132,room.depth+6,23,11,.31]];
+  // The chalet geometry casts the only long shadow. Anchor a faint
+  // contact edge just at its plinth, not across the old porch footprint.
+  [room.x+96,room.depth+1,61,3.5,.19]];
 }
 function contactMap(T,W,H,seeds){
  const c=document.createElement('canvas');c.width=960;c.height=560;
