@@ -333,13 +333,18 @@ function drawWebGLTown(t,rainFrame,petFrame,moisture){
  const {cat,visitor}=petFrame.life;
  if(cat)sprite('cat',cat.x,cat.groundY+6,64,52,()=>drawGardenCat(g,cat));
  if(visitor)sprite('visitor',visitor.x,visitor.y+25,45,47,()=>drawGardenVisitor(g,visitor),27);
- if(petFrame.dogActive){const d=petFrame.dog;sprite('dog',d.x,d.y+5,68,49,()=>drawRainDog(g,d));}
+ // The dog owns a sprite even when resting. The bench cat can leave independently.
+ const d=petFrame.dog;
+ sprite('dog',d.x,d.y+5,68,49,()=>{
+  if(petFrame.dogActive)drawRainDog(g,d);
+  else drawBenchLife(g,t,reduced,{benchCatActive:true});
+ });
  // Sprite sheets are cached by ID. Every pose of this cat must use the
  // same sheet dimensions, even on a world load during rain.
  const b=petFrame.benchCat,active=petFrame.benchCatActive;
  sprite('bench-cat',active?b.x:222,active?b.y+6:220,66,53,()=>{
   if(active)drawRainBenchCat(g,{...b,jump:0});
-  else drawBenchLife(g,t,reduced,petFrame);
+  else drawBenchLife(g,t,reduced,{dogActive:true});
  },benchCatLift(b));
  for(let i=0;i<2;i++)if(rainFrame.actorStage[i]!=='closed'){
   const a=i===0?player:npc;
