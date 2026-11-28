@@ -27,6 +27,31 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
    if((i+cluster)%6===0&&h>3.25)shape('sphere',x+p,h+1.55,z-.26,.95,.37,.69,florets[(i+cluster)%florets.length]);
   }
  }
+ // A few uneven real patches near the fence: seedheads and low clover
+ // share the grass batch. Avoid uniform scatter along the walkable trail.
+ const marginSeed=48049;let cloverSeed=marginSeed;
+ const patchRand=()=>((cloverSeed=(Math.imul(cloverSeed,1664525)+1013904223)>>>0)/4294967296);
+ const cloverColors=['#839057','#9da15e','#657c4d','#bcb77f','#e2d6a5'].map(c=>new T.Color(c));
+ function blade(a,b,c,i){
+  vertices.push(...a,...b,...c);
+  const q=cloverColors[i];for(const strength of [.85,.93,1])rgb.push(q.r*strength,q.g*strength,q.b*strength);
+ }
+ for(const [cx,cz,rx,rz,n] of [[52,10,17,5,19],[155,53,34,8,29],[302,45,20,11,23],[536,12,37,6,34],[624,54,23,10,24],[892,52,30,9,30]]){
+  for(let j=0;j<n;j++){
+   const a=patchRand()*TAU,r=Math.sqrt(patchRand());
+   const x=cx+Math.cos(a)*r*rx,z=cz+Math.sin(a)*r*rz;
+   if(Math.abs(z-marginTrail(x))<7)continue;
+   const dx=x-W/2,dz=z-H/2,h=1.0+patchRand()*2.55;
+   for(let k=0;k<3;k++){
+    const th=k*TAU/3+patchRand()*.7,ax=Math.cos(th),az=Math.sin(th);
+    const u=.52+patchRand()*1.36,width=.31+patchRand()*.35;
+    const tip=[dx+ax*u,1.62+h*(k%2?.83:1),dz+az*u];
+    blade([dx,1.52,dz],[dx+ax*u*.53-az*width,1.65+h*.66,dz+az*u*.53+ax*width],tip,(j+k)%4);
+    blade([dx,1.52,dz],tip,[dx+ax*u*.53+az*width,1.57+h*.49,dz+az*u*.53-ax*width],(j+k+1)%4);
+   }
+   if(j%7===0)blade([dx-.62,h+1.44,dz],[dx+.63,h+1.46,dz+.37],[dx+.04,h+2.15,dz+.2],4);
+  }
+ }
  dots.setAttribute('position',new T.Float32BufferAttribute(vertices,3));
  dots.setAttribute('color',new T.Float32BufferAttribute(rgb,3));dots.computeVertexNormals();
  const wild=new T.Mesh(dots,new T.MeshLambertMaterial({side:T.DoubleSide,vertexColors:true}));wild.receiveShadow=true;scene.add(wild);
@@ -150,6 +175,31 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
    group.add(mesh);
   }
  }
- // Rough farm stone silhouettes grow smaller along the dips in the hillside.
+ // An abandoned drystone boundary gives the near pasture its own
+ // depth without occluding the pale distant ridge. Batched once, outside
+ // navigation and hidden in the overhead view, like the rest of the ridge.
+ const stoneGeo=new T.BufferGeometry(),rock=[],stoneTints=[];
+ const stoneColors=['#a9a087','#958d73','#afa38c','#a39b7d','#ada88e'].map(x=>new T.Color(x));
+ for(const [x0,x1,crest,phase] of [[-226,127,-90,.1],[230,420,-154,1.7],[540,804,-123,2.38],[846,1032,-129,3.7]]){
+  let at=x0;
+  while(at<x1){
+   const width=6+patchRand()*9,x=at+width*.5;
+   const z=crest+12*Math.sin(x*.011+phase)+4*Math.sin(x*.034+phase);
+   at+=width*.92+patchRand()*2.1;
+   if(patchRand()<.12)continue;
+   const height=3.1+patchRand()*4.6,depth=4.6+patchRand()*2.5,base=pastureHeight(x,z)-.62;
+   const q=stoneColors[Math.floor(patchRand()*stoneColors.length)];
+   const points=[
+    [x-width*.51-W/2,base,z+depth*.5-H/2],[x+width*.48-W/2,base,z+depth*.45-H/2],
+    [x+width*.48-W/2,base,z-depth*.42-H/2],[x-width*.5-W/2,base,z-depth*.5-H/2],
+    [x-width*.39-W/2,base+height*.84,z+depth*.36-H/2],[x+width*.34-W/2,base+height*.97,z+depth*.32-H/2],
+    [x+width*.38-W/2,base+height*.76,z-depth*.41-H/2],[x-width*.38-W/2,base+height,z-depth*.35-H/2]];
+   const faces=[[0,1,4,.91],[1,5,4,.85],[4,5,7,1.06],[5,6,7,.98],[1,2,5,.82],[2,6,5,.86],[3,0,7,.72],[0,4,7,.77]];
+   for(const [a,b,c,k] of faces)for(const i of [a,b,c]){rock.push(...points[i]);stoneTints.push(q.r*k,q.g*k,q.b*k);}
+  }
+ }
+ stoneGeo.setAttribute('position',new T.Float32BufferAttribute(rock,3));
+ stoneGeo.setAttribute('color',new T.Float32BufferAttribute(stoneTints,3));stoneGeo.computeVertexNormals();
+ group.add(new T.Mesh(stoneGeo,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
  return close=>{ridge.visible=close;group.visible=close;};
 }

@@ -13,12 +13,12 @@ const firAt=new Set([2,4,9,12]);
 export const orchardFamily=i=>firAt.has(i)?'fir':'broadleaf';
 export const orchardProfile=i=>profiles[recipe[i]??i%profiles.length];
 // Painted compound leaves, not external art or opaque crown sprites.
-function leaflet(g,x,y,angle,len,wide,tone){
+function leaflet(g,x,y,angle,len,wide,tone,season=0){
  g.save();g.translate(x,y);g.rotate(angle);
  const ink=g.createLinearGradient(0,1,wide,-len);
- ink.addColorStop(0,`rgb(${tone-35},${tone-31},${tone-39})`);
- ink.addColorStop(.57,`rgb(${tone-3},${tone},${tone-8})`);
- ink.addColorStop(1,`rgb(${Math.min(255,tone+20)},${Math.min(255,tone+21)},${Math.min(255,tone+10)})`);
+ ink.addColorStop(0,`rgb(${tone-39+season},${tone-33},${tone-39-season})`);
+ ink.addColorStop(.57,`rgb(${tone-3+season},${tone},${tone-9-season})`);
+ ink.addColorStop(1,`rgb(${Math.min(255,tone+20+season)},${Math.min(255,tone+23)},${Math.min(255,tone+12-season)})`);
  g.fillStyle=ink;g.beginPath();g.moveTo(-.7,0);
  g.bezierCurveTo(-wide,-len*.23,-wide*.72,-len*.75,.43,-len);
  g.bezierCurveTo(wide*.65,-len*.87,wide,-len*.38,.6,0);g.closePath();g.fill();
@@ -54,13 +54,31 @@ export function makeOrchardLeaf(T,needle=false){
   const len=9+next()*13;
   leaflet(g,x,y,a*1.20+.4,len,len*(needle?.19:.38),219+Math.round(next()*35));
  }
+ if(!needle){
+  // Individual branch tips break the smooth patch: small pale paired
+  // leaflets, attached to fine crooked stems rather than floating dots.
+  for(let tip=0;tip<22;tip++){
+   const a=tip*2.399963,r=Math.sqrt((tip+.45)/22);
+   const x=96+Math.cos(a)*r*70,y=98+Math.sin(a)*r*67;
+   const direction=a+(next()-.5)*1.25,len=11+next()*13;
+   const u=Math.cos(direction),v=Math.sin(direction);
+   const age=Math.round((next()-.36)*17);
+   g.strokeStyle='rgba(151,147,113,.33)';g.lineWidth=.74;
+   g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+u*len*.6-v*1.8,y+v*len*.6+u*1.8,x+u*len,y+v*len);g.stroke();
+   for(let pair=0;pair<3;pair++)for(const side of [-1,1]){
+    const k=(pair+.8)/3.45+(next()-.5)*.10;
+    const size=5.8+next()*5.6;
+    leaflet(g,x+u*len*k,y+v*len*k,direction+Math.PI/2+side*(.67+next()*.55),size,size*(.31+next()*.12),205+Math.round(next()*37),age);
+   }
+  }
+ }
  const texture=new T.CanvasTexture(c);
  texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=2;
  const geometry=new T.PlaneGeometry(1,1);
  // MeshLambert's texture and alpha threshold are forwarded by Three's
  // directional depth material, giving fine perforated leaf shadows.
  const material=new T.MeshPhongMaterial({map:texture,bumpMap:texture,bumpScale:.26,shininess:8,specular:'#283a24',alphaTest:.38,side:T.DoubleSide,
-  emissive:'#768950',emissiveIntensity:.29});
+  emissive:'#768950',emissiveIntensity:needle?.29:.20});
  material.shadowSide=T.DoubleSide;
  return {geometry,material};
 }
@@ -191,7 +209,8 @@ export function addOrchardTree({shape},x,z,scale,index){
   const surface=Math.sqrt(Math.max(.09,1-nx*nx-ny*ny));
   const fy=cy+ny*h*.44,fx=nx*w*.49,fz=surface*d*.47+4.2;
   const width=9+next()*10;
-  const tint=j%7===0||ny>.14&&nx<.25?light:dark;
+  const exposed=.53*ny-.36*nx+.24*Math.sin(a*3.1);
+  const tint=exposed>.29?light:exposed<-.17?'#668348':ny>.06?'#91ac59':dark;
   emit('orchard-leaf',fx,fy,fz,width,width*(.68+next()*.23),1,tint,
    .34-ny*.29+(next()-.5)*.18,-nx*.58+(next()-.5)*.29,(next()-.5)*.85);
  }
@@ -213,7 +232,8 @@ export function addOrchardTree({shape},x,z,scale,index){
   const depth=Math.sqrt(Math.max(.1,1-nx*nx-ny*ny));
   const fy=cy+ny*h*.47,fx=nx*w*.49,fz=depth*d*.51+6.0;
   const width=6.7+next()*7.4;
-  const ink=(ny>.02&&j%4!==1)||j%9===0?light:dark;
+  const glow=.61*ny-.24*nx+.30*Math.cos(phase*2.8);
+  const ink=glow>.33?light:glow>.07?'#a2b66c':glow<-.20?'#627d49':dark;
   emit('orchard-leaf',fx,fy,fz,width,width*(.70+next()*.41),1,ink,
    .16+(next()-.5)*.30,nx*.30+(next()-.5)*.42,phase*.14);
  }
