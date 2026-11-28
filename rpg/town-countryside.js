@@ -111,6 +111,23 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
  }
  // Actual sloped mesh outside the normal world. Its geometry fills the
  // low view behind the sky ridges, but never touches the walkable 2D plane.
+ // Paint the colour of the wild meadow into the actual hillside, under
+ // individual flower heads. A far-view flower sea must read as a surface,
+ // not only as isolated specks floating over green terrain.
+ const meadowPatches=[
+  [719,-397,163,100,0],[863,-480,198,112,2],[1037,-507,213,124,0],
+  [1199,-517,226,124,1],[1366,-478,177,113,0],[1531,-400,190,121,3],
+  [1740,-331,218,102,2],[1941,-281,219,100,1]
+ ];
+ const meadowInks=['#cd9bbd','#e5baaf','#b69bbe','#ddbe8a'].map(c=>new T.Color(c));
+ function blossomCover(x,z,tint){
+  const noise=.16*Math.sin(x*.047+z*.055)+.12*Math.sin(x*.091-z*.071)+.07*Math.cos(z*.147+x*.063);
+  for(const [cx,cz,rx,rz,paint] of meadowPatches){
+   const d=Math.hypot((x-cx)/rx,(z-cz)/rz);
+   const q=Math.min(1,Math.max(0,(1.11-d+noise)*1.22));
+   if(q)tint.lerp(meadowInks[paint],q*q*(3-2*q)*.78);
+  }
+ }
  const ridgeGeo=new T.PlaneGeometry(2780,840,111,53);ridgeGeo.rotateX(-Math.PI/2);
  const ridgePoints=ridgeGeo.attributes.position,colors=new Float32Array(ridgePoints.count*3);
  const olive=new T.Color('#819564'),dusk=new T.Color('#929b7e'),hay=new T.Color('#bac28e');
@@ -119,32 +136,15 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
   ridgePoints.setX(i,x-W/2);ridgePoints.setY(i,pastureHeight(x,z));ridgePoints.setZ(i,z-H/2);
   const b=.39+Math.sin(x*.016+z*.017)*.14+Math.cos(z*.03)*.10;
   const far=Math.min(.81,Math.max(0,-z*.0010)),t=olive.clone().lerp(hay,b).lerp(dusk,far);
+  blossomCover(x,z,t);
   colors[i*3]=t.r;colors[i*3+1]=t.g;colors[i*3+2]=t.b;
  }
  ridgeGeo.setAttribute('color',new T.BufferAttribute(colors,3));ridgeGeo.computeVertexNormals();
  const ridge=new T.Mesh(ridgeGeo,new T.MeshLambertMaterial({vertexColors:true}));
  ridge.visible=false;scene.add(ridge);
  const group=new T.Group();group.visible=false;scene.add(group);
- // Fading terraced field marks make the background read as distinct
- // farm slopes rather than an uninterrupted flat horizon.
+ // Only winding footpaths mark the background pasture; no agricultural rows.
  const fieldRows=new T.BufferGeometry(),fieldPts=[],fieldColors=[];
- const ink=['#a8ac80','#9ba174','#bec299'].map(x=>new T.Color(x));
- for(let lane=0;lane<14;lane++){
-  const z0=-120-lane*23-(lane%3)*12,first=-243+(lane%4)*212,width=134+rand()*245;
-  const edges=[[],[]];
-  for(let j=0;j<17;j++){
-   const x=first+width*j/16,z=z0+Math.sin(j*.13+lane*.8)*8+Math.cos(x*.014)*4;
-   for(let k=0;k<2;k++){
-    const zz=z+(k?1:-1)*(1.5+Math.sin(j/16*Math.PI)*2.6);
-    edges[k].push([x-W/2,pastureHeight(x,zz)+.55,zz-H/2]);
-   }
-  }
-  for(let j=0;j<16;j++){
-   fieldPts.push(...edges[0][j],...edges[1][j],...edges[0][j+1],
-    ...edges[1][j],...edges[1][j+1],...edges[0][j+1]);
-   const c=ink[lane%3];for(let i=0;i<6;i++)fieldColors.push(c.r,c.g,c.b);
-  }
- }
  // Lead the pond camera through a gap rather than hiding all distant
  // marks behind the near trees. One path enters a high open pasture,
  // with two short branches tracing the slope. Same static terrain batch.
@@ -250,49 +250,44 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
  // The valley has its own silhouette and colour rhythm, not more grass
  // scatter. Only the low camera sees the non-walkable 3D background.
  const relief=[],reliefColors=[];
- const palette={
-  near:['#718b7b','#638075','#849784'],
-  mid:['#81959f','#718899','#98a3ad'],
-  far:['#b5c3ce','#9eafc4','#c2cbd6']
- };
- function triangle(output,paint,a,b,c,ink){
-  output.push(...a,...b,...c);
-  for(const f of [.99,1.025,.975])paint.push(ink.r*f,ink.g*f,ink.b*f);
- }
+ // Elongated foothills: broad saddles and unequal shoulders instead of
+ // singular high peaks. Layers descend and warm into the same aerial haze.
  const ridges=[
-  {z:-1230,depth:400,colors:palette.far,peaks:[[-310,132],[120,181],[349,232],[545,211],[750,380],[867,329],[1082,575],[1231,511],[1332,582],[1544,401],[1680,468],[1867,355],[1926,226],[2200,439],[2380,344],[2642,191]]},
-  {z:-1010,depth:370,colors:palette.mid,peaks:[[-230,93],[58,127],[232,204],[467,155],[641,277],[773,241],[955,361],[1055,280],[1185,389],[1290,279],[1413,326],[1570,246],[1710,269],[1860,180],[2100,89]]},
-  {z:-820,depth:280,colors:palette.near,peaks:[[-370,58],[-100,105],[75,167],[216,120],[417,175],[595,152],[744,222],[900,168],[1018,242],[1136,182],[1298,229],[1499,159],[1800,70]]}
+  {z:-1260,depth:295,sky:'#a2b5b4',body:'#749699',mist:'#c1cdc0',peaks:[[-810,160],[0,195],[365,235],[660,271],[852,236],[1149,302],[1349,275],[1569,282],[1730,245],[1961,288],[2260,325],[2469,281],[2850,254],[3400,159]]},
+  {z:-1010,depth:244,sky:'#89a6a0',body:'#658b81',mist:'#b2c2aa',peaks:[[-780,120],[-230,159],[112,166],[395,213],[660,216],[790,195],[1115,242],[1380,225],[1610,189],[1847,240],[2100,257],[2260,230],[2500,197],[3000,119]]},
+  {z:-793,depth:205,sky:'#7f9b83',body:'#557865',mist:'#a5b897',peaks:[[-770,113],[-240,120],[50,157],[309,159],[523,178],[729,169],[936,202],[1164,186],[1384,160],[1625,198],[1871,215],[2040,193],[2330,174],[2780,119]]}
  ];
  for(const [k,ridge] of ridges.entries()){
-  const inks=ridge.colors.map(c=>new T.Color(c));
+  const sky=new T.Color(ridge.sky),body=new T.Color(ridge.body),mist=new T.Color(ridge.mist);
   const columns=[];
   for(let i=1;i<ridge.peaks.length;i++){
    const [x0,h0]=ridge.peaks[i-1],[x1,h1]=ridge.peaks[i];
-   for(let q=0;q<10;q++){
-    const u=q*.1,v=(1-Math.cos(Math.PI*u))*.5,x=x0+(x1-x0)*u;
-    const trim=Math.sin(Math.PI*u)*(7*Math.sin(x*.065+k)+8*Math.cos(x*.026+1.3*k)+4*Math.sin(x*.105));
-    columns.push([x,h0+(h1-h0)*v+trim]);
+   const n=Math.ceil((x1-x0)/25);
+   for(let j=0;j<n;j++){
+    const t=j/n,x=x0+(x1-x0)*t;
+    // Slightly slanted hollows and uneven shoulder lengths; no sawtooth tips.
+    const u=t*t*(3-2*t),crest=h0+(h1-h0)*u;
+    const y=crest+3.9*Math.sin(x*.022+k*2.4)+2.3*Math.sin(x*.046+1.4*k)+1.2*Math.cos(x*.104);
+    columns.push([x,y + [148,96,51][k]*(.64+.36*Math.sin(x*.0021+.35*k)**2)]);
    }
   }
-  columns.push(ridge.peaks.at(-1));
-  const profile=columns.map(([x,height],i)=>{
-   const z=ridge.z+17*Math.sin(x*.012+k)+9*Math.cos(x*.023);
-   const steep=(columns[Math.min(i+1,columns.length-1)][1]-columns[Math.max(0,i-1)][1])*.042;
-   return Array.from({length:10},(_,j)=>{
-    const u=j/9,foothill=Math.sin(Math.PI*u)*Math.sin(x*.010+k)*17;
-    const y=5+(height-5)*(1-u)**1.52+foothill;
-    const dx=u*(20*Math.sin(x*.009+k)+30*Math.sin(x*.019)),dz=u*ridge.depth;
-    const cold=.49+.22*Math.sin(x*.023-u*4.5)+.12*Math.sin(x*.058+u*9);
-    const tint=inks[0].clone().lerp(inks[1],Math.max(.03,Math.min(.86,.33+steep*.24+(cold-.5)*.61)));
-    tint.lerp(inks[2],.15+.22*cold+(1-u)**4*.13);
-    tint.multiplyScalar(.93+.06*Math.sin(x*.103+u*22)+.028*Math.sin(x*.27-u*47));
-    return [[x+dx-W/2,y,z+dz-H/2],tint];
+  {const [x,y]=ridge.peaks.at(-1);columns.push([x,y+[148,96,51][k]*(.64+.36*Math.sin(x*.0021+.35*k)**2)]);}
+  const profile=columns.map(([x,height])=>{
+   const crestZ=ridge.z+26*Math.sin(x*.004+k)+13*Math.cos(x*.010);
+   return Array.from({length:8},(_,j)=>{
+    const t=j/7,depth=t*ridge.depth,run=x+t*(29*Math.sin(x*.008+k)+14*Math.sin(x*.017));
+    const y=-17+(height+17)*(1-t)**1.38+9*Math.sin(Math.PI*t)*Math.sin(x*.009+k);
+    // Broad diagonal spurs and shadow folds sit under a low haze layer.
+    const slope=.47+.12*Math.sin(x*.009+4.8*t+k)+.05*Math.cos(x*.019+10*t);
+    const color=sky.clone().lerp(body,slope+.19*t).lerp(mist,t*t*.70);
+    return [[run-W/2,y,crestZ+depth-H/2],color];
    });
   });
-  for(let i=1;i<profile.length;i++)for(let j=0;j<9;j++){
+  for(let i=1;i<profile.length;i++)for(let j=0;j<7;j++){
    const a=profile[i-1],b=profile[i];
-   for(const [p,c] of [a[j],a[j+1],b[j],a[j+1],b[j+1],b[j]]){relief.push(...p);reliefColors.push(c.r,c.g,c.b);}
+   for(const [position,color] of [a[j],a[j+1],b[j],a[j+1],b[j+1],b[j]]){
+    relief.push(...position);reliefColors.push(color.r,color.g,color.b);
+   }
   }
  }
  function paintedMesh(vertices,colors,material){
@@ -302,101 +297,48 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
   const mesh=new T.Mesh(geo,material);group.add(mesh);return mesh;
  }
  paintedMesh(relief,reliefColors,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide}));
- // Crooked patchwork flower fields follow the slope. A continuous carpet
- // reads from afar; individual clumps break the edges at the near side.
- const bloomVerts=[],bloomColors=[],flowerRandom=(()=>{let r=11407;return()=>((r=(Math.imul(r,1664525)+1013904223)>>>0)/4294967296);})();
- const sunnyFlowers=['#de95b2','#e5cab7','#bfa4d9','#edcf8c','#c88baa','#e2bb9a'].map(c=>new T.Color(c));
- const bedSoil=new T.Color('#a2a174');
- function bedPoint(x,z,lift=2.9){return [x-W/2,pastureHeight(x,z)+lift,z-H/2];}
- // The near tree line frames the middle rows rather than enclosing them.
- for(const [plot,cx,cz,rx,rows] of [[0,721,-202,150,8],[1,1330,-415,251,10],[2,1080,-340,164,8],[3,1815,-198,255,9]]){
-  for(let row=0;row<rows;row++){
-   const lastWidth=rx*(.75+row*.043);
-   const samples=[];
-   for(let j=0;j<=27;j++){
-    const u=j/27,x=cx+(u-.5)*lastWidth*2+row*8;
-    const z=cz-row*18+Math.sin(u*3.1+plot*.64+row*.12)*(24+plot*4)+Math.cos(x*.027)*6+(u-.45)*32;
-    const width=2.7+5.5*Math.sin(Math.PI*u)**.44+flowerRandom()*1.8;
-    const ink=sunnyFlowers[(row+plot*2)%sunnyFlowers.length].clone()
-     .lerp(sunnyFlowers[(row+plot*2+1)%sunnyFlowers.length],.12+flowerRandom()*.32);
-    samples.push([bedPoint(x,z-width),bedPoint(x,z),bedPoint(x,z+width),ink]);
-    if(j>0&&j<27){
-     const n=4+Math.round(flowerRandom()*6);
-     for(let q=0;q<n;q++){
-      const xa=x+(flowerRandom()-.5)*9,za=z+(flowerRandom()-.5)*width*1.91;
-      const a=bedPoint(xa,za,2.9+flowerRandom()*3.7),r=.47+flowerRandom()*1.51;
-      const ink2=ink.clone().lerp(sunnyFlowers[(row+q)%sunnyFlowers.length],flowerRandom()*.43).multiplyScalar(.84+flowerRandom()*.29);
-      triangle(bloomVerts,bloomColors,[a[0]-r,a[1],a[2]+r*.22],[a[0]+r,a[1],a[2]-r*.44],[a[0]-.2,a[1]+r*.68,a[2]+r*.54],ink2);
-     }
-    }
-   }
-   for(let i=1;i<samples.length;i++){
-    const a=samples[i-1],b=samples[i];
-    for(let k=0;k<2;k++){
-     const ink=b[3].clone().lerp(bedSoil,.14+.12*(i%4));
-     triangle(bloomVerts,bloomColors,a[k],a[k+1],b[k],ink);
-     triangle(bloomVerts,bloomColors,a[k+1],b[k+1],b[k],ink);
-    }
-   }
-  }
+ // Wildflowers gather in overlapping drifts. There is neither a parcel
+ // boundary nor a repeated orientation: the tiny blooms flow into the grass.
+ function triangle(output,paint,a,b,c,ink){
+  output.push(...a,...b,...c);
+  for(const f of [.99,1.025,.975])paint.push(ink.r*f,ink.g*f,ink.b*f);
  }
- paintedMesh(bloomVerts,bloomColors,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide}));
- // A real volume and a moving overshot wheel, placed on a stream crossing
- // outside the player field. Wheel + house use four small render batches.
- const millX=1122,millZ=-374, millY=pastureHeight(millX,millZ);
- const mill=new T.Group();mill.position.set(millX-W/2,millY,millZ-H/2);mill.rotation.y=-.45;mill.scale.setScalar(1.36);group.add(mill);
- const blocks=[
-  [8,3.8,0,55,8,44,'#8b8173'],[8,22,-1,49,35,38,'#d2b298'],
-  [-15,20.5,18,4,31,3.7,'#6f5544'],[30,20.5,18,4,31,3.7,'#6f5544'],
-  [7,34,18,49,4,4,'#916b50'],[7,9,18,49,3,4,'#9d8c75'],
-  [-3,18.5,19,10,19,2.6,'#5c7668'],[21,25,19,10,11,3,'#74918d'],
-  [21,25,20.7,1,11,1,'#e8d1a9'],[21,25,20.7,10,1,1,'#e8d1a9'],
-  [8,53,-2,56,4.45,27,'#986b56',.46],[8,53,20,56,4.45,27,'#a2755b',-.46],
-  [8,58.7,9,56,3.1,5.2,'#86614b'],[-6,56,-10,9,19,9,'#ad8770'],[-6,65,-10,13,3.7,13,'#91735e'],
-  [31,6,10,47,5,7,'#a38766'],[39,19,13,16,2.6,8,'#78573e'],[47,12,13,2.8,17,3.1,'#81614c']
+ const bloomVerts=[],bloomColors=[];
+ let seedFlowers=143081;
+ const flowersRandom=()=>((seedFlowers=(Math.imul(seedFlowers,1664525)+1013904223)>>>0)/4294967296);
+ const blossom=['#eba4b4','#d48ca8','#bea6dc','#f2d696','#f1d9bb','#dcaacf','#eda5a1'].map(c=>new T.Color(c));
+ const leaf=new T.Color('#808b5b'),lightGrass=new T.Color('#a6ab77');
+ const drifts=[
+  [680,-361,160,78,-.18,0],[798,-426,166,86,.26,1],[892,-502,198,98,-.38,2],
+  [1008,-487,194,98,-.25,0],[1104,-524,194,109,-.12,0],[1233,-495,201,112,.25,2],
+  [1375,-460,203,111,-.20,3],[1546,-395,197,109,.21,4],[1727,-333,205,94,-.16,0],
+  [1935,-285,205,89,.44,5]
  ];
- const singleBox=new T.BoxGeometry(1,1,1), millMat=new T.MeshLambertMaterial({flatShading:true});
- function boxes(parent,items){
-  const mesh=new T.InstancedMesh(singleBox,millMat,items.length);
-  items.forEach(([x,y,z,w,h,d,tint,rx=0,ry=0,rz=0],i)=>{
-   obj.position.set(x,y,z);obj.rotation.set(rx,ry,rz);obj.scale.set(w,h,d);obj.updateMatrix();
-   mesh.setMatrixAt(i,obj.matrix);mesh.setColorAt(i,color.set(tint));
-  });
-  parent.add(mesh);
- }
- boxes(mill,blocks);
- const wheel=new T.Group();wheel.position.set(43,17,18);mill.add(wheel);
- const ring=new T.TorusGeometry(14.25,1.38,6,30);
- const hoops=new T.InstancedMesh(ring,millMat,2);
- for(let i=0;i<2;i++){
-  obj.position.set(0,0,(i-.5)*4.6);obj.rotation.set(0,0,0);obj.scale.set(1,1,1);obj.updateMatrix();
-  hoops.setMatrixAt(i,obj.matrix);hoops.setColorAt(i,color.set(i?'#ad805d':'#7e583f'));
- }
- wheel.add(hoops);
- const spokes=[[0,0,0,4.7,4.7,7.5,'#926042']];
- for(let i=0;i<12;i++){
-  const a=i*TAU/12,x=Math.cos(a),y=Math.sin(a);
-  if(i%2===0)spokes.push([x*7.0,y*7.0,0,13,1.5,1.9,'#b18b65',0,0,a]);
-  spokes.push([x*14.7,y*14.7,0,2.2,4.13,6.7,i%3===0?'#b48a61':'#986b4c',0,0,a]);
- }
- boxes(wheel,spokes);
- const creek=[], creekTint=[];
- const course=[[1087,-463,10],[1120,-425,14],[1152,-396,12],[1165,-364,12],[1176,-329,8],[1187,-298,2]];
- const streamInk=['#769d98','#9fb9a6','#72918d'].map(c=>new T.Color(c));
- for(let i=1;i<course.length;i++){
-  const [x,z,w]=course[i-1],[nx,nz,nw]=course[i];
-  let old=[bedPoint(x-w,z,1.0),bedPoint(x,z,1.06),bedPoint(x+w,z,1.0)];
-  for(let k=1;k<=8;k++){
-   const t=k/8,x2=x+(nx-x)*t,z2=z+(nz-z)*t,wide=w+(nw-w)*t;
-   const next=[bedPoint(x2-wide,z2,1.0),bedPoint(x2,z2,1.06),bedPoint(x2+wide,z2,1.0)];
-   for(let lane=0;lane<2;lane++){
-    const c=streamInk[(lane+i+k)%3];
-    triangle(creek,creekTint,old[lane],old[lane+1],next[lane],c);
-    triangle(creek,creekTint,old[lane+1],next[lane+1],next[lane],streamInk[(lane+i+1)%3]);
+ const mat=new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide});
+ const colorQ=new T.Color();
+ for(const [d,[cx,cz,rx,rz,angle,pigment]] of drifts.entries()){
+  const co=Math.cos(angle),si=Math.sin(angle);
+  for(let k=0;k<660;k++){
+   const a=flowersRandom()*TAU,r=Math.sqrt(flowersRandom());
+   const edge=1+.13*Math.sin(3*a+.8*d)+.09*Math.sin(5*a+d);
+   const u=Math.cos(a)*rx*r*edge,v=Math.sin(a)*rz*r*edge;
+   const x=cx+u*co-v*si,z=cz+u*si+v*co;
+   const patch=.50+.24*Math.sin(x*.037+z*.039)+.22*Math.sin(z*.083-x*.021+.69*d);
+   if(flowersRandom()>.54+patch*.41-r**7*.31)continue;
+   const h=2.3+flowersRandom()*5.1,wide=1.3+flowersRandom()*3.7;
+   const y=pastureHeight(x,z)+2.2,X=x-W/2,Z=z-H/2,turn=flowersRandom()*TAU;
+   const q=flowersRandom(),ink=colorQ.copy(blossom[pigment]).lerp(blossom[(pigment+1+(k%3))%blossom.length],q*.50).multiplyScalar(.86+q*.31);
+   if(k%13===0)triangle(bloomVerts,bloomColors,[X-.68,y,Z],[X+1.08,y,Z+.23],[X+Math.cos(turn),y+h,Z+.38],leaf);
+   const p0=[X+Math.cos(turn)*wide,y+h,Z+Math.sin(turn)*wide];
+   const p1=[X+Math.cos(turn+TAU/3)*wide,y+h+.21,Z+Math.sin(turn+TAU/3)*wide];
+   const p2=[X+Math.cos(turn-TAU/3)*wide,y+h+.38,Z+Math.sin(turn-TAU/3)*wide];
+   triangle(bloomVerts,bloomColors,p0,p1,p2,ink);
+   if(k%5===0){
+    const centre=[(p0[0]+p1[0]+p2[0])/3,y+h+.78,(p0[2]+p1[2]+p2[2])/3];
+    triangle(bloomVerts,bloomColors,p0,centre,p2,ink.clone().lerp(lightGrass,.37));
    }
-   old=next;
   }
  }
- paintedMesh(creek,creekTint,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide}));
- return (close,clock=0,motion=true)=>{ridge.visible=close;group.visible=close;if(close)wheel.rotation.z=motion?clock*-.00041:0;};
+ paintedMesh(bloomVerts,bloomColors,mat);
+ return close=>{ridge.visible=close;group.visible=close;};
 }

@@ -54,14 +54,7 @@ export function addBenchGardenCraft({box,sphere,shape},stand){
   sphere(stand.x+s*17,41,stand.y+4,.72,.72,.28,'#ba9e74');
   sphere(stand.x+s*17,47,stand.y+4,.72,.72,.28,'#b8996f');
  }
- // Garden rim grain and narrow moss at exterior corners respect each plot.
- for(const z of [405,513]){
-  for(const [x,w] of [[752,13],[778,8],[804,17],[852,12],[884,14]]){
-   box(x,12.13,z-.38,w,.16,.36,'#d4a674',0,(x%7-3)*.019);
-   box(x+2,12.17,z+1,w*.52,.19,.25,'#906641',0,(x%9-4)*.03);
-  }
-  for(const x of [741,781,825,867,901])sphere(x,12.22,z+.48,.68,.23,.68,'#715744');
- }
+ // A few low wild plants skirt the uneven planting region.
  for(const [x,z,r] of [[735,414,4],[736,502,6],[905,409,5],[908,508,4],[727,501,3],[912,495,6]]){
   sphere(x,2.3,z,r,1.15,r*.69,'#82965f');
   for(let j=0;j<3;j++)shape('cone',x+(j-1)*r*.44,2+j*.53,z+j*.7,.7,3+j*.8,.63,j%2?'#a2b27b':'#708951',.13,0,(j-1)*.32);

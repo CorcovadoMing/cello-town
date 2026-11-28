@@ -28,9 +28,10 @@ test('continuous south pond mouth crosses the canvas edge without entering walka
  assert.ok(inside(445,534)===false);
  const edge=[];
  for(let x=0;x<275;x++)if(inside(x,560))edge.push(x);
- assert.ok(edge.length>=85 && edge.every((n,i)=>n===edge[0]+i));
+ assert.ok(edge[0]===0&&edge.length>=188 && edge.every((n,i)=>n===edge[0]+i));
  const source=readFileSync(new URL('../town-shore.js',import.meta.url),'utf8');
- assert.match(source,/OPEN_POND_BANK\.slice\(1\)/);
+ assert.ok(inside(0,500));
+ assert.match(source,/OPEN_POND_BANK\.slice\(1,-1\)/);
  const renderer=readFileSync(new URL('../town-webgl.js',import.meta.url),'utf8');
  assert.match(renderer,/OPEN_POND_BANK\.entries\(\)/);
 });

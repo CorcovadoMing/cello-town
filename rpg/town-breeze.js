@@ -1,7 +1,7 @@
 const TAU=Math.PI*2;
 export const WATCH_VIEWS=Object.freeze(['play','pond']);
 export const POND_SHOT=Object.freeze({
- eye:[96,62,536], target:[325,29,288], fov:48
+ eye:[35,69,602], target:[325,29,288], fov:49
 });
 export const GRASS_PATCHES=Object.freeze([
  [33,340,12,39,15],[287,412,19,28,21],[301,464,24,29,22],[308,512,29,31,22],

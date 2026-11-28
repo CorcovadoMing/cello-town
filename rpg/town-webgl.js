@@ -1,6 +1,6 @@
-import {makeCountryside} from './town-countryside.js?v=3';
-import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=open-outlet-1';
-import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=valley-sky-2';
+import {makeCountryside} from './town-countryside.js?v=4';
+import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=open-southwest-2';
+import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=valley-sky-3';
 import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './town-orchard.js?v=9';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
@@ -23,7 +23,7 @@ export function createTownFramePacer(hz=60){
  }};
 }
 
-import {addBenchGardenCraft,addCabinAndPondCraft} from './town-craft.js?v=1';
+import {addBenchGardenCraft,addCabinAndPondCraft} from './town-craft.js?v=walk-garden-2';
 export const ROOM_WIDTH=960,ROOM_HEIGHT=560;
 const W=ROOM_WIDTH,H=ROOM_HEIGHT;
 const local=(x,z)=>[x-W/2,z-H/2];
@@ -164,36 +164,19 @@ function landscapePigment(T,kind){
    }
    ctx.restore();
   }
-  // Traffic is visible at the scale of the road, rather than as isolated
-  // decorations. Long worn tracks fan at both turns and break on stony sections.
+  // A footpath wears into soft pools around junctions and thresholds,
+  // not parallel grooves. Fine ground flecks stay deliberately irregular.
   const trackRng=pigmentRng(662401);
-  const tracks=[
-   [[192,326],[245,321],[312,321],[369,325],[414,321],[455,320],[519,319],[580,322],[634,319],[679,317],[724,321],[770,322]],
-   [[191,348],[234,350],[304,349],[359,346],[401,347],[437,347],[488,351],[550,353],[603,350],[664,350],[715,354],[767,347]],
-   [[449,548],[450,507],[447,471],[447,433],[444,396],[450,365],[474,341],[511,329]],
-   [[477,550],[476,509],[480,465],[478,430],[474,401],[484,371],[511,354],[551,349]],
-   [[653,332],[667,320],[677,307],[679,289],[677,268],[678,251]],
-   [[679,346],[691,331],[699,313],[697,294],[698,275],[695,255]]
-  ];
-  for(let k=0;k<tracks.length;k++){
-   const samples=tracks[k];
-   let distance=0;
-   for(let j=1;j<samples.length;j++){
-    const [x,z]=samples[j-1],[xx,zz]=samples[j],dx=xx-x,dz=zz-z,len=Math.hypot(dx,dz),angle=Math.atan2(dz,dx);
-    const nx=-dz/len,nz=dx/len;
-    for(let at=0;at<len;at+=2.7){
-     const q=distance+at,t=at/len;
-     const wear=.35+.65*(.5+.5*Math.sin(q*.047+k*2.13))*(.5+.5*Math.cos(q*.109-k*.47));
-     const wander=Math.sin(q*.15+k*1.27)*.86+Math.cos(q*.061-k)*.93;
-     const u=x+dx*t+nx*wander,v=z+dz*t+nz*wander;
-     const edge=1.62+wear*3;
-     const broken=.24+.76*Math.pow(.5+.5*Math.sin(q*.019+k*.81+Math.sin(q*.063)*.59),.82);
-     glaze(u,v,5.7+trackRng()*2.2,edge,angle,'#9e805b',(.13+wear*.20)*broken);
-     glaze(u+nx*edge*.67,v+nz*edge*.67,4+trackRng()*3,1.38+trackRng()*1.18,angle,'#f4e4bc',(.13+wear*.20)*broken);
-     if(wear>.56&&trackRng()>.39)
-      chip(u+nx*(trackRng()-.5)*edge*1.59,v+nz*(trackRng()-.5)*edge*1.59,.28+trackRng()*.86,.16+trackRng()*.47,stones[k],.28+wear*.17,trackRng);
-    }
-    distance+=len;
+  for(const [x,z,rx,rz,angle,k] of [[216,336,20,9,-.25,0],[304,333,31,12,.07,1],
+    [402,342,33,10,-.10,2],[468,343,29,19,.45,1],[531,336,31,11,-.09,4],
+    [634,334,28,9,-.11,3],[718,344,20,11,.17,2],[690,267,9,15,.15,1],
+    [672,309,13,17,.47,3],[467,409,11,20,-.2,0],[472,475,12,18,.2,3],[464,532,11,13,-.1,4]]){
+   glaze(x,z,rx,rz,angle,'#e9d6a9',.26);
+   glaze(x-4,z+3,rx*.58,rz*.64,angle+.31,'#9d8361',.13);
+   for(let j=0;j<22;j++){
+    const a=trackRng()*tau,d=Math.sqrt(trackRng()),x0=x+Math.cos(a)*rx*d,z0=z+Math.sin(a)*rz*d;
+    chip(x0,z0,.35+trackRng()*.85,.17+trackRng()*.52,stones[(k+j)%stones.length],
+     .14+trackRng()*.29,trackRng);
    }
   }
   // Short washouts cut diagonally towards the verge. Finer deposited
@@ -357,7 +340,7 @@ function pondSurface(T,map){
    float shortWave = sin(uvPond.y*95. - uvPond.x*16. +t*9. +sin(uvPond.x*19.+t*5.)*.60);
    float crossWave = sin(uvPond.y*35. + uvPond.x*28. -t*5.);
    // No shallow stripe across the open outlet at low v.
-   float edgeDistance = min(min(uvPond.x,1.-uvPond.x),1.-uvPond.y);
+   float edgeDistance = min(1.-uvPond.x,1.-uvPond.y);
    float shallow = 1.-smoothstep(.008,.19,edgeDistance+shortWave*.009);
    float grazing = 1.-clamp(townWaterGrazing,0.,1.);
    float reflectedSky = .07 + .50*grazing*grazing;
@@ -374,7 +357,7 @@ function pondSurface(T,map){
    diffuseColor.rgb = mix(pool,vec3(.88,.91,.67),sparkle)*(1.+longWave*.018+shortWave*.011);
   `);
  };
- material.customProgramCacheKey=()=> 'town-pond-silt-sky-open-v1';
+ material.customProgramCacheKey=()=> 'town-pond-silt-sky-sw-v2';
  let lastWeather;
  return {material,update(now,weather,lamp,motion){
   phase.value=motion?now%96000/96000*Math.PI*2:0;
@@ -421,6 +404,7 @@ function insidePolygon(x,z,path){
  }
  return inside;
 }
+const GARDEN_SOIL=Object.freeze([[750,425],[768,413],[795,409],[820,415],[841,409],[872,411],[889,421],[902,436],[897,451],[905,470],[898,489],[886,501],[862,508],[842,502],[814,507],[791,501],[765,505],[747,492],[737,474],[742,457],[736,445]].map(Object.freeze));
 function paintTerrainUV(T,geometry,spanX=W,spanZ=H){
  const pos=geometry.attributes.position,uv=new Float32Array(pos.count*2);
  for(let i=0;i<pos.count;i++){uv[2*i]=.5+pos.getX(i)/spanX;uv[2*i+1]=.5+pos.getY(i)/spanZ;}
@@ -633,7 +617,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   scene.add(mesh);
   return {kind,x,z,w,d,ctx,soft,raw,down,thumb,map,mesh};
  }
- const wetLayers=[wetLayer('road',148,216,664,344,4.63-roadSink),wetLayer('bed',742,410,158,97,9.75)];
+ const wetLayers=[wetLayer('road',148,216,664,344,4.63-roadSink),wetLayer('bed',733,403,177,111,1.66)];
  let previousMoisture=null;
  function updateWetLayers(moisture){
   if(moisture===previousMoisture)return;
@@ -642,7 +626,13 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    mesh.visible=moisture.some(c=>(c.kind===kind||(kind==='road'&&c.kind==='verge'))&&c.level>0);
    if(!mesh.visible)continue;
    ctx.clearRect(0,0,w,d);
-   ctx.save();ctx.translate(-x,-z);drawWetSoil(ctx,moisture,kind);ctx.restore();
+   ctx.save();ctx.translate(-x,-z);
+   if(kind==='bed'){
+    ctx.beginPath();
+    GARDEN_SOIL.forEach(([u,v],i)=>i?ctx.lineTo(u,v):ctx.moveTo(u,v));
+    ctx.closePath();ctx.clip();
+   }
+   drawWetSoil(ctx,moisture,kind);ctx.restore();
    down.clearRect(0,0,thumb.width,thumb.height);
    down.drawImage(raw,0,0,thumb.width,thumb.height);
    soft.clearRect(0,0,w,d);soft.drawImage(thumb,0,0,w,d);map.needsUpdate=true;
@@ -764,17 +754,17 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   }
  }
 
- const outletStones=[[51,519],[64,529],[78,543],[87,554],[93,565],
-  [187,562],[194,550],[203,542],[219,530]];
+ const outletStones=[[8,446],[23,432],[34,421],[51,414],[71,408],
+  [196,570],[199,552],[207,537],[220,525]];
  for(let i=0;i<17;i++){
   const [x,z]=i%2?[42+i*12.2,399+Math.sin(i*1.32)*4]:outletStones[i>>1];
   sphere(x,1,z,6+rng()*6,3+rng()*3,5+rng()*3,i%3?'#a29e7d':'#bbb18d',0,rng());
  }
  for(let i=0;i<14;i++){
-  const z=403+i*8.8,west=29+Math.max(0,Math.abs(z-467)-14)*.43,east=255-Math.max(0,Math.abs(z-467)-12)*.56;
-  for(const x of [west,east])sphere(x+Math.sin(i*2.17)*2.9,2,z,4.4,3+rng()*3,6,'#a6a788',0,rng());
+  const z=403+i*8.8,east=255-Math.max(0,Math.abs(z-467)-12)*.56;
+  for(const [x,y] of [[8+i*9.4,447-47*Math.sin(Math.min(1,(8+i*9.4)/129)*Math.PI/2)],[east,z]] )sphere(x+Math.sin(i*2.17)*2.9,2,y,4.4,3+rng()*3,6,'#a6a788',0,rng());
  }
- for(const [x,z,n] of [[56,426,9],[248,474,7],[81,530,8],[287,438,4],[562,427,5],[710,398,7],[906,528,7],[19,541,8],[934,548,8]]){
+ for(const [x,z,n] of [[56,407,9],[248,474,7],[202,538,8],[287,438,4],[562,427,5],[710,398,7],[906,528,7],[19,421,8],[934,548,8]]){
   for(let i=0;i<n;i++){
    const dx=x+(rng()-.5)*24,dz=z+(rng()-.5)*18,h=4+rng()*12;
    shape('cone',dx,h*.44,dz,1.6,h,1.5,i%3?'#7c9c5f':'#9eae6b',.08,rng(),(rng()-.5)*.3,.35+h*.012);
@@ -794,10 +784,27 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   sphere(x,2,z,4+rng()*6,2+rng()*3,3+rng()*5,'#aaab8a',0,rng());
   if(x!==355)sphere(x+7,3,z+4,6,4,3,'#929b81',0,rng());
  }
- // The six original garden plots remain in the same places.
- box(821,3.4,459.5,172,6.8,111,'#8c795b');box(821,7,459.5,161,2,101,'#836247');
- for(const x of [767,817,867])for(const z of [440,482]){box(x,8.5,z,40,2.2,20,'#967858');box(x-1,10,z-3,36,1,2,'#a78b60');}
- for(const [x,z,w,d] of [[821,405,172,5],[821,513,172,5],[737,459,5,109],[905,459,5,109]])box(x,8,z,w,8,d,wood);
+ // Planting pockets are at the original positions, flush with the meadow.
+ const gardenOutline=new T.Shape();
+ GARDEN_SOIL.forEach(([x,z],i)=>i?gardenOutline.lineTo(x-821,460-z):gardenOutline.moveTo(x-821,460-z));
+ gardenOutline.closePath();
+ const gardenPatch=new T.Mesh(paintTerrainUV(T,new T.ShapeGeometry(gardenOutline),179,108),
+  new T.MeshPhongMaterial({map:soilPigment,bumpMap:soilPigment,bumpScale:.41,shininess:2,specular:'#46382a',color:'#c2a180'}));
+ gardenPatch.rotation.x=-Math.PI/2;gardenPatch.position.set(821-W/2,1.19,460-H/2);
+ gardenPatch.receiveShadow=true;scene.add(gardenPatch);
+ for(const [i,[x,z]] of [[767,482],[777,440],[827,440],[817,482],[867,482],[877,440]].entries()){
+  sphere(x,1.06,z,20.1+(i%3),1.39,11.6+(i%2)*1.6,['#a3855b','#a88b5e','#94784f'][i%3],0,(i-3)*.089);
+  for(let c=0;c<5;c++){
+   const dx=(c*13+i*17)%25-12,dz=((c*7+i*5)%13)-6;
+   sphere(x+dx,1.76,z+dz,.73+(c%3)*.35,.16,.56,i%3?'#b19a6c':'#7f694b',0,i*c);
+  }
+ }
+ for(const [i,[x,z]] of GARDEN_SOIL.entries()){
+  if(i%3===1)continue;
+  sphere(x,1.06,z,4.9+i%3,.62,2.7,'#9e905e',0,i*.48);
+  for(let j=0;j<3;j++)shape('cone',x+j*1.65,1.3,z-j*.75,.39,2.1+j*.67,.31,
+   j%2?'#a7ab72':'#84945f',.14,j,0);
+ }
  // House is a real small chalet: façade and all roof meshes share the same
  // local origin, actor contact coordinates and approach as the pixel original.
  const cx=room.x+96,fr=room.depth-2,cy=fr-38;
@@ -918,7 +925,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   sphere(x+4,h*.82,z-4,5+h*.17,h*.45,5,'#a0af71',.08,rng());
   if(h>12)sphere(x+4,h*1.04,z,2,1.6,2,'#e5d1a4');
  }
- for(const [x,z,len]of[[14,382,27],[17,360,24],[22,538,24]]){
+ for(const [x,z,len]of[[14,382,27],[17,360,24],[22,413,24]]){
   for(const dx of [-9,9])box(x+dx,8,z,2.6,17,3,'#9d8159');
   box(x,11,z,len,2.2,2,'#b4976a',0,(z%3-1)*.17,.055);
  }
