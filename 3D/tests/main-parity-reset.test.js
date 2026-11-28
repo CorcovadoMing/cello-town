@@ -16,7 +16,7 @@ function normalized(s){
 // outdoor drawing revision and its accompanying module, not future drift.
 const reviewedExperimentalHashes={
  '3D/room-polish.js':'67f7847e5a0d2c28d0c07e2b0187dadf77f249902582d610d7588276f827228c',
- '3D/app.js':'6120652276ccc7a2d1e3cb6390bc6f3d0f14880ff2b832bca849dbc8fc954aa7',
+ '3D/app.js':'77c8a272f939a500473c97a20cc034b06265808c286d2b868ddf8abc24d392b4',
  'rpg/ambience.js':'0c10897dd68d28b39a695f60d98d5f2bffb6811fb591eb8518b3fdcf18254d28',
  'rpg/town-countryside.js':'6ecb51d230884d0149dc12f95d812e2a53a9c6981d5349e102a81805c6489601',
  'rpg/town-shore.js':'083e2f167cc3ac445334c82dd1a05f5f15693d8f84fe4f39a778fb2dee55c0a5',
