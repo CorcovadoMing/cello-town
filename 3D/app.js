@@ -1010,6 +1010,46 @@ function garment(profile,color,gather=false){garmentProfile=profile;const o=mesh
  }return o;}
 function clothPanel(points,color,z,side=1){const shape=new T.Shape();shape.moveTo(...points[0]);for(const pt of points.slice(1))shape.lineTo(...pt);shape.closePath();const base=new T.ShapeGeometry(shape),p=base.attributes.position,indices=base.index.array,verts=[];function tri(a,b,c,n){if(n){const ab=a.clone().add(b).multiplyScalar(.5),bc=b.clone().add(c).multiplyScalar(.5),ca=c.clone().add(a).multiplyScalar(.5);tri(a,ab,ca,n-1);tri(ab,b,bc,n-1);tri(ca,bc,c,n-1);tri(ab,bc,ca,n-1);}else for(const v of[a,b,c])verts.push(v.x,v.y,side*(surfaceZ(v.x,v.y)+.004));}for(let i=0;i<indices.length;i+=3)tri(...[0,1,2].map(n=>new T.Vector3().fromBufferAttribute(p,indices[i+n])),3);base.dispose();const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(verts,3));geometry.computeVertexNormals();const o=mesh(geometry,color,0,0,0,body);o.material=mat(color).clone();o.material.side=T.DoubleSide;o.userData.ownedMaterial=true;o.castShadow=false;return o;}
 function seam(points,color='#e9dfc5'){const guide=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p))),curve=new T.CatmullRomCurve3(guide.getPoints(40).map(p=>new T.Vector3(p.x,p.y,surfaceZ(p.x,p.y)+.006)));const o=mesh(new T.TubeGeometry(curve,40,.004,5,false),color,0,0,0,body);o.castShadow=false;return o;}
+// Rounded cotton patch pocket: lipped opening, eased bottom corners,
+ // a little volume from its lining, and fine tonal topstitch. One mesh.
+function apronPocket(){
+ const columns=12,rows=8,verts=[],uv=[],indices=[];
+ for(let j=0;j<=rows;j++)for(let i=0;i<=columns;i++){
+  const u=i/columns,v=j/rows,a=u*2-1;
+  const x=a*(.112+Math.sin(Math.PI*v*.72)*.021);
+  const y=.758+.141*v+.020*Math.abs(a)**3*(1-v)**3+.006*a*a*v*v;
+  const padding=.004+.017*(1-a*a)*Math.sin(v*Math.PI*.87);
+  verts.push(x,y,surfaceZ(x,y)+padding);uv.push(u,v);
+ }
+ for(let j=0;j<rows;j++)for(let i=0;i<columns;i++){
+  const q=j*(columns+1)+i;indices.push(q,q+1,q+columns+1,q+1,q+columns+2,q+columns+1);
+ }
+ const geo=new T.BufferGeometry();
+ geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));
+ geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geo.setIndex(indices);geo.computeVertexNormals();
+ const material=new T.MeshStandardMaterial({color:'#d1d6ae',roughness:.91,side:T.DoubleSide});
+ if(!software){
+  if(!avatarSwatches.has('apron-pocket')){
+   const canvas=document.createElement('canvas');canvas.width=96;canvas.height=84;
+   const g=canvas.getContext('2d'),shade=g.createLinearGradient(0,0,0,84);
+   shade.addColorStop(0,'#f1ebd1');shade.addColorStop(.12,'#d4dabb');
+   shade.addColorStop(.49,'#dee0c4');shade.addColorStop(1,'#b2be9c');
+   g.fillStyle=shade;g.fillRect(0,0,96,84);
+   for(let i=0;i<76;i++){
+    g.fillStyle=i%2?'#faf6e325':'#71846916';g.fillRect((i*37)%96,(i*13)%84,2+(i%4),1);
+   }
+   g.fillStyle='#75846a';g.fillRect(0,13,96,3);g.fillStyle='#f9edcf';g.fillRect(0,8,96,3);
+   g.strokeStyle='#f2e7c4';g.lineWidth=1.6;g.setLineDash([2.6,2.3]);
+   g.beginPath();g.moveTo(8,22);g.lineTo(8,65);g.quadraticCurveTo(8,76,23,76);
+   g.lineTo(73,76);g.quadraticCurveTo(88,76,88,65);g.lineTo(88,22);g.stroke();
+   const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;
+   avatarSwatches.set('apron-pocket',texture);
+  }
+  material.color.set('#ffffff');material.map=avatarSwatches.get('apron-pocket');
+ }
+ const pocket=mesh(geo,'#d1d6ae',0,0,0,body);
+ pocket.material=material;pocket.name='tailored-apron-pocket';pocket.castShadow=false;pocket.userData.ownedMaterial=true;
+}
 function shoulderStraps(){for(const x of[-.12,.12]){const ribbon=[[x-.015,.89],[x+.015,.89],[x+.015,1.03],[x-.015,1.03]];clothPanel(ribbon,cloth,0);clothPanel(ribbon,cloth,0,-1);const ry=.30*Math.sqrt(1-(x/.245)**2),rz=.18*Math.sqrt(1-(x/.245)**2),start=Math.asin((1.03-.84)/ry),points=[];for(let i=0;i<=20;i++){const a=start+(Math.PI-2*start)*i/20;points.push(new T.Vector3(x,.84+(ry+.004)*Math.sin(a),(rz+.004)*Math.cos(a)));}const strap=mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points),24,.014,6,false),cloth,0,0,0,body);strap.castShadow=false;}}
 // Independent waist and lower pieces. Skirts gather with the existing crouch
 // morph; trouser legs stay on the two articulated chains, never a rigid tube.
@@ -1077,9 +1117,7 @@ if(legacy<0){
  // A coordinated capsule: collars, seams and panels follow the actual surface.
  const piping='#eadfc5',ivory='#f6edda';
  if(upper===0){
-  clothPanel([[-.15,.75],[.15,.75],[.125,.90],[-.125,.90]],'#d5ddbe',0);
-  seam([[-.14,.77,0],[0,.75,0],[.14,.77,0]],ivory);
-  for(const x of[-.10,-.05,0,.05,.10])seam([[x,.79,0],[x,.865,0]],'#b7c7a5');
+  apronPocket();
  }else if(upper===1){
   clothPanel([[-.085,.79],[.085,.79],[.095,.90],[-.095,.90]],cloth,0);
   seam([[-.08,.90,0],[-.075,.81,0],[0,.79,0],[.075,.81,0],[.08,.90,0]],piping);

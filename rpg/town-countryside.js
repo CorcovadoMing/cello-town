@@ -315,8 +315,15 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
  for(let row=0;row<192;row++)for(let col=0;col<1024;col++){
   const k=Math.floor(row/64),t=(row%64)/63,x=col/1023*4250-810;
   const cover=Math.max(0,forestCover(x,t,k)-.20);
-  const crown=.51+.20*Math.sin(col*.77+row*2.16)+.13*Math.cos(col*1.83-row*.98)+.11*Math.sin(col*.32+row*1.14);
-  const f=Math.round(255-cover*(crown*44+38+k*13)*(1-t*t*.67));
+  // Directional oval crown marks rather than unrelated pixel ripples.
+  // Each crown sits in a larger diagonal stand; leave the pale gaps open.
+  const u=col*.34+row*.15,v=row*.63;
+  const dx=u-Math.floor(u)-.50,dy=v-Math.floor(v)-.50;
+  const d=dx*dx*2.7+dy*dy*3.8;
+  const crown=Math.max(0,1-d)*(.75+.18*Math.cos(col*.058+row*.13));
+  const light=.41+dx*.56-dy*.31;
+  const fold=.52+.33*Math.sin(col*.086-row*.29)+.15*Math.cos(col*.196+row*.11);
+  const f=Math.round(255-cover*(28+k*12+crown*42*light+fold*26)*(1-t*t*.70));
   const off=(row*1024+col)*4;
   forestPixels.data[off]=f-2;forestPixels.data[off+1]=f;forestPixels.data[off+2]=f-1;forestPixels.data[off+3]=255;
  }
@@ -378,15 +385,25 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
     const h=(1.75+forestRand()*3.5)*(1+.18*k),w=h*(.52+forestRand()*.47),lean=(forestRand()-.5)*w;
     const under=a[j][1].clone().lerp(b[j][1],u).lerp(a[j+1][1],v*.5);
     const ink=under.clone().lerp(forestInk[k],.35+.28*forestRand()).multiplyScalar(.87+.23*forestRand());
+    // Three triangles on slender crowns; five on spreading crowns. Neighbouring species differ in
+    // width, lean and shoulder; keep a slope-facing light edge and a
+    // darker base rather than a row of pointed, evenly lit teeth.
+    const airy=Math.sin(x*.12+z*.063)>-.22;
+    const shoulder=airy?.57:.33,cap=airy?.72:.53;
+    const f=z+.72;
     const crown=[
-     [x-w*.69,y+.18*h,z+.88],[x-w*.82,y+.58*h,z+.73],
-     [x-w*.31+lean,y+.84*h,z+.5],[x+lean,y+h,z+.35],
-     [x+w*.51+lean,y+.73*h,z+.55],[x+w*.71,y+.40*h,z+.79],
-     [x+w*.56,y+.12*h,z+.94],[x,y+.45*h,z+1.01]
+     [x-w*.72,y+.08*h,f],[x-w*.91,y+shoulder*h,f],
+     [x-w*.38+lean,y+cap*h,z+.51],[x+lean,y+h,z+.38],
+     [x+w*.46+lean,y+(airy?.82:.49)*h,z+.51],[x+w*.82,y+shoulder*.83*h,f],
+     [x+w*.65,y+.04*h,f],[x+lean*.34,y+.32*h,z+1.06]
     ];
-    for(const [index,shade] of [[0,.92],[1,1],[3,1.08],[0,.92],[3,1.08],[6,.92],[3,1.08],[4,1],[6,.92]]){
+    const faces=airy?[0,1,3, 1,2,3, 0,3,6, 3,4,6, 4,5,6]:[0,1,3, 0,3,6, 3,4,6];
+    const lights=[.84,.96,1.04,1.13,.99,.86,.78,.89];
+    for(const index of faces){
+     const shade=lights[index];
      canopy.push(...crown[index]);canopyColors.push(ink.r*shade,ink.g*shade,ink.b*shade);
     }
+
    }
   }
  }

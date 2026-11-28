@@ -9,3 +9,13 @@ test('explicit legacy markers preserve bare calves and original shoes without af
 test('hoodie pleat pairing has a smooth outer waist clearance without enlarging other bottoms',()=>{const c=context();for(const lower of[4,3]){c.state={...defaults(),upper:7,lower,shoes:3};vm.runInContext('var built=buildAvatar(state)',c);const p=c.built.upperBody.getObjectByName('wardrobe-hoodie').geometry.attributes.position;const radii=[];for(let i=0;i<p.count;i++)if(Math.abs(p.getY(i)-.69)<1e-5)radii.push(Math.hypot(p.getX(i),p.getZ(i)));assert.ok(radii.length>20);for(const r of radii)assert.ok(Math.abs(r-(lower===4?.28:.26))<1e-6);c.built.avatar.traverse(o=>o.geometry?.dispose());}});
 
 test('redesigned capsule keeps 24 unique names and real rounded shoe bodies without changing old-save shoes',()=>{const c=context();for(const key of ['upper','lower','shoes'])assert.equal(new Set(OPTIONS[key]).size,8);for(let shoes=0;shoes<8;shoes++){c.state={...defaults(),shoes};vm.runInContext('var built=buildAvatar(state)',c);for(const leg of[c.built.leftLeg,c.built.rightLeg]){const shoe=leg.getObjectByName('designer-shoe-'+shoes);assert.ok(shoe);assert.equal(shoe.parent,leg.getObjectByName('leg-foot'));assert.ok(shoe.geometry.attributes.position.count>100);}c.built.avatar.traverse(o=>o.geometry?.dispose());}});
+
+test('apron’s rounded stitched pocket is one mesh fitted to the front cloth',()=>{
+ const c=context();c.state={...defaults(),upper:0,legacyOutfit:null};
+ vm.runInContext('var built=buildAvatar(state)',c);const pocket=c.built.avatar.getObjectByName('tailored-apron-pocket');
+ assert.ok(pocket?.isMesh);assert.equal(pocket.castShadow,false);
+ const p=pocket.geometry.attributes.position,uv=pocket.geometry.attributes.uv;
+ assert.equal(p.count,117);assert.equal(uv.count,p.count);
+ assert.ok(p.array.every(Number.isFinite));assert.equal(pocket.geometry.index.count/3,192);
+ assert.ok(p.getZ(58)>p.getZ(52));assert.ok(p.getY(0)>p.getY(6));
+});
