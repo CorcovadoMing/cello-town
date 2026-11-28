@@ -5,13 +5,11 @@ export const POND_SHOT=Object.freeze({
  eye:[35,69,602], target:[325,29,288], fov:49
 });
 export const GRASS_PATCHES=Object.freeze([
- [33,340,12,39,15],[287,412,19,28,21],[301,464,24,29,22],[308,512,29,31,22],
- [348,423,20,17,14],[402,452,15,27,15],[389,513,27,27,20],[522,446,22,29,21],
- [557,491,22,23,19],[639,468,24,24,17],[701,514,16,24,15],[272,268,23,13,19],
- [148,257,32,18,20],[343,268,30,14,24],[422,273,28,13,19],[532,273,27,16,21],
- [871,281,25,20,23],[902,358,29,21,23],[162,142,26,16,16],[400,177,36,23,23],
- [31,535,14,7,13],[265,527,13,24,18],[249,539,9,13,11]
-]);
+ // The open village green between these plantings is intentionally quiet.
+ // Pond bank, shade beside the bench/trees, and low house-side planting.
+ [35,410,16,18,13],[252,405,11,19,16],[256,475,13,24,17],[218,534,18,12,12],
+ [908,481,12,20,13],[933,530,14,15,10]
+].map(Object.freeze));
 // Neighbouring clumps share a slow passing gust, not one synchronous wobble.
 export function breezeAt(ms,x,z,weather,motion=true){
  if(!motion)return 0;
@@ -22,12 +20,12 @@ export function makeLivingGrass(T,scene,W,H){
  const geometry=new T.BufferGeometry(),p=[],rgb=[];
  const seed={v:82021};
  const rand=()=>((seed.v=(Math.imul(seed.v,1664525)+1013904223)>>>0)/4294967296);
- const colors=['#819f63','#739556','#8ba967','#9cb577','#719057'].map(c=>new T.Color(c));
+ const colors=['#88a767','#829f61','#91ab6e','#9ab576','#819f65'].map(c=>new T.Color(c));
  for(const [gx,gz,rx,rz,count] of GRASS_PATCHES)for(let i=0;i<count;i++){
-  const angle=rand()*TAU,r=Math.sqrt(rand()),x=gx+Math.cos(angle)*rx*r-W/2,z=gz+Math.sin(angle)*rz*r-H/2;
-  const plant=.60+rand()*.8;
+  const angle=rand()*TAU,r=Math.pow(rand(),.67),x=gx+Math.cos(angle)*rx*r-W/2,z=gz+Math.sin(angle)*rz*r-H/2;
+  const plant=.66+rand()*.58;
   for(let j=0;j<3;j++){
-   const a=rand()*TAU,h=(2.3+rand()*4.15)*plant,w=(.48+rand()*.57)*plant;
+   const a=rand()*TAU,h=(1.95+rand()*3.25)*plant,w=(.48+rand()*.57)*plant;
    const xx=x+(rand()-.5)*5,zz=z+(rand()-.5)*5;
    const lean=(.85+rand()*2.10),tint=colors[(i+j)%colors.length];
    for(const tri of softBlade(xx,zz,a,h,w,lean,1.6))for(const {v,t,s} of tri){

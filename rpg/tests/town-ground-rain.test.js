@@ -21,5 +21,5 @@ test('damp ground fills gradually and only persistent rain forms a few distinct 
 test('plant detail has individual petals and folded shade plus path placement checks',()=>{
  const art=readFileSync(new URL('../town-verge.js',import.meta.url),'utf8');
  assert.match(art,/petalCount/);assert.match(art,/color.push/);
- assert.match(webgl,/!pathAt\(a,b\)\)verge.flower/);assert.match(webgl,/verge.finish\(\)/);
+ assert.match(webgl,/if\(pathAt\(a,b\)\|\|insidePolygon\(a,b,GARDEN_SOIL\)\)continue/);assert.match(webgl,/verge.finish\(\)/);
 });

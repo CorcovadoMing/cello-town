@@ -46,6 +46,22 @@ export function makeVerge(T,scene,W,H){
    blade(x+Math.sin(a)*.86,z+Math.cos(a)*.8,a,h*(.67+(i+seed)%5*.14),.50+(i+seed)%4*.15,ink);
   }
  }
+ // Flat leaves form connected islands in the lawn; no upright whiskers
+ // in the interior of the village.
+ function cover(x,z,seed,scale=1){
+  const turn=seed*2.399963,colors=['#8da866','#9bb579','#779655'];
+  for(let j=0;j<3;j++){
+   const theta=turn+j*TAU/3,u=Math.cos(theta),v=Math.sin(theta),w=.98*scale;
+   const at=(f,g,y)=>V(x+u*f-v*g,y,z+v*f+u*g);
+   const base=at(0,0,1.62),mid=at(w*1.16,0,2.28),end=at(w*2.20,0,1.96);
+   const a=at(w*.87,-w*.62,1.77),b=at(w*.87,w*.62,1.72);
+   const c=at(w*1.71,-w*.57,1.96),d=at(w*1.71,w*.57,1.92);
+   const color=colors[(seed+j)%3];
+   tri(base,a,mid,color,[.87,.95,1.08]);tri(base,mid,b,color,[.87,1.08,.93]);
+   tri(a,c,mid,color,[.95,1.02,1.08]);tri(mid,d,b,color,[1.08,.98,.93]);
+   tri(c,end,mid,color,[1.02,1.07,1.08]);tri(mid,end,d,color,[1.08,1.07,.98]);
+  }
+ }
  function finish(){
   if(!position.length)return null;
   const geo=new T.BufferGeometry();
@@ -57,5 +73,5 @@ export function makeVerge(T,scene,W,H){
   scene.add(mesh);
   return mesh;
  }
- return {flower,tuft,finish};
+ return {flower,tuft,cover,finish};
 }

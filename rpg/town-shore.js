@@ -157,13 +157,8 @@ export function addShoreCraft({T,scene,W,H,trees,room,shape}){
    shape('cone',x+sign*1.63,h*.36,z,.77,h*.64,.70,leaf[(i+1)%leaf.length],.19,rand()*TAU,sign*.42,.34);
   }
  }
- for(const [x,z,count] of [[288,409,8],[315,435,9],[335,470,8],[357,272,7],[397,285,6],[565,405,8],[894,339,7]]){
-  for(let i=0;i<count;i++){
-   const dx=x+(rand()-.5)*15,dz=z+(rand()-.5)*12,h=3.1+rand()*8.5;
-   shape('trunk',dx,1+h*.46,dz,.56,h,.51,leaf[i%4],.07,.01,rand()*.18,.23);
-   shape('sphere',dx+.25,1+h,dz,1.3+rand(),.5+rand()*.78,1.15+rand(),['#d9cc91','#e3d9af','#bfa4a0','#d0bb84'][i%4],.21,0,0,.29);
-  }
- }
+ // Reed stems stay at the waterline. Land flowers are composed by the
+ // same curated village beds as the rest of the overland planting.
  return (weather,close)=>{
   updateShelf(weather);hills.visible=close;contact.material.opacity=weather==='sun'?.94:weather==='rain'?.69:.84;
  };

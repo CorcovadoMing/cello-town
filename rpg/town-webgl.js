@@ -118,10 +118,10 @@ function landscapePigment(T,kind){
   // becomes visible, including in the lower perspective shot.
   for(let cell=0;cell<290;cell++){
    const x=next()*W,y=next()*H,r=2.7+next()*8,angle=(next()-.5)*1.15;
-   ctx.globalAlpha=.15+next()*.24;ctx.fillStyle=[dark,mid,pale][cell%3];
+   ctx.globalAlpha=(.15+next()*.24)*(meadow?.45:1);ctx.fillStyle=[dark,mid,pale][cell%3];
    ctx.beginPath();ctx.ellipse(x,y,r*(1.21+next()*.53),r*(.24+next()*.44),angle,0,Math.PI*2);ctx.fill();
    if(cell%3===0){
-    ctx.globalAlpha=.11+next()*.18;ctx.strokeStyle=pale;ctx.lineWidth=.57+next();
+    ctx.globalAlpha=(.11+next()*.18)*(meadow?.47:1);ctx.strokeStyle=pale;ctx.lineWidth=.57+next();
     ctx.beginPath();ctx.moveTo(x-r*.7,y+r*.29);ctx.quadraticCurveTo(x,y+r*.48,x+r*.71,y+r*.18);ctx.stroke();
    }
   }
@@ -130,10 +130,10 @@ function landscapePigment(T,kind){
    for(let i=0;i<53;i++){
     const angle=next()*Math.PI*2,r=Math.sqrt(next()),xx=x+Math.cos(angle)*r*(18+grain*57),yy=y+Math.sin(angle)*r*(13+grain*29);
     const scale=.30+next()*1.23;
-    ctx.globalAlpha=.095+next()*.23;ctx.strokeStyle=[dark,mid,pale][i%3];ctx.lineWidth=scale*.62;
+    ctx.globalAlpha=(.095+next()*.23)*(meadow?.65:1);ctx.strokeStyle=[dark,mid,pale][i%3];ctx.lineWidth=scale*.62;
     ctx.beginPath();ctx.moveTo(xx,yy);
     ctx.quadraticCurveTo(xx+scale*.72,yy-scale*.18,xx+scale*(meadow?1.18:2.02),yy+scale*(meadow?-1.1:.44));ctx.stroke();
-    if(i%4===0){ctx.globalAlpha=.13+next()*.12;ctx.fillStyle=i%8?dark:pale;ctx.fillRect(xx-scale*.24,yy+scale*.43,scale*.56,scale*.36);}
+    if(i%4===0){ctx.globalAlpha=(.13+next()*.12)*(meadow?.57:1);ctx.fillStyle=i%8?dark:pale;ctx.fillRect(xx-scale*.24,yy+scale*.43,scale*.56,scale*.36);}
    }
   }
   ctx.globalAlpha=1;
@@ -544,12 +544,14 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   }
  }
  const pathAt=(x,z)=>(x>161&&x<800&&z>292&&z<380)||(x>417&&x<510&&z>369)||(x>617&&x<727&&z>242&&z<314);
+ // Advance the established art seed without its former scattered lawn
+ // chips; paths, props and their seeded material details remain identical.
  for(let i=0;i<240;i++){
   const x=21+rng()*913,z=85+rng()*456;
   if(pathAt(x,z)||(x<282&&z>375)||(x>729&&z>393)||(x>565&&x<791&&z>111&&z<245))continue;
-  const w=4+rng()*13;
-  box(x,1.1,z,w,.65,2+rng()*8,['#a8bb84','#97b17a','#a6ba84','#a3b982'][i%4],0,(rng()-.5)*.65);
+  rng();rng();rng();
  }
+
  for(const [x,z,w,d] of [[480,333,620,72],[464,463,72,192],[676,268,76,53]])for(let i=0;i<Math.ceil(w*d/760);i++){
   const dx=x-w*.43+rng()*w*.86,dz=z-d*.41+rng()*d*.82;
   sphere(dx,3.9-roadSink,dz,1.15+rng()*3.6,.3,.65+rng()*1.55,['#d9c096','#e6cfa5','#d3bb90'][i%3],0,(rng()-.5)*1.4);
@@ -769,21 +771,33 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   const z=403+i*8.8,east=255-Math.max(0,Math.abs(z-467)-12)*.56;
   for(const [x,y] of [[8+i*9.4,447-47*Math.sin(Math.min(1,(8+i*9.4)/129)*Math.PI/2)],[east,z]] )sphere(x+Math.sin(i*2.17)*2.9,2,y,4.4,3+rng()*3,6,'#a6a788',0,rng());
  }
- for(const [x,z,n] of [[56,407,9],[248,474,7],[202,538,8],[287,438,4],[562,427,5],[710,398,7],[906,528,7],[19,421,8],[934,548,8]]){
+ // Roll legacy grass and flower positions to keep the independent prop
+ // seed stable. The actual beds below use their own small seeded variations.
+ for(const n of [9,7,8,4,5,7,7,8,8])for(let i=0;i<n;i++)for(let j=0;j<5;j++)rng();
+ for(let i=0;i<5*14*4;i++)rng();
+ // Three related border types. Each patch stays near a bank, tree, fence or
+ // tended edge. Quiet open turf gives the little flower heads room to read.
+ const beds=[
+  {x:351,z:263,w:24,d:10,n:33,hue:['#f1c7bb','#ecd3b1','#fff1d3'],angle:-.16},
+  {x:268,z:416,w:11,d:15,n:19,hue:['#fff1c9','#e8d7b6','#f1c5bb'],angle:.31},
+  {x:250,z:497,w:10,d:20,n:24,hue:['#f0e7c0','#e9d7a8','#f8dec7'],angle:-.38},
+  {x:40,z:412,w:14,d:9,n:14,hue:['#eee0ba','#f2d0be','#e5cdc0'],angle:.18},
+  {x:867,z:296,w:19,d:9,n:19,hue:['#edc4c2','#dcc9df','#f0d9cd'],angle:.42},
+  {x:724,z:456,w:10,d:20,n:24,hue:['#edc8b8','#efdbc0','#cac7dd'],angle:-.28},
+  {x:919,z:494,w:9,d:15,n:18,hue:['#efc9b7','#f2e2bf','#e5c5d2'],angle:.25}
+ ];
+ for(const {x,z,w,d,n,hue,angle} of beds){
+  const c=Math.cos(angle),s=Math.sin(angle);
   for(let i=0;i<n;i++){
-   const dx=x+(rng()-.5)*24,dz=z+(rng()-.5)*18,h=4+rng()*12;
-   const variation=rng();rng();
-   verge.tuft(dx,dz,h*.80,i%3?'#7c9c5f':'#9eae6b',i+Math.floor(variation*127));
-   if(i%4===0&&!pathAt(dx,dz))verge.flower(dx,h,dz,['#f7d6ca','#fff0af','#edbdc7'][i%3],Math.floor(x+z)+i,.83);
-  }
- }
- // Hand-planted colour in middle and near terrain, leaving the walking
- // lane and entry apron empty. Flowers use finite instanced geometry.
- for(const [x,z,palette] of [[355,273,['#f6dfa4','#f4d6b0']],[562,394,['#dfc0af','#efdc9a']],[710,386,['#efdbc1','#e1b6a9']],[315,461,['#eddfaa','#f1dfcb']],[875,340,['#f1dfad','#e7bdad']]]){
-  for(let i=0;i<14;i++){
-   const a=x+(rng()-.5)*46,b=z+(rng()-.5)*23,h=4+rng()*7;
-   shape('trunk',a,h*.48,b,1.02,h,1.02,'#7f9c61',0,0,(rng()-.5)*.4);
-   if(!pathAt(a,b))verge.flower(a,h,b,palette[i%2],Math.floor(x+z)+i,.85+(i%4)*.105);
+   const phase=i*2.399963,rad=Math.sqrt((i+.25)/n)*(.85+.115*Math.sin(i*1.31));
+   const u=Math.cos(phase)*w*rad,v=Math.sin(phase)*d*rad;
+   const a=x+u*c-v*s,b=z+u*s+v*c;
+   if(pathAt(a,b)||insidePolygon(a,b,GARDEN_SOIL))continue;
+   const h=2.8+(i*7%13)*.20,seed=x+z+i;
+   if(i%3!==0){
+    shape('trunk',a,h*.50+.46,b,.59,h*.93,.59,'#8caa68',0,0,.11*Math.cos(phase));
+    verge.flower(a,h+.63,b,hue[(i*5)%3],seed,.77+(i%4)*.08);
+   }else verge.tuft(a,b,h+.56,i%2?'#8fa86c':'#9aaf74',seed);
   }
  }
  for(const [x,z] of [[72,527],[303,548],[551,549],[901,533],[930,518],[355,348]]){
@@ -966,23 +980,15 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
     width,width*1.20,1,colours[(hue+j)%3],-.34-j*.17,theta,.33*Math.sin(theta));
   }
  }
- // Each mixed verge grows differently. Grass blades, clover and earth are
- // tiny geometry, while open paths and the centre still give the eye rest.
- for(const [x,z,n,kind] of [[149,265,11,0],[417,217,12,1],[535,261,9,0],[796,284,10,2],[293,410,11,1],
-  [313,516,13,2],[382,442,9,0],[530,410,10,2],[627,447,9,0],[107,342,10,1],[680,521,12,2],[897,216,10,0]]){
-  let s=(x*313+z*719)>>>0;
-  const rand=()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};
-  const inks=kind===0?['#819653','#a2b06f','#678445']:kind===1?['#6d9258','#89a36b','#99ae74']:['#8b9c5f','#b3bb83','#80935d'];
-  for(let j=0;j<n;j++){
-   const a=j*2.39996,r=6+rand()*16,xx=x+Math.sin(a)*r,zz=z+Math.cos(a)*r*.64;
-   if(pathAt(xx,zz))continue;
-   const h=2+rand()*4;
-   if(j%4===0){
-    sphere(xx,1.9,zz,2.6+rand()*2,.38,1.6+rand()*1.6,'#96865d',0,a);
-   }else if(j%4===1){
-    for(let k=0;k<3;k++)sphere(xx+Math.sin(k*2.1+a)*1.15,1.8+h*.26,zz+Math.cos(k*2.1+a)*1.15,
-     1.3,.32,.82,inks[k],.1,k*2.1+a);
-   }else{rand();verge.tuft(xx,zz,h,inks[j%3],x+z+j);}
+ // Leafy ground cover, rather than upright weed blades, blends the
+ // planted beds into the lawn. It groups around shade and beds, not traffic.
+ for(const [x,z,w,d,n] of [[145,240,29,12,38],[355,264,34,15,52],[245,423,17,15,26],
+  [864,297,21,12,38],[720,452,16,20,34],[905,481,13,22,39],[770,266,13,10,21]]){
+  for(let i=0;i<n;i++){
+   const a=i*2.399963,r=Math.sqrt((i+.28)/n)*(.88+.12*Math.sin(i*2.18));
+   const xx=x+Math.cos(a)*w*r,zz=z+Math.sin(a)*d*r;
+   if(pathAt(xx,zz)||insidePolygon(xx,zz,GARDEN_SOIL))continue;
+   verge.cover(xx,zz,x+z+i,.58+(i*7%10)*.093);
   }
  }
  verge.finish();
