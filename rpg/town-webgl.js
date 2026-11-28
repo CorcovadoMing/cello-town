@@ -1,4 +1,4 @@
-import {addOrchardTree,townSunVector} from './town-orchard.js?v=1';
+import {addOrchardTree,makeOrchardLeaf,townSunVector} from './town-orchard.js?v=2';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
@@ -48,9 +48,10 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const geometry={
   box:new T.BoxGeometry(1,1,1), sphere:new T.IcosahedronGeometry(1,1),
   trunk:new T.CylinderGeometry(.36,.51,1,7), cone:new T.ConeGeometry(1,1,5),
-  circle:new T.CircleGeometry(1,18)
+  circle:new T.CircleGeometry(1,18), 'orchard-leaf':makeOrchardLeaf(T)
  };
  const material=new T.MeshLambertMaterial({flatShading:true});
+ const leafyMaterial=new T.MeshLambertMaterial({flatShading:false,emissive:'#27351f',emissiveIntensity:.26});
  const batches=new Map();
  const model=new T.Object3D(),sample=new T.Vector3();
  const color=new T.Color();
@@ -223,7 +224,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   }
  }
  for(const [i,[x,y,s]] of trees.entries()){
-  addOrchardTree({shape,sphere},x,y+46*s,s*.88,i);
+  addOrchardTree({shape},x,y+46*s,s*.88,i);
  }
  // Physical pond wall and a recessed, gently shaded water plane.
  box(146,-1,465,249,6,150,'#738773');
@@ -330,7 +331,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  for(const x of [-9,9])box(stand.x+x,43,stand.y+2.5,16,17,1.5,'#f1deb1',-.19);
  for(let i=0;i<4;i++)for(const dx of [-9,9])box(stand.x+dx,40+i*3,stand.y+3.5,12,.5,1,'#af9a6e',-.19);
  for(const [kind,items] of batches){
-  const batch=new T.InstancedMesh(geometry[kind],material,items.length);
+  const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:material,items.length);
   items.forEach(([matrix,tint],i)=>{batch.setMatrixAt(i,matrix);batch.setColorAt(i,color.set(tint));});
   batch.instanceMatrix.needsUpdate=true;batch.instanceColor.needsUpdate=true;batch.castShadow=true;batch.receiveShadow=true;scene.add(batch);
  }
