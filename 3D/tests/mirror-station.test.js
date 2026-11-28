@@ -44,3 +44,9 @@ test('the near-wall easel and both rendered surfaces keep their own station',()=
  assert.match(app,/scene\.children\.slice\(wardrobeStart\)\.forEach\(o=>\{o\.userData\.station='wardrobe'/);
  assert.match(app,/station==='mirror'\?'vanity':station/);
 });
+
+test('mirror arrival is exactly aligned to the pane center, not offset for the camera',()=>{
+ assert.match(app,/MIRROR_WALL_X=\.65,MIRROR_APPROACH=\{x:MIRROR_WALL_X,z:-\.79\}/);
+ assert.match(app,/frame\.position\.set\(MIRROR_WALL_X,/);
+ assert.match(app,/station==='mirror'\)\{pos=\{\.\.\.MIRROR_APPROACH\};avatar\.position\.x=pos\.x;avatar\.position\.z=pos\.z;\}/);
+});

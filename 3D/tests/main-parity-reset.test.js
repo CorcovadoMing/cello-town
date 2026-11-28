@@ -15,19 +15,20 @@ function normalized(s){
 // Preserve the main parity fixture: allow only the exact tested experimental
 // outdoor drawing revision and its accompanying module, not future drift.
 const reviewedExperimentalHashes={
+ '3D/index.html':'d2d4131db8db03eab2bdb3905af202c937d0ea5157bbfe1847180c9b871895f8',
  '3D/window-landscape.js':'fa6ac99b13edca08a0ff6f8121e7a12f7b9eda27d3bfb877e345bf4d2bbe1a43',
  'rpg/garden.js':'76dd6cd336f756937afc76d96244f7aa7a53c6e55c8827e3397987b96ba56a74',
  'rpg/terrain-art.js':'eb6113cd6a5bebc2b26ee5c8c37fd737c0daf332eafe46c69e8a3be6b96b04ca',
  '3D/state.js':'244819d909390bc33bf0f0c15b6356e0f8517612319af33210035e7618bcbf0b',
  '3D/room-polish.js':'c0c5765ee21efd2c417fcc24c1fa3410c11113ffa24f0cc1f9c12a2486dc18fb',
- '3D/app.js':'16919c19a090dbdb977bdfe958f0e3c1d2b987252a92ccbff627865eb1986516',
+ '3D/app.js':'54e39ccbba9c042a4793e216d62268b24e03daed070339a7fb36112c4f9bdefc',
  'rpg/ambience.js':'4aa19a20451ee6657c4abcaf302ff7642208bebb00e26d26643f9a3d2e18c950',
  'rpg/town-countryside.js':'cfa5e8cf22c653121af4b35bebec2719ecf996fc1dc638e5e85ce9e9217f0530',
  'rpg/town-shore.js':'c931b436edf07085a6322285063411856bc97d4572c488623535947ffde9aa06',
  'rpg/town-breeze.js':'5ee13d0757bf03906ace68a9398b1807cb38f3937b0073b3dc60eae6a5f69fe3',
  'rpg/style.css':'5ead5010e045d1bdc85ec3e0c5c5b3a29fa5063720582676e6e94c7999c101ee',
  'rpg/app.js':'a783a2413073b0937270453543e8becbea2598a9da2c6e48adf4b6020fb69f25',
- 'rpg/index.html':'9c490834978260af787029af18af835ac49c2d4afb2f0bf11bb907dcdbbe6f1d',
+ 'rpg/index.html':'0cc94b545231cd70234d33c2a8901df3be37c70898c1854cae504ac67eaae64e',
  'rpg/town-depth.js':'3b082ca07119d517e0b747dd8ba8433c3aed0aa14bd18d07b2df6451c8efc7af',
  'rpg/music-room-art.js':'3292e702170bf184ab5f20403991b6e4395131184591b346463e5812f91e5a09',
  'rpg/town-webgl.js':'c910f76d87a9a292305ecba683aea0496cd5358493597d446d583022b67a8be2',
