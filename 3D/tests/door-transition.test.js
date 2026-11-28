@@ -23,5 +23,5 @@ test('019 entrance is unskippable by game input and held directions require rele
  assert.ok(app.includes("arrivalPointers.add(e.pointerId);e.preventDefault();e.stopImmediatePropagation()"));
  assert.ok(app.includes("if(!arrivalPointers.delete(e.pointerId))return"));
  assert.ok(!app.includes("window.addEventListener('pointerdown',cancelDoorArrival"));
- const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');assert.ok(html.includes('app.js?v=20261128-026-experimental-ray-mirror'));assert.ok(html.includes('style.css?v=30-quill-score'));
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');assert.ok(html.includes('app.js?v=20261128-027-experimental-mirror-station'));assert.ok(html.includes('style.css?v=30-quill-score'));
 });

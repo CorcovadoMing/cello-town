@@ -8,7 +8,9 @@ const HAIR_ACCESSORY={bow:'#c88f83',beret:'#718f83',tie:'#d9b77d'};
 const labels={faceShape:'臉型',face:'神情',hair:'髮型',skin:'膚色',hairColor:'髮色',outfit:'衣服',upper:'上身',lower:'下身',shoes:'鞋子',lowerColor:'下身顏色',color:'上身顏色',hat:'頭飾',accessory:'小配件'},colorNames={skin:['奶油蜜桃','溫暖杏色','焦糖棕','可可棕'],hairColor:['栗子棕','蜂蜜金','午夜黑','紅茶棕'],color:['森林綠','珊瑚粉','丁香紫','暖陽黃'],lowerColor:['森林綠','珊瑚粉','丁香紫','暖陽黃','鼠尾草灰','燕麥棕','暖石灰','奶油米']};
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));status.textContent='穿搭已自動保存在這個瀏覽器。';}catch{status.textContent='這次穿搭尚未儲存；瀏覽器不允許本機儲存。';}}
 const categories=[['faceShape','skin'],['face'],['hair','hairColor'],['upper','color'],['lower','lowerColor'],['shoes'],['hat'],['accessory']];
-let celloPerformance=null,rayMirrorFrame=null;
+let celloPerformance=null,rayMirrorFrame=null,mirrorCollider=null;
+const mirrorRoom=/\/experimental(?:\/|$)/.test(location.pathname)||new URLSearchParams(location.search).get('raymirror')==='1';
+const MIRROR_APPROACH={x:.65,z:-.44};
 let activeCategory=0,previewMode=null,previewYaw=0,roomSnapshot=null;
 const visibleCategories=()=>previewMode==='wardrobe'?[3,4,5,6,7]:[0,1,2];
 // Original flat silhouettes: only the room avatar uses the 3D renderer.
@@ -1162,6 +1164,34 @@ function guardedMove(start,next,o=stoolObstacle()){
  if(inside(start,o))return {...start};if(!segmentBlocked(start,next,o))return next;
  const axes=[{x:next.x,z:start.z},{x:start.x,z:next.z}].filter(p=>!segmentBlocked(start,p,o));return axes.sort((a,b)=>dist(b,start)-dist(a,start))[0]||{...start};
 }
+// The mirror's draw bounds supply its swept floor footprint. Routing uses
+// the same expanded obstacles for pointer paths and direct movement.
+function mirrorWalkRoute(start,target,obstacles,room=ROOM){
+ const within=p=>p.x>=room.minX&&p.x<=room.maxX&&p.z>=room.minZ&&p.z<=room.maxZ;
+ const free=p=>within(p)&&obstacles.every(o=>!inside(p,o));
+ const clear=(a,b)=>obstacles.every(o=>!segmentBlocked(a,b,o));
+ if(!free(start))return null;
+ const clamped={x:Math.max(room.minX,Math.min(room.maxX,target.x)),z:Math.max(room.minZ,Math.min(room.maxZ,target.z))};
+ const e=.018,edge=obstacles.flatMap(o=>{
+  const{x,z}=clamped;
+  return [{x:o.minX-e,z},{x:o.maxX+e,z},{x,z:o.minZ-e},{x,z:o.maxZ+e}];
+ });
+ const goal=free(clamped)?clamped:edge.filter(free).sort((a,b)=>dist(a,clamped)-dist(b,clamped))[0];
+ if(!goal)return null;
+ if(clear(start,goal))return {goal,step:goal};
+ const nodes=[start,goal,...obstacles.flatMap(o=>[o.minX-e,o.maxX+e].flatMap(x=>[o.minZ-e,o.maxZ+e].map(z=>({x,z})))).filter(free)];
+ const cost=nodes.map(()=>Infinity),first=nodes.map(()=>null),done=new Set();cost[0]=0;
+ while(done.size<nodes.length){
+  let i=-1;for(let j=0;j<nodes.length;j++)if(!done.has(j)&&(i<0||cost[j]<cost[i]))i=j;
+  if(i<0||!Number.isFinite(cost[i]))return null;
+  if(i===1)return {goal,step:first[1]};
+  done.add(i);
+  for(let j=1;j<nodes.length;j++)if(!done.has(j)&&clear(nodes[i],nodes[j])){
+   const next=cost[i]+dist(nodes[i],nodes[j]);if(next<cost[j]){cost[j]=next;first[j]=first[i]||nodes[j];}
+  }
+ }
+ return null;
+}
 function stoolEgress(seat,o=stoolObstacle(),room=ROOM){return clearPoint(seat,o,room);}
 
 const CELLO_SEAT={x:-1.85,z:-.70},STOOL_CENTER={x:-1.85,z:-.66},STOOL_COLLIDER=stoolObstacle();
@@ -1169,10 +1199,10 @@ function stoolRouteStep(p,target,dt){const route=routeAroundStool(p,target,STOOL
 
 function sideStoolEgress(from,o){if(from.x>=o.maxX+.005&&!inside(from,o))return {...from};return clearPoint({x:o.maxX+.08,z:Math.max(o.minZ+.05,Math.min(o.maxZ-.05,from.z))},o);}
 function pointAlongPath(from,route,u){let total=0,p=from;const lengths=route.map(q=>{const n=Math.hypot(q.x-p.x,q.z-p.z);p=q;total+=n;return n;});let remaining=Math.max(0,Math.min(1,u))*total;p=from;for(let i=0;i<route.length;i++){const q=route[i],n=lengths[i];if(remaining<=n||i===route.length-1){const f=n?Math.min(1,remaining/n):1;return{x:p.x+(q.x-p.x)*f,z:p.z+(q.z-p.z)*f};}remaining-=n;p=q;}return{...from};}
-let destination=null,pendingStation=null,watchingCat=false,catPose=0,catPoseMotion=null,catSnapshot=null;const stationSpots={exit:{x:0,z:1.9},wardrobe:{x:2.2,z:-.8},vanity:{x:.65,z:-.75},cello:{x:-1.25,z:-.66},cat:{x:-1.03,z:-.72}};const pressed=new Set();function release(){if(watchingCat)endCatView();pressed.clear();destination=null;pendingStation=null;watchingCat=false;}const keyMap={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(previewMode)return;if(e.target.closest('button,input,select,textarea')&&e.target!==$('cat-view-back'))return;const d=keyMap[e.key];if(d){e.preventDefault();destination=null;pendingStation=null;if(watchingCat)endCatView();watchingCat=false;pressed.add(d);}});window.addEventListener('keyup',e=>pressed.delete(keyMap[e.key]));window.addEventListener('blur',release);document.addEventListener('visibilitychange',release);for(const b of document.querySelectorAll('[data-dir]')){b.onpointerdown=e=>{if(previewMode)return;e.preventDefault();destination=null;pendingStation=null;b.setPointerCapture(e.pointerId);pressed.add(b.dataset.dir);};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>pressed.delete(b.dataset.dir);}
+let destination=null,pendingStation=null,watchingCat=false,catPose=0,catPoseMotion=null,catSnapshot=null;const stationSpots={exit:{x:0,z:1.9},wardrobe:mirrorRoom?MIRROR_APPROACH:{x:2.2,z:-.8},vanity:mirrorRoom?MIRROR_APPROACH:{x:.65,z:-.75},cello:{x:-1.25,z:-.66},cat:{x:-1.03,z:-.72}};const pressed=new Set();function release(){if(watchingCat)endCatView();pressed.clear();destination=null;pendingStation=null;watchingCat=false;}const keyMap={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(previewMode)return;if(e.target.closest('button,input,select,textarea')&&e.target!==$('cat-view-back'))return;const d=keyMap[e.key];if(d){e.preventDefault();destination=null;pendingStation=null;if(watchingCat)endCatView();watchingCat=false;pressed.add(d);}});window.addEventListener('keyup',e=>pressed.delete(keyMap[e.key]));window.addEventListener('blur',release);document.addEventListener('visibilitychange',release);for(const b of document.querySelectorAll('[data-dir]')){b.onpointerdown=e=>{if(previewMode)return;e.preventDefault();destination=null;pendingStation=null;b.setPointerCapture(e.pointerId);pressed.add(b.dataset.dir);};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>pressed.delete(b.dataset.dir);}
 window.addEventListener('pageshow',e=>{if(e.persisted){exitNavigating=false;exitArmed=pos.z<1.4;release();}});
 const targetMarker=ring(0,.085,0,.16,.018,'#fff5cd');targetMarker.rotation.x=-Math.PI/2;targetMarker.visible=false;const raycaster=new T.Raycaster(),floorPlane=new T.Plane(new T.Vector3(0,1,0),0);let tap=null;
-function approachStation(mode){if(!stationSpots[mode]||celloPerformance)return;if(mode==='exit')exitArmed=true;if(previewMode)exitPreview();release();pendingStation=mode;destination={...stationSpots[mode]};if(mode==='cello')beginPerformanceApproach();$('scene-status').textContent=mode==='exit'?'正在走向小鎮出口':mode==='wardrobe'?'正在走向衣櫃':mode==='cello'?'正在走向大提琴':mode==='cat'?'正在走到貓咪旁邊':'正在走向梳妝台';area.focus({preventScroll:true});}
+function approachStation(mode){if(!stationSpots[mode]||celloPerformance)return;if(mode==='exit')exitArmed=true;if(previewMode)exitPreview();release();pendingStation=mode;destination={...stationSpots[mode]};if(mode==='cello')beginPerformanceApproach();$('scene-status').textContent=mode==='exit'?'正在走向小鎮出口':mode==='wardrobe'?(mirrorRoom?'正在走向全身鏡':'正在走向衣櫃'):mode==='cello'?'正在走向大提琴':mode==='cat'?'正在走到貓咪旁邊':mirrorRoom?'正在走向全身鏡':'正在走向梳妝台';area.focus({preventScroll:true});}
 let cameraMotion=null;
 function animateRoomCamera(position,zoom,restoring=false,orientation=null,duration=520){
  cameraMotion={from:camera.position.clone(),to:position.clone(),fromZoom:camera.zoom,toZoom:zoom,start:performance.now(),restoring,duration,fromQuaternion:camera.quaternion.clone(),toQuaternion:orientation?.clone()||camera.quaternion.clone()};
@@ -1224,7 +1254,7 @@ function enterPreview(mode){
  if(previewMode)exitPreview();
  roomSnapshot={rotation:avatar.rotation.clone(),heading,cameraPosition:cameraMotion?.restoring?cameraMotion.to.clone():camera.position.clone(),cameraQuaternion:camera.quaternion.clone(),cameraZoom:cameraMotion?.restoring?cameraMotion.toZoom:camera.zoom,focus:area};
  release();tap=null;previewMode=mode;previewYaw=Math.atan2(camera.position.x-pos.x,camera.position.z-pos.z);activeCategory=mode==='wardrobe'?3:0;
- area.setAttribute('aria-label','房間內角色試穿，左右拖曳或方向鍵轉動');document.body.classList.add('preview-open');document.body.dataset.editor=mode;const panel=document.querySelector('aside');panel.setAttribute('role','region');panel.setAttribute('aria-label',mode==='wardrobe'?'衣櫃試穿':'梳妝台');panel.hidden=false;$('preview-close').hidden=false;controls();const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);anchorEditor();$('preview-close').focus({preventScroll:true});
+ area.setAttribute('aria-label','房間內角色試穿，左右拖曳或方向鍵轉動');document.body.classList.add('preview-open');document.body.dataset.editor=mode;const panel=document.querySelector('aside');panel.setAttribute('role','region');panel.setAttribute('aria-label',mode==='wardrobe'?(mirrorRoom?'全身鏡試穿':'衣櫃試穿'):(mirrorRoom?'全身鏡外觀':'梳妝台'));panel.hidden=false;$('preview-close').hidden=false;controls();const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);anchorEditor();$('preview-close').focus({preventScroll:true});
 }
 function exitPreview(){if(celloPerformance)return;if(!previewMode)return;const old=roomSnapshot;release();if(tap&&area.hasPointerCapture(tap.id))area.releasePointerCapture(tap.id);tap=null;previewMode=null;heading=old.heading;avatar.rotation.copy(old.rotation);camera.quaternion.copy(old.cameraQuaternion);animateRoomCamera(old.cameraPosition,old.cameraZoom,true);area.setAttribute('aria-label','3D房間，點衣櫃或梳妝台走近更換外觀，點地板行走');document.body.classList.remove('preview-open');delete document.body.dataset.editor;const panel=document.querySelector('aside');panel.removeAttribute('role');panel.removeAttribute('aria-label');panel.removeAttribute('style');panel.hidden=true;$('preview-close').hidden=true;old.focus?.focus({preventScroll:true});roomSnapshot=null;}
 $('cat-watch-access').onclick=()=>approachStation('cat');
@@ -1602,7 +1632,7 @@ function animateIdle(t,moving){
  faceRig.mouth.scale.set(fm.mouthX,fm.mouthY,1);head.rotation.z+=fm.tilt;
 
 }
-function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;watchPerformanceApproach(dt);if(celloPerformance?.phase==='approach'&&!destination){destination={...stationSpots.cello};pendingStation='cello';}tickDoorArrival(t);tickDoorCutaway(dt);tickRoomCamera(t,dt);positionManuscript();if(reading&&reading.phase!=='walking'){if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode==='performance'){tickPerformance(dt,t);if(!software||t-lastDraw>100){renderPerformanceView(t);lastDraw=t;}return;}if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){destination=clearPoint(destination,STOOL_COLLIDER);destination=clearPoint(destination,SCORE_TABLE_FOOTPRINT);const tableRoute=segmentBlocked(pos,destination,SCORE_TABLE_FOOTPRINT)?routeAroundStool(pos,destination,SCORE_TABLE_FOOTPRINT):null;const next=stoolRouteStep(pos,tableRoute?.[0]||destination,dt);const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;pos=guardedMove(pos,guardedMove(pos,move(pos,wx,wz,dt),SCORE_TABLE_FOOTPRINT),STOOL_COLLIDER);heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){if(rayMirrorFrame&&previewMode==='performance')renderPerformanceView(t);else renderer.render(scene,camera);lastDraw=t;}}
+function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(document.hidden)return;watchPerformanceApproach(dt);if(celloPerformance?.phase==='approach'&&!destination){destination={...stationSpots.cello};pendingStation='cello';}tickDoorArrival(t);tickDoorCutaway(dt);tickRoomCamera(t,dt);positionManuscript();if(reading&&reading.phase!=='walking'){if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}roomCat.animateCat(t,reduced.matches);animateWindowSky(t,reduced.matches);updateMirrorHint();tickCatPose(t);if(previewMode==='performance'){tickPerformance(dt,t);if(!software||t-lastDraw>100){renderPerformanceView(t);lastDraw=t;}return;}if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw;walkPose(0,false);animateIdle(t,false);if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}let x=(pressed.has('right')?1:0)-(pressed.has('left')?1:0),z=(pressed.has('down')?1:0)-(pressed.has('up')?1:0);let moving=x||z;if(catPose>.001&&!watchingCat){x=0;z=0;moving=false;}if(!moving&&destination&&catPose<.001){let next;if(mirrorCollider){const r=mirrorWalkRoute(pos,destination,[STOOL_COLLIDER,SCORE_TABLE_FOOTPRINT,mirrorCollider]);if(!r){destination=null;pendingStation=null;next=pos;}else{destination=r.goal;next=stepToward(pos,r.step,dt);}}else{destination=clearPoint(destination,STOOL_COLLIDER);destination=clearPoint(destination,SCORE_TABLE_FOOTPRINT);const tableRoute=segmentBlocked(pos,destination,SCORE_TABLE_FOOTPRINT)?routeAroundStool(pos,destination,SCORE_TABLE_FOOTPRINT):null;next=stoolRouteStep(pos,tableRoute?.[0]||destination,dt);}const dx=next.x-pos.x,dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;if(moving){heading=Math.atan2(dx,dz);walkPhase+=Math.hypot(dx,dz)*5.7;pos=next;}if(destination&&Math.hypot(pos.x-destination.x,pos.z-destination.z)<.005)destination=null;}if(x||z){const a=.615,wx=x*Math.cos(a)+z*Math.sin(a),wz=-x*Math.sin(a)+z*Math.cos(a);const before=pos;const roomStep=guardedMove(pos,guardedMove(pos,move(pos,wx,wz,dt),SCORE_TABLE_FOOTPRINT),STOOL_COLLIDER);pos=mirrorCollider?guardedMove(pos,roomStep,mirrorCollider):roomStep;heading=Math.atan2(wx,wz);walkPhase+=Math.hypot(pos.x-before.x,pos.z-before.z)*5.7;}if(!doorArrival&&Math.abs(pos.x)<.65&&pos.z>1.4){exitLeaf.rotation.y=Math.max(exitLeaf.rotation.y,Math.PI*.49*Math.min(1,(pos.z-1.4)/.38));}if(!doorArrival&&!exitArmed&&pos.z<1.4)exitArmed=true;if(!doorArrival&&exitArmed&&!watchingCat&&pos.z>=1.88&&Math.abs(pos.x)<.55){leaveRoom();return;}targetMarker.visible=!!destination;if(destination)targetMarker.position.set(destination.x,.085,destination.z);avatar.position.set(pos.x,standY(pos),pos.z);let delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*Math.min(1,dt*12);const swing=moving?Math.sin(walkPhase)*.64:0;walkPose(swing,!!moving,catPose);animateIdle(t,!!moving);poseDoorArrival(t);if(pendingStation&&!destination){const station=pendingStation;if(Math.hypot(pos.x-stationSpots[station].x,pos.z-stationSpots[station].z)<.005){enterPreview(station);}else pendingStation=null;}if(!software||t-lastDraw>100){if(rayMirrorFrame&&previewMode==='performance')renderPerformanceView(t);else renderer.render(scene,camera);lastDraw=t;}}
 const westRoomDetail=installWestRoomDetail(T,scene);
 // BEGIN INTERIOR SURFACE FINISH
 if(!software){
@@ -1630,37 +1660,37 @@ if(!software){
 }
  // END INTERIOR SURFACE FINISH
 const realRoomPolish=software?null:decoratePerformanceRoom(T,scene);const realStool=performanceParts().stool;realStool.position.set(STOOL_CENTER.x,0,STOOL_CENTER.z);realStool.rotation.y=PERFORMANCE_YAW;realStool.scale.y=.455/.375;realStool.visible=true;
-// Opt-in full-length mirror. The vanity and other room controls stay available.
+// Replace the dressing table in the experimental room while keeping both
+// appearance editors. Non-WebGL displays retain the same usable station.
+if(mirrorRoom){
+ vanity.removeFromParent();
+ $('wardrobe-open').setAttribute('aria-label','在全身鏡前換衣服');
+ $('vanity-open').setAttribute('aria-label','在全身鏡前更換外觀');
+ const frame=new T.Group();frame.name='full-length-ray-mirror-frame';frame.position.set(.65,1.01,-1.43);frame.rotation.set(-.22,.36,0);scene.add(frame);
+ for(const side of [-1,1]){box(side*.425,0,0,.040,1.99,.062,'#9e7755',frame);box(0,side*.975,0,.872,.041,.062,'#b99163',frame);}
+ for(const side of [-1,1])box(side*.407,0,.032,.007,1.90,.006,'#d2b076',frame);
+ for(const side of [-1,1]){rod([side*.359,-.13,-.022],[side*.359,-.985,-.24],.018,'#9e7755',frame);box(side*.359,-.981,-.116,.067,.034,.285,'#896446',frame);}
+ const surface=new T.Mesh(new T.PlaneGeometry(.816,1.944),new T.MeshBasicMaterial({color:'#b3c8c3',side:T.DoubleSide}));
+ surface.position.z=.034;surface.name='full-length-mirror-surface';frame.add(surface);
+ frame.traverse(o=>{o.userData.station='wardrobe';});
+ const bounds=new T.Box3().setFromObject(frame),margin=.30;
+ mirrorCollider={minX:bounds.min.x-margin,maxX:bounds.max.x+margin,minZ:bounds.min.z-margin,maxZ:bounds.max.z+margin};
+ rayMirrorFrame=frame;
+ if(!software&&new URLSearchParams(location.search).get('raymirror')==='1')requestAnimationFrame(()=>setTimeout(()=>{
+  let reflected=null;
+  try{
+   const roots=scene.children.filter(o=>o!==frame&&o!==avatar&&o!==targetMarker&&o!==doorCutaway&&o!==roomCat.group);
+   reflected=createRoomRayMirror(T,roots,avatar,renderer,{cat:roomCat.group});if(!reflected)return;
+   reflected.mesh.scale.set(1.275,1.13,1);reflected.mesh.position.z=.035;frame.add(reflected.mesh);
+   let shaderRejected=false;const prior=renderer.debug.onShaderError;
+   renderer.debug.onShaderError=(...args)=>{shaderRejected=true;prior?.(...args);};
+   try{renderer.compile(reflected.mesh,camera,scene);renderer.properties.get(reflected.mesh.material).currentProgram?.getUniforms();}finally{renderer.debug.onShaderError=prior;}
+   if(shaderRejected)throw new Error('mirror shader unavailable');
+   surface.visible=false;
+  }catch{if(reflected){reflected.mesh.removeFromParent();reflected.dispose();}surface.visible=true;}
+ },0));
+}
 requestAnimationFrame(frame);
-if(!software&&new URLSearchParams(location.search).get('raymirror')==='1')requestAnimationFrame(()=>setTimeout(()=>{
- const oldGlass=[mirrorBase,mirrorStem,mirrorBack,mirrorGlass,mirrorHint].filter(Boolean);
- let frame=null,reflected=null;const originalPlant=eastFloorPlant.position.clone();
- try{
-  // Actual meshes; exclude animated avatar, target markers and cutaway proxies.
-  eastFloorPlant.position.set(2.80,0,1.64);
- for(const glass of oldGlass)glass.visible=false;
- const roots=scene.children.filter(o=>o!==avatar&&o!==targetMarker&&o!==doorCutaway&&o!==roomCat.group);
- reflected=createRoomRayMirror(T,roots,avatar,renderer,{cat:roomCat.group});
- if(!reflected)throw new Error('mirror unavailable');
-  frame=new T.Group();frame.name='full-length-ray-mirror-frame';frame.position.set(2.64,1.01,-.44);frame.rotation.set(-.32,-.36,0);scene.add(frame);
-  for(const side of [-1,1]){box(side*.425,0,0,.040,1.99,.062,'#9e7755',frame);box(0,side*.975,0,.872,.041,.062,'#b99163',frame);}
-  for(const side of [-1,1])box(side*.407,0,.032,.007,1.90,.006,'#d2b076',frame);
-  // Low rear splay keeps this freestanding frame physically supported.
-  for(const side of [-1,1]){rod([side*.359,-.13,-.022],[side*.359,-.985,-.24],.018,'#9e7755',frame);box(side*.359,-.981,-.116,.067,.034,.285,'#896446',frame);}
-  frame.traverse(o=>{o.raycast=()=>{};});
-  reflected.mesh.scale.set(1.275,1.13,1);reflected.mesh.position.z=.035;frame.add(reflected.mesh);
-  // Compile synchronously so a rejected shader restores the original fixture.
-  let shaderRejected=false;
-  const originalShaderError=renderer.debug.onShaderError;
-  renderer.debug.onShaderError=(...args)=>{shaderRejected=true;originalShaderError?.(...args);};
-  try{renderer.compile(reflected.mesh,camera,scene);renderer.properties.get(reflected.mesh.material).currentProgram?.getUniforms();}finally{renderer.debug.onShaderError=originalShaderError;}
-  if(shaderRejected)throw new Error('mirror shader unavailable');
-  rayMirrorFrame=frame;
- }catch{
-  eastFloorPlant.position.copy(originalPlant);frame?.removeFromParent();reflected?.dispose();
-  for(const glass of oldGlass)glass.visible=true;
- }
-},0));
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();release();$('scene-status').textContent='3D 畫面暫停，請重新整理恢復。';status.textContent='3D 顯示中斷，穿搭設定仍保留。請重新整理。';});
 
 // Warm only fetched bytes after the room is usable. Never execute town code/audio
