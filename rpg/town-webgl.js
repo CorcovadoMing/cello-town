@@ -1,3 +1,5 @@
+import {makeGroundRain} from './town-ground-rain.js?v=1';
+import {makeVerge} from './town-verge.js?v=1';
 import {makeCountryside} from './town-countryside.js?v=4';
 import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=open-southwest-2';
 import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=valley-sky-4';
@@ -431,6 +433,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const facingYaw=Math.atan2(ex-lx,ez-lz);
  let camera=mapCamera;
  const updateGrass=makeLivingGrass(T,scene,W,H);
+ const verge=makeVerge(T,scene,W,H);
 
  const sun=new T.DirectionalLight('#ffe7b0',2.05);
  sun.position.set(350,700,-310);sun.castShadow=true;
@@ -514,6 +517,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const roadTop=2.05,roadSink=4.25-roadTop;
  const pathMesh=new T.Mesh(paintTerrainUV(T,new T.ExtrudeGeometry(trail,{depth:1.85,bevelEnabled:true,bevelThickness:1.2,bevelSize:1.8,bevelSegments:2})),new T.MeshPhongMaterial({map:soilPigment,bumpMap:soilPigment,bumpScale:.69,shininess:3,specular:'#30271c',color:'#f7f4eb'}));
  pathMesh.rotation.x=-Math.PI/2;pathMesh.position.y=1.2-roadSink;pathMesh.receiveShadow=true;scene.add(pathMesh);
+ const dryTrail=pathMesh.material.color.clone(),wetTrail=new T.Color('#dad1c3');
  const footfall=createFootfallTracker((x,z)=>insidePolygon(x,z,pathLoop));
  const stampTexture=(()=>{
   const c=document.createElement('canvas');c.width=16;c.height=24;
@@ -617,7 +621,8 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   scene.add(mesh);
   return {kind,x,z,w,d,ctx,soft,raw,down,thumb,map,mesh};
  }
- const wetLayers=[wetLayer('road',148,216,664,344,4.63-roadSink),wetLayer('bed',733,403,177,111,1.66)];
+ const wetLayers=[wetLayer('road',139,215,681,358,4.63-roadSink),wetLayer('bed',733,403,177,111,1.66)];
+ const groundRain=makeGroundRain(T,scene,W,H,pathLoop,GARDEN_SOIL,4.34-roadSink,local);
  let previousMoisture=null;
  function updateWetLayers(moisture){
   if(moisture===previousMoisture)return;
@@ -627,9 +632,9 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    if(!mesh.visible)continue;
    ctx.clearRect(0,0,w,d);
    ctx.save();ctx.translate(-x,-z);
-   if(kind==='bed'){
+   {
     ctx.beginPath();
-    GARDEN_SOIL.forEach(([u,v],i)=>i?ctx.lineTo(u,v):ctx.moveTo(u,v));
+    (kind==='bed'?GARDEN_SOIL:pathLoop).forEach(([u,v],i)=>i?ctx.lineTo(u,v):ctx.moveTo(u,v));
     ctx.closePath();ctx.clip();
    }
    drawWetSoil(ctx,moisture,kind);ctx.restore();
@@ -768,7 +773,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   for(let i=0;i<n;i++){
    const dx=x+(rng()-.5)*24,dz=z+(rng()-.5)*18,h=4+rng()*12;
    shape('cone',dx,h*.44,dz,1.6,h,1.5,i%3?'#7c9c5f':'#9eae6b',.08,rng(),(rng()-.5)*.3,.35+h*.012);
-   if(i%4===0)sphere(dx,h,dz,2.3,2.0,2.2,['#e9c4a8','#f4db8c','#e0baad'][i%3]);
+   if(i%4===0&&!pathAt(dx,dz))verge.flower(dx,h,dz,['#f7d6ca','#fff0af','#edbdc7'][i%3],Math.floor(x+z)+i,.83);
   }
  }
  // Hand-planted colour in middle and near terrain, leaving the walking
@@ -777,7 +782,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   for(let i=0;i<14;i++){
    const a=x+(rng()-.5)*46,b=z+(rng()-.5)*23,h=4+rng()*7;
    shape('trunk',a,h*.48,b,1.02,h,1.02,'#7f9c61',0,0,(rng()-.5)*.4);
-   sphere(a,h,b,1.8,1.8,1.8,palette[i%2]);
+   if(!pathAt(a,b))verge.flower(a,h,b,palette[i%2],Math.floor(x+z)+i,.85+(i%4)*.105);
   }
  }
  for(const [x,z] of [[72,527],[303,548],[551,549],[901,533],[930,518],[355,348]]){
@@ -962,9 +967,10 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    }else if(j%4===1){
     for(let k=0;k<3;k++)sphere(xx+Math.sin(k*2.1+a)*1.15,1.8+h*.26,zz+Math.cos(k*2.1+a)*1.15,
      1.3,.32,.82,inks[k],.1,k*2.1+a);
-   }else shape('cone',xx,1+h*.44,zz,.6,h,.72,inks[j%3],.21,a,(rand()-.5)*.43);
+   }else{rand();verge.tuft(xx,zz,h,inks[j%3],x+z+j);}
   }
  }
+ verge.finish();
  // Wooden stand is another readable full-volume landmark.
  box(stand.x,22,stand.y,4,42,4,edge);
  for(const xx of [-12,12])box(stand.x+xx*.53,7,stand.y+3,3,21,3,wood,0,0,xx>0?.54:-.54);
@@ -1119,6 +1125,8 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    paintedWater.update(now,weather,lamp,motion);
    updatePondLife(close,weather,clock,motion);
    swayCrowns(clock,weather,motion);
+   // Wet the bevel itself, not just a flat sheet above it.
+   pathMesh.material.color.lerpColors(dryTrail,wetTrail,groundRain(clock,weather,motion));
    updateEaveDrops(weather,motion?now:0);
    updateWetLayers(moisture);
    renderer.render(scene,camera);return true;
