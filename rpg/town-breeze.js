@@ -56,13 +56,15 @@ transformed.z += air * stem*stem * 2.0;
 }
 
 /** A quiet horizon for the shoreline framing, outside the playable model. */
-export function makePondHorizon(T,rain){
+export function makePondHorizon(T,weather){
+ const rain=weather==='rain',breeze=weather==='breeze';
  const c=document.createElement('canvas');c.width=960;c.height=560;
  const g=c.getContext('2d');
  // Draw the sky before the horizon profiles. Each weather uses a different
  // cloud silhouette and light source, not merely a different tint.
  const gradient=g.createLinearGradient(0,0,0,325);
  for(const [x,color] of (rain?[[0,'#647993'],[.41,'#8899ae'],[.71,'#b9c0c6'],[1,'#efe0cc']]
+   :breeze?[[0,'#889fb8'],[.47,'#aec5d1'],[.77,'#d8e2d8'],[1,'#f5e5ca']]
    :[[0,'#7eafb9'],[.40,'#a9d0cc'],[.72,'#d7e9d7'],[1,'#f7ead1']]))gradient.addColorStop(x,color);
  g.fillStyle=gradient;g.fillRect(0,0,960,560);
  function glow(x,y,w,h,stops){
@@ -86,7 +88,17 @@ export function makePondHorizon(T,rain){
  const wisps=[[-.85,-.08,-.64,.03,-.54,-.18],[-.38,-.40,-.14,-.37,-.02,-.20],[.19,-.37,.34,-.19,.45,-.22],[.67,-.20,.91,.03,1,.10]];
  const banks=[[-.96,-.04,-.84,-.22,-.72,-.21],[-.64,-.68,-.35,-.76,-.24,-.46],[-.08,-.94,.21,-.84,.30,-.43],
   [.47,-.69,.65,-.58,.72,-.28],[.85,-.21,.97,-.12,1,.10]];
- if(!rain){
+ if(breeze){
+  // No sharp sun disk; long feathered veils streak in one direction.
+  // This remains a dry sky, visibly different from the low rain banks.
+  glow(690,65,300,154,[[0,'#fff5deaa'],[.35,'#fff4dd49'],[1,'#fff5dd00']]);
+  g.save();g.translate(479,104);g.rotate(-.115);g.translate(-479,-104);
+  cloud(180,52,179,25,wisps,'#f4f4efdf','#fbfaf5ac','#f6f7f100');
+  cloud(340,80,345,23,wisps,'#eeeae0c8','#fffaeea9','#f4f3e900');
+  cloud(679,129,260,31,wisps,'#fff7e6d4','#fffcf0bd','#f4f3e900');
+  cloud(924,61,182,14,wisps,'#eff5f6c0','#f4f7f4a4','#e7eef500');
+  g.restore();
+ }else if(!rain){
   glow(728,88,172,112,[[0,'#fff5c8bc'],[.26,'#fff2cb72'],[1,'#fff1ca00']]);
   glow(728,88,52,48,[[0,'#fff6baff'],[.38,'#fff3c38f'],[1,'#fff2c300']]);
   const disc=g.createLinearGradient(720,73,735,103);
