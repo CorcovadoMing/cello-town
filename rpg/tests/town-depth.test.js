@@ -28,7 +28,7 @@ test('town depth uses bounded transparent atlases, only rebakes on weather chang
 });
 
 
-import {benchCatLift} from '../town-webgl.js';
+import {benchCatLift,TOWN_PAINT_PALETTE} from '../town-webgl.js';
 test('bench cat stays seated during stretch and follows its real support through a hop',()=>{
  const s=benchCatLift({mode:'home',y:211});
  const g=benchCatLift({mode:'return',y:247});
@@ -52,4 +52,16 @@ test('bench cat stays seated during stretch and follows its real support through
  assert.equal((app.match(/sprite\('bench-cat'/g)||[]).length,1);
  assert.match(app,/sprite\('bench-cat',active\?b.x:222,active\?b.y\+6:220,66,53/);
  assert.match(app,/drawRainBenchCat\(g,\{\.\.\.b,jump:0\}\)/);
+});
+
+test('ground uses the formal palette as paint on geometry, not a veil over actors or rain',()=>{
+ assert.equal(TOWN_PAINT_PALETTE.meadow[0],'#a3b783');
+ assert.equal(TOWN_PAINT_PALETTE.soil[0],'#d0c298');
+ assert.equal(TOWN_PAINT_PALETTE.pond[0],'#81b1a5');
+ const renderer=readFileSync(new URL('../town-webgl.js',import.meta.url),'utf8');
+ assert.match(renderer,/paintTerrainUV\(T,geo,w,d\)/);
+ assert.match(renderer,/map:soilPigment/);
+ assert.match(renderer,/updateWetLayers\(moisture\);\s*renderer.render/);
+ assert.match(renderer,/weather==='sun'\?1.86:weather==='breeze'\?1.37:/);
+ assert.match(renderer,/'#ffe5bf':'#ffecc9'/);
 });
