@@ -321,7 +321,7 @@ export function createRoomRayMirror(T, roots, avatar, renderer, {cat=null}={}){
   move.needsUpdate=true;
  }
  let camera;
- mesh.onBeforeRender=(r,s,c)=>{camera=c;update();};mesh.castShadow=false;mesh.receiveShadow=false;mesh.name='physical-full-length-test-mirror';mesh.raycast=()=>{};
+ mesh.onBeforeRender=(r,s,c)=>{camera=c;update();};mesh.castShadow=false;mesh.receiveShadow=false;mesh.name='physical-full-length-test-mirror';
  if(!prepare())return null;
  return {mesh,stats:()=>({staticCount,total:triangles.length/12,branches:nodes.length,avatarMeshes,catMeshes:dynamic.length-avatarMeshes,atlasTiles:tileBySource.size,mappedTriangles,avatarMapMeshes}),
   swatches(v){mesh.material.uniforms.mapped.value=v?1:0;},enabled(v){mesh.material.uniforms.mirrorOn.value=v?1:0;},includeRoot(o,v){if(v)excluded.delete(o);else excluded.add(o);prepare();},dispose(){nt.dispose();tt.dispose();move.dispose();uvsTex.dispose();atlas.dispose();mesh.material.dispose();mesh.geometry.dispose();}};

@@ -1,5 +1,5 @@
 import {createWindowLandscape} from './window-landscape.js?v=exp3';
-import {decoratePerformanceRoom,installWestRoomDetail,createRoomRayMirror} from './room-polish.js?v=exp3-mirror26';
+import {decoratePerformanceRoom,installWestRoomDetail,createRoomRayMirror} from './room-polish.js?v=exp3-mirror-axis';
 import * as T from './vendor/three.module.js';
 import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,roomWalkPhase,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=exp3-walk31';
 const $=id=>document.getElementById(id),area=$('scene'),status=$('save-status');let state=defaults();try{state=normalize(JSON.parse(localStorage.getItem(KEY)));}catch{status.textContent='無法讀取本機設定，仍可自由試穿。';}
@@ -11,7 +11,8 @@ const categories=[['faceShape','skin'],['face'],['hair','hairColor'],['upper','c
 let celloPerformance=null,rayMirrorFrame=null,mirrorCollider=null;
 const mirrorSetting=new URLSearchParams(location.search).get('raymirror');
 const mirrorRoom=/\/experimental(?:\/|$)/.test(location.pathname)||mirrorSetting==='1';
-const MIRROR_APPROACH={x:-.04,z:-.79};
+const MIRROR_APPROACH={x:.65,z:-.79};
+const MIRROR_TILT=-.07;
 let activeCategory=0,previewMode=null,previewYaw=0,roomSnapshot=null;
 const visibleCategories=()=>previewMode==='wardrobe'?[3,4,5,6,7]:[0,1,2];
 // Original flat silhouettes: only the room avatar uses the 3D renderer.
@@ -1211,15 +1212,22 @@ function animateRoomCamera(position,zoom,restoring=false,orientation=null,durati
 }
 function previewCameraTarget(){
  const probe=camera.clone();probe.position.copy(roomSnapshot.cameraPosition);probe.quaternion.copy(roomSnapshot.cameraQuaternion);
+ const byMirror=roomSnapshot.station==='mirror';
+ if(byMirror){
+  // A shallow oblique view exposes the mirror next to, not behind,
+  // the player while keeping actual geometrical reflections.
+  probe.position.set(pos.x-1.13,2.23,pos.z+4.55);
+  probe.lookAt(MIRROR_APPROACH.x,1.03,pos.z-.28);
+ }
  const height=camera.top-camera.bottom,zoom=Math.max(1.25,Math.min(3.1,height*.34/1.75));probe.zoom=zoom;probe.updateProjectionMatrix();probe.updateMatrixWorld(true);
  const projected=new T.Vector3(pos.x,.97,pos.z).project(probe),phone=area.clientWidth<600;
  // Narrow try-on uses a bottom drawer. Lift the model without changing
  // magnification or the room itself, so the shoes stay above the controls.
  const compactWardrobe=previewMode==='wardrobe'&&area.clientWidth<345;
- const desiredX=phone?0:-.25,desiredY=phone?(compactWardrobe?.58:.48):.05;
+ const desiredX=byMirror?.13:phone?0:-.25,desiredY=phone?(compactWardrobe?.58:.48):.05;
  const right=new T.Vector3(1,0,0).applyQuaternion(probe.quaternion),up=new T.Vector3(0,1,0).applyQuaternion(probe.quaternion);
  probe.position.addScaledVector(right,(projected.x-desiredX)*(probe.right-probe.left)/(2*zoom));probe.position.addScaledVector(up,(projected.y-desiredY)*height/(2*zoom));
- return{position:probe.position,zoom};
+ return{position:probe.position,zoom,quaternion:probe.quaternion};
 }
 function anchorEditor(){if(!previewMode||previewMode==='records'||previewMode==='performance')return;camera.updateMatrixWorld(true);const panel=document.querySelector('aside'),r=area.getBoundingClientRect(),m=document.querySelector('main').getBoundingClientRect();
  const project=(x,y,z)=>{const v=new T.Vector3(x,y,z).project(camera);return{x:r.left+(v.x+1)*r.width/2,y:r.top+(1-v.y)*r.height/2}};
@@ -1257,14 +1265,14 @@ function enterPreview(station){
  if(mode==='cat'){beginCatView();return;}
  if(mode==='cello'){seatPerformance();return;}
  if(previewMode)exitPreview();
- roomSnapshot={rotation:avatar.rotation.clone(),heading,cameraPosition:cameraMotion?.restoring?cameraMotion.to.clone():camera.position.clone(),cameraQuaternion:camera.quaternion.clone(),cameraZoom:cameraMotion?.restoring?cameraMotion.toZoom:camera.zoom,focus:area};
- release();tap=null;previewMode=mode;previewYaw=Math.atan2(camera.position.x-pos.x,camera.position.z-pos.z);activeCategory=mode==='wardrobe'?3:0;
- area.setAttribute('aria-label','房間內角色試穿，左右拖曳或方向鍵轉動');document.body.classList.add('preview-open');document.body.dataset.editor=mode;const panel=document.querySelector('aside');panel.setAttribute('role','region');panel.setAttribute('aria-label',mode==='wardrobe'?(station==='mirror'?'全身鏡試穿':'衣櫃試穿'):(mirrorRoom?'全身鏡外觀':'梳妝台'));panel.hidden=false;$('preview-close').hidden=false;controls();const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);anchorEditor();$('preview-close').focus({preventScroll:true});
+ roomSnapshot={station,rotation:avatar.rotation.clone(),heading,cameraPosition:cameraMotion?.restoring?cameraMotion.to.clone():camera.position.clone(),cameraQuaternion:camera.quaternion.clone(),cameraZoom:cameraMotion?.restoring?cameraMotion.toZoom:camera.zoom,focus:area};
+ release();tap=null;previewMode=mode;previewYaw=station==='mirror'?Math.PI:Math.atan2(camera.position.x-pos.x,camera.position.z-pos.z);activeCategory=mode==='wardrobe'?3:0;
+ area.setAttribute('aria-label','房間內角色試穿，左右拖曳或方向鍵轉動');document.body.classList.add('preview-open');document.body.dataset.editor=mode;const panel=document.querySelector('aside');panel.setAttribute('role','region');panel.setAttribute('aria-label',mode==='wardrobe'?(station==='mirror'?'全身鏡試穿':'衣櫃試穿'):(mirrorRoom?'全身鏡外觀':'梳妝台'));panel.hidden=false;$('preview-close').hidden=false;controls();const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom,false,target.quaternion);anchorEditor();$('preview-close').focus({preventScroll:true});
 }
 function exitPreview(){if(celloPerformance)return;if(!previewMode)return;const old=roomSnapshot;release();if(tap&&area.hasPointerCapture(tap.id))area.releasePointerCapture(tap.id);tap=null;previewMode=null;heading=old.heading;avatar.rotation.copy(old.rotation);camera.quaternion.copy(old.cameraQuaternion);animateRoomCamera(old.cameraPosition,old.cameraZoom,true);area.setAttribute('aria-label',mirrorRoom?'3D房間，點衣櫃或全身鏡走近試穿，點地板行走':'3D房間，點衣櫃或梳妝台走近更換外觀，點地板行走');document.body.classList.remove('preview-open');delete document.body.dataset.editor;const panel=document.querySelector('aside');panel.removeAttribute('role');panel.removeAttribute('aria-label');panel.removeAttribute('style');panel.hidden=true;$('preview-close').hidden=true;old.focus?.focus({preventScroll:true});roomSnapshot=null;}
 $('cat-watch-access').onclick=()=>approachStation('cat');
 $('cat-view-back').onclick=endCatView;
-$('wardrobe-open').onclick=()=>approachStation('wardrobe');$('vanity-open').onclick=()=>approachStation('vanity');$('preview-close').onclick=exitPreview;
+$('wardrobe-open').onclick=()=>approachStation('wardrobe');$('vanity-open').onclick=()=>approachStation(mirrorRoom?'mirror':'vanity');$('preview-close').onclick=exitPreview;
 // One reversible performance state: no practice records, scores or audio capture.
 let performanceAssets=null;
 function performanceParts(){
@@ -1284,6 +1292,32 @@ function performanceParts(){
 }
 const PERFORMANCE_YAW=Math.PI-.42, performanceUp=new T.Vector3(0,1,0);
 function performanceFramePoint(x,y,z){return new T.Vector3(x,y,z).applyAxisAngle(performanceUp,PERFORMANCE_YAW).add(new T.Vector3(pos.x,standY(pos),pos.z));}
+function performanceCameraForRoom(width=area.clientWidth){
+ if(!rayMirrorFrame)return performanceCamera(width);
+ const aspect=(camera.right-camera.left)/(camera.top-camera.bottom);
+ const probe=camera.clone(),focus=new T.Vector3();
+  // The mirror and the seated musician occupy different parts of the
+  // same room. A small dolly back and a shallow yaw keep both in the
+  // portrait frame without resorting to a flattened wide-angle crop.
+  const narrow=T.MathUtils.smoothstep(1.08-aspect,0,.52);
+  probe.position.set(.30-1.08*narrow,1.75+.06*narrow,1.53+1.66*narrow);
+  focus.set(-.86+.20*narrow,1.05+.22*narrow,-1.63);
+  probe.lookAt(focus);probe.updateMatrixWorld(true);
+  const points=[];
+  rayMirrorFrame.updateWorldMatrix(true,true);
+  const pane=rayMirrorFrame.getObjectByName('full-length-mirror-surface');
+  for(const x of[-.455,.455])for(const y of[-1.035,1.035])points.push(pane.localToWorld(new T.Vector3(x,y,0)));
+  // Bounds of the seated avatar/cello/bow, including the sweep of the bow.
+  for(const x of[-2.63,-1.02])for(const y of[.04,1.92])for(const z of[-1.16,-.17])points.push(new T.Vector3(x,y,z));
+  let tan=Math.tan(T.MathUtils.degToRad(37)*.5);
+  for(const point of points){
+   const p=point.applyMatrix4(probe.matrixWorldInverse),depth=-p.z;
+   if(depth>.01)tan=Math.max(tan,Math.abs(p.x)/(depth*aspect*.90),Math.abs(p.y)/(depth*.89));
+  }
+  const distance=probe.position.distanceTo(focus);
+  return{position:probe.position,quaternion:probe.quaternion,zoom:(camera.top-camera.bottom)/(2*distance*tan),
+   fov:T.MathUtils.radToDeg(2*Math.atan(tan)),distance,lens:1};
+}
 function performanceCamera(width=area.clientWidth){
  const aspect=(camera.right-camera.left)/(camera.top-camera.bottom);
  const portrait=T.MathUtils.smoothstep(1.4-aspect,0,.55);
@@ -1398,7 +1432,7 @@ function tickPerformance(dt,t){
  const clock=reduced.matches?(returning?0:PERFORMANCE_TRANSITION_MS):playing?PERFORMANCE_TRANSITION_MS:returning?PERFORMANCE_TRANSITION_MS-p.elapsed:p.elapsed;
  const phase=performanceTransition(clock),sit=phase.sit,carry=phase.carry;p.transitionStage=phase.stage;
  pos={x:T.MathUtils.lerp(p.approachPosition.x,p.seatPosition.x,carry),z:T.MathUtils.lerp(p.approachPosition.z,p.seatPosition.z,carry)};
- if(!returning&&!p.cameraStarted&&(clock>=1750||reduced.matches)){const view=performanceCamera();animatePerformanceCamera(view,1800);p.cameraStarted=true;}
+ if(!returning&&!p.cameraStarted&&(clock>=1750||reduced.matches)){const view=performanceCameraForRoom();animatePerformanceCamera(view,1800);p.cameraStarted=true;}
  const pickupMark=new T.Vector3(p.celloPosition.x+.63,0,p.celloPosition.z+.05);
  const pickupYaw=Math.atan2(p.celloPosition.x-pickupMark.x,p.celloPosition.z-pickupMark.z),facing=p.fromHeading+Math.atan2(Math.sin(pickupYaw-p.fromHeading),Math.cos(pickupYaw-p.fromHeading))*phase.face;
  heading=facing+Math.atan2(Math.sin(PERFORMANCE_YAW-facing),Math.cos(PERFORMANCE_YAW-facing))*carry;
@@ -1496,9 +1530,7 @@ function renderPerformanceView(t){
   livingLandscape.tick(t*.001,reduced.matches);for(const c of livingLandscape.clouds)c.material.uniforms.opacity.value*=amount;
  }
  realRoomPolish?.updatePresentation?.(performanceLens);
- const mirrorWasVisible=rayMirrorFrame?.visible;
- if(rayMirrorFrame)rayMirrorFrame.visible=false;
- try{renderer.render(scene,camera);}finally{if(rayMirrorFrame)rayMirrorFrame.visible=mirrorWasVisible;}
+ renderer.render(scene,camera);
 }
 
 const performanceKeys=new Set(),performancePointers=new Set();
@@ -1545,7 +1577,7 @@ area.addEventListener('pointerup',e=>{if(!tap||tap.id!==e.pointerId)return;const
 // still wins; exact wardrobe/vanity/cello mesh hits were handled above.
 const hitIntent=forgivingRoomHit(raycaster.ray,blockers[0]);if(hitIntent){approachStation(hitIntent);return;}
 if(blockers[0]&&blockers[0].point.y>.11)return;const hit=new T.Vector3();if(!raycaster.ray.intersectPlane(floorPlane,hit)||Math.abs(hit.x)>3.05||hit.z< -2.35||hit.z>2.35)return;pendingStation=null;destination={x:Math.max(-2.2,Math.min(2.2,hit.x)),z:Math.max(-.8,Math.min(1.9,hit.z))};area.focus({preventScroll:true});});
-function resize(){const w=area.clientWidth,h=area.clientHeight;renderer.setSize(w,h);const phone=w<600,size=Math.max(3.75,(phone?3.6:3.9)*h/w),lift=phone?size*.13:0;camera.left=-size*w/h;camera.right=size*w/h;camera.top=size-lift;camera.bottom=-size-lift;camera.updateProjectionMatrix();if(celloPerformance?.cameraStarted&&celloPerformance.phase!=='returning'){const view=performanceCamera();animatePerformanceCamera(view,350);}if(watchingCat){const view=catCameraTarget();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(previewMode&&previewMode!=='records'&&previewMode!=='performance'&&roomSnapshot){const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);}}new ResizeObserver(resize).observe(area);resize();controls();const reduced=matchMedia('(prefers-reduced-motion: reduce)');let last=0,lastDraw=0;
+function resize(){const w=area.clientWidth,h=area.clientHeight;renderer.setSize(w,h);const phone=w<600,size=Math.max(3.75,(phone?3.6:3.9)*h/w),lift=phone?size*.13:0;camera.left=-size*w/h;camera.right=size*w/h;camera.top=size-lift;camera.bottom=-size-lift;camera.updateProjectionMatrix();if(celloPerformance?.cameraStarted&&celloPerformance.phase!=='returning'){const view=performanceCameraForRoom();animatePerformanceCamera(view,350);}if(watchingCat){const view=catCameraTarget();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(previewMode&&previewMode!=='records'&&previewMode!=='performance'&&roomSnapshot){const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom,false,target.quaternion);}}new ResizeObserver(resize).observe(area);resize();controls();const reduced=matchMedia('(prefers-reduced-motion: reduce)');let last=0,lastDraw=0;
 // A real doorway arrival: the saved outfit walks inward while the view opens.
 // Only the consumed town arrival parameter opts in; direct visits never replay.
 let doorArrival=null;
@@ -1673,15 +1705,16 @@ if(mirrorRoom){
  $('vanity-open').setAttribute('aria-label','在全身鏡前更換外觀');
  // A free-standing easel: leave a small physical clearance ahead of the baseboard.
  const skirtingFace=rearSkirting.position.z+rearSkirting.geometry.parameters.depth/2;
- const frame=new T.Group();frame.name='full-length-ray-mirror-frame';frame.position.set(.65,FLOOR_TOP+.998,skirtingFace+.271);frame.rotation.set(0,0,0);scene.add(frame);
- for(const side of [-1,1]){box(side*.425,0,0,.040,1.99,.062,'#9e7755',frame);box(0,side*.975,0,.872,.041,.062,'#b99163',frame);}
- for(const side of [-1,1])box(side*.407,0,.032,.007,1.90,.006,'#d2b076',frame);
+ const frame=new T.Group();frame.name='full-length-ray-mirror-frame';frame.position.set(MIRROR_APPROACH.x,FLOOR_TOP+.998,skirtingFace+.271);scene.add(frame);
+ const paneMount=new T.Group();paneMount.rotation.x=MIRROR_TILT;frame.add(paneMount);
+ for(const side of [-1,1]){box(side*.425,0,0,.040,1.99,.062,'#9e7755',paneMount);box(0,side*.975,0,.872,.041,.062,'#b99163',paneMount);}
+ for(const side of [-1,1])box(side*.407,0,.032,.007,1.90,.006,'#d2b076',paneMount);
  for(const side of [-1,1]){
-  rod([side*.359,-.13,-.022],[side*.359,-.985,-.24],.018,'#9e7755',frame).name='free-standing-mirror-brace';
+  rod([side*.359,-.13,-.041],[side*.359,-.985,-.18],.018,'#9e7755',frame).name='free-standing-mirror-brace';
   box(side*.359,-.981,.10,.067,.034,.60,'#896446',frame).name='free-standing-mirror-foot';
  }
  const surface=new T.Mesh(new T.PlaneGeometry(.816,1.944),new T.MeshBasicMaterial({color:'#b3c8c3',side:T.DoubleSide}));
- surface.position.z=.034;surface.name='full-length-mirror-surface';frame.add(surface);
+ surface.position.z=.034;surface.name='full-length-mirror-surface';paneMount.add(surface);
  frame.traverse(o=>{o.userData.station='mirror';});
  const bounds=new T.Box3().setFromObject(frame),margin=.30;
  mirrorCollider={minX:bounds.min.x-margin,maxX:bounds.max.x+margin,minZ:bounds.min.z-margin,maxZ:bounds.max.z+.46};
@@ -1692,7 +1725,7 @@ if(mirrorRoom){
   try{
    const roots=scene.children.filter(o=>o!==frame&&o!==avatar&&o!==targetMarker&&o!==doorCutaway&&o!==roomCat.group);
    reflected=createRoomRayMirror(T,roots,avatar,renderer,{cat:roomCat.group});if(!reflected)return;
-   reflected.mesh.scale.set(1.275,1.13,1);reflected.mesh.position.z=.035;reflected.mesh.userData.station='mirror';frame.add(reflected.mesh);
+   reflected.mesh.scale.set(1.275,1.13,1);reflected.mesh.position.z=.035;reflected.mesh.userData.station='mirror';paneMount.add(reflected.mesh);
    let shaderRejected=false;const prior=renderer.debug.onShaderError;
    renderer.debug.onShaderError=(...args)=>{shaderRejected=true;prior?.(...args);};
    try{renderer.compile(reflected.mesh,camera,scene);renderer.properties.get(reflected.mesh.material).currentProgram?.getUniforms();}finally{renderer.debug.onShaderError=prior;}

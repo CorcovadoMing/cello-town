@@ -23,11 +23,21 @@ test('the full-length mirror replaces the experimental vanity and carries the ou
  assert.match(app,/wardrobe:\{x:2\.2,z:-\.8\},mirror:MIRROR_APPROACH/);
 });
 
-test('mirror glass stands upright and square with the wardrobe front',()=>{assert.match(app,/frame\.rotation\.set\(0,0,0\)/);});
+test('mirror glass tilts up without changing wardrobe yaw or floor supports',()=>{
+ assert.match(app,/const MIRROR_TILT=-\.07/);
+ assert.match(app,/paneMount\.rotation\.x=MIRROR_TILT/);
+ assert.doesNotMatch(app,/(?:paneMount|frame)\.rotation\.y/);
+ assert.match(app,/free-standing-mirror-foot/);
+});
+test('the performance renderer leaves the furniture visible',()=>{
+ const start=app.indexOf('function renderPerformanceView(');
+ assert.ok(start>=0);
+ assert.doesNotMatch(app.slice(start,app.indexOf('const performanceKeys=',start)),/rayMirrorFrame\.visible/);
+});
 
 test('the near-wall easel and both rendered surfaces keep their own station',()=>{
  assert.match(app,/skirtingFace=rearSkirting\.position\.z\+rearSkirting\.geometry\.parameters\.depth\/2/);
- assert.match(app,/frame\.position\.set\(\.65,FLOOR_TOP\+\.998,skirtingFace\+\.271\)/);
+ assert.match(app,/frame\.position\.set\(MIRROR_APPROACH\.x,FLOOR_TOP\+\.998,skirtingFace\+\.271\)/);
  assert.match(app,/free-standing-mirror-foot/);
  assert.match(app,/free-standing-mirror-brace/);
  assert.match(app,/reflected\.mesh\.userData\.station='mirror'/);
