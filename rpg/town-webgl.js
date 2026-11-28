@@ -5,7 +5,7 @@ import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './to
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
-import {drawWetSoil} from './wet-soil.js?v=exp3';
+import {drawWetSoil} from './wet-soil.js?v=exp4';
 import {addBenchGardenCraft,addCabinAndPondCraft} from './town-craft.js?v=1';
 export const ROOM_WIDTH=960,ROOM_HEIGHT=560;
 const W=ROOM_WIDTH,H=ROOM_HEIGHT;

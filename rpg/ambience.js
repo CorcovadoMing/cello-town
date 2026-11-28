@@ -328,7 +328,48 @@ export function createPetTrunkBlocker(trees, cellSize=30){
  return (x,y)=>{const cells=rows.get(Math.floor(y/cellSize))?.get(Math.floor(x/cellSize));if(!cells)return false;for(const b of cells)if(x>=b.left&&x<=b.right&&y>=b.top&&y<=b.bottom)return true;return false;};
 }
 export function rainPetGesture(time,offset=0,reduced=false){const phase=(time/1000+offset)%17;return {shake:reduced?0:phase>2&&phase<2.7?Math.sin((phase-2)*45)*1.1:0,groom:reduced?0:phase>8&&phase<10.3?Math.max(0,Math.sin((phase-8)*6)):0};}
-export function createRainPets({navigation,rainNavigation=navigation,canopies=[],trees=[],random=Math.random}={}){
+// A second deterministic stream never consumes the shelter path RNG.
+const stillShelterPose={shake:0,groom:0,look:null};
+function shelterRoutine(seed,episode,index,visit){
+ let state=(seed^Math.imul(episode,0x7feb352d)^Math.imul(index+1,0x846ca68b)^Math.imul(visit,0x632be59b))>>>0;
+ const next=()=>{state=(Math.imul(state,1664525)+1013904223)>>>0;return state/4294967296;};
+ const weights=[['shake','shake','shake','look','look','rest'],['groom','groom','groom','look','look','shake','rest'],['look','look','look','groom','groom','shake','rest']][index];
+ const actions=[];let at=.35+index*.44+next()*1.8;
+ for(let n=0;n<8;n++){
+  const choices=weights.filter(k=>k!==actions.at(-1)?.kind),kind=choices[Math.floor(next()*choices.length)];
+  const duration={shake:.62,groom:1.85,look:1.28,rest:.7}[kind];
+  actions.push({kind,at,duration,side:next()<.5?'left':'right'});
+  const gap=next();at+=duration+(n<2?8+gap*13:48+gap*25)+index;
+ }
+ return {actions,age:0,cursor:0};
+}
+function sampleShelterRoutine(routine){
+ let action=routine.actions[routine.cursor];
+ while(action&&routine.age>=action.at+action.duration)action=routine.actions[++routine.cursor];
+ if(!action||routine.age<action.at)return stillShelterPose;
+ const {kind,at,duration,side}=action,u=(routine.age-at)/duration;
+ if(kind==='shake')return {shake:Math.sin(u*Math.PI)*Math.sin(u*8*Math.PI)*1.4,groom:0,look:null};
+ if(kind==='groom')return {shake:0,groom:Math.max(0,Math.sin(u*7*Math.PI))*Math.sin(u*Math.PI),look:side};
+ if(kind==='look'&&u>.12&&u<.85)return {shake:0,groom:0,look:side};
+ return stillShelterPose;
+}
+export function createRainPets({navigation,rainNavigation=navigation,canopies=[],trees=[],random=Math.random,gestureSeed=null}={}){
+ let shelterEpisode=0,gestureOrigin=0;
+ const shelterActors=[{routine:null,visit:0,settled:false},{routine:null,visit:0,settled:false},{routine:null,visit:0,settled:false}];
+ function shelterPose(p,index,wet,reduced,dt){
+  const state=shelterActors[index];
+  if(!wet||reduced||p.mode!=='shelter'||p.moving||p.path.length){
+   state.routine=null;state.settled=false;return stillShelterPose;
+  }
+  if(!state.settled){
+   state.settled=true;
+   if(sheltered(p.x,p.y))state.routine=shelterRoutine(gestureOrigin,shelterEpisode,index,++state.visit);
+  }
+  if(!state.routine)return stillShelterPose;
+  state.routine.age+=dt;
+  return sampleShelterRoutine(state.routine);
+ }
+
  let last=null,clock=0,raining=false,rainAge=0,dryAge=0,homePrevious=null;const homeGait={};
  const benchCat={x:223,y:211,facing:'left',mode:'home',path:[],moving:false},benchHome={x:223,y:211},benchLanding={x:238,y:247};let benchAge=0,benchJump=null,dogDryDone=false,benchDryDone=false;
  function jumpBench(up){benchJump={from:{x:benchCat.x,y:benchCat.y},to:up?benchHome:benchLanding,age:0,up};benchCat.mode=up?'jumpUp':'jumpDown';benchCat.path=[];}
@@ -359,9 +400,9 @@ export function createRainPets({navigation,rainNavigation=navigation,canopies=[]
  function route(p,q){const path=(p.rainRoute?rainNavigation:navigation).findPath(p,q);if(path){p.path=path;p.goal=point(q);}return !!path;}
  function step(p,dt,speed){let budget=dt*speed,moved=0;while(p.path.length&&budget>0){const q=p.path[0],d=Math.hypot(q.x-p.x,q.y-p.y);if(d<.01){p.path.shift();continue;}const n=Math.min(d,budget),next={x:p.x+(q.x-p.x)/d*n,y:p.y+(q.y-p.y)/d*n};if(!(p.rainRoute?rainNavigation:navigation).lineClear(p,next)){p.path=[];break;}p.facing=catFacing(next.x-p.x,next.y-p.y,p.facing);p.x=next.x;p.y=next.y;budget-=n;moved+=n;if(n===d)p.path.shift();}p.moving=moved>.01;if(p.moving)advancePetGait(p,moved,speed);return moved;}
  return {update(time,{weather='sun',player=null,playerUmbrella=null,reduced=false}={}){
-  const dt=last===null?0:Math.min(.05,Math.max(0,(time-last)/1000));if(last===null)clock=time;last=time;
+  const dt=last===null?0:Math.min(.05,Math.max(0,(time-last)/1000));if(last===null){clock=time;gestureOrigin=(gestureSeed??(time*1000))>>>0;}last=time;
   const wet=weather==='rain';
-  if(wet&&!raining){for(const p of[dog,cat,benchCat])p.rainRoute=true;if(cat.mode==='home'){const base=gardenLife(clock,reduced).cat;Object.assign(cat,{x:base.x,y:base.groundY,facing:base.facing});returnCat=point(cat);}Object.assign(cat,{mode:'notice',path:[],jump:0,pondPaw:0});pondHop=null;dog.mode='notice';dog.path=[];rainAge=0;dogGoal=chooseShelter(dog);catGoal=chooseShelter(cat,[dogGoal?.q]);}
+  if(wet&&!raining){shelterEpisode++;for(const p of[dog,cat,benchCat])p.rainRoute=true;if(cat.mode==='home'){const base=gardenLife(clock,reduced).cat;Object.assign(cat,{x:base.x,y:base.groundY,facing:base.facing});returnCat=point(cat);}Object.assign(cat,{mode:'notice',path:[],jump:0,pondPaw:0});pondHop=null;dog.mode='notice';dog.path=[];rainAge=0;dogGoal=chooseShelter(dog);catGoal=chooseShelter(cat,[dogGoal?.q]);}
   if(!wet&&raining){for(const p of[dog,cat]){p.mode='return';p.path=[];}route(dog,homeDog);route(cat,returnCat);}
   raining=wet;rainAge+=dt;replan-=dt;dryAge=wet?0:dryAge+dt;benchAge+=dt;
   if(!reduced){
@@ -406,11 +447,11 @@ export function createRainPets({navigation,rainNavigation=navigation,canopies=[]
   }else {dog.moving=false;cat.moving=false;benchCat.moving=false;}
   if(!wet&&cat.mode==='home')clock+=dt*1000;
   if(wet)for(const p of[dog,cat,benchCat])if(p.mode==='shelter'&&!p.moving&&!p.path.length)p.facing='down';
-  const dg=rainPetGesture(time,0,reduced),cg=rainPetGesture(time,5,reduced),bg=rainPetGesture(time,11,reduced);
+  const dg=shelterPose(dog,0,wet,reduced,dt),cg=shelterPose(cat,1,wet,reduced,dt),bg=shelterPose(benchCat,2,wet,reduced,dt);
   const life=gardenLife(clock,reduced),activeCat=cat.mode!=='home';
-  if(activeCat){life.visitor=null;life.cat={...life.cat,x:cat.x,y:cat.y-(cat.jump||0),groundY:cat.y,facing:cat.facing,dir:cat.facing==='left'?-1:1,pounce:false,paw:cat.pondPaw||0,pondPaw:cat.mode==='pondWatch',aim:0,wiggle:0,burst:0,searching:false,running:cat.moving,gaitPhase:cat.gaitPhase||0,moving:cat.moving,stride:cat.moving?Math.sin(cat.gaitPhase||0)*3:0,sit:cat.moving||cat.mode==='follow'||cat.mode==='pondWatch'||cat.mode==='pondStartle'?0:1,lie:0,phase:cat.mode,rainAlert:wet&&cat.mode==='shelter'&&!cat.moving,shake:wet&&!cat.moving?cg.shake:0,groom:wet&&!cat.moving?cg.groom:0};}
+  if(activeCat){life.visitor=null;life.cat={...life.cat,x:cat.x,y:cat.y-(cat.jump||0),groundY:cat.y,facing:cg.look||cat.facing,dir:(cg.look||cat.facing)==='left'?-1:1,pounce:false,paw:cat.pondPaw||0,pondPaw:cat.mode==='pondWatch',aim:0,wiggle:0,burst:0,searching:false,running:cat.moving,gaitPhase:cat.gaitPhase||0,moving:cat.moving,stride:cat.moving?Math.sin(cat.gaitPhase||0)*3:0,sit:cat.moving||cat.mode==='follow'||cat.mode==='pondWatch'||cat.mode==='pondStartle'?0:1,lie:0,phase:cat.mode,rainAlert:wet&&cat.mode==='shelter'&&!cat.moving,shake:wet&&!cat.moving?cg.shake:0,groom:wet&&!cat.moving?cg.groom:0};}
   if(!activeCat){const c=life.cat,dist=homePrevious?Math.hypot(c.x-homePrevious.x,c.groundY-homePrevious.y):0;homePrevious={x:c.x,y:c.groundY};c.moving=!reduced&&dt>0&&dist>.01;c.gaitPhase=advancePetGait(homeGait,c.moving?dist:0,dt>0?dist/dt:0);c.stride=c.moving?Math.sin(c.gaitPhase)*3:0;}else homePrevious=null;
-  return {life,pondContact:cat.mode==='pondStartle'?{x:269,y:459,progress:Math.min(1,(pondHop?.age||0)/.6)}:null,pondFish:cat.mode==='pondWatch'?pondLife(time,reduced).map(point):null,benchCat:{...point(benchCat),rainAlert:wet&&benchCat.mode==='shelter'&&!benchCat.moving,shake:wet&&!benchCat.moving?bg.shake:0,groom:wet&&!benchCat.moving?bg.groom:0,facing:benchCat.facing,moving:benchCat.moving,mode:benchCat.mode,jump:benchCat.jump||0,gaitPhase:benchCat.gaitPhase||0,stride:benchCat.moving?Math.sin(benchCat.gaitPhase||0)*3:0},benchCatActive:benchCat.mode!=='home',dog:{...point(dog),rainAlert:wet&&dog.mode==='shelter'&&!dog.moving,shake:wet&&!dog.moving?dg.shake:0,groom:wet&&!dog.moving?dg.groom:0,facing:dog.facing,moving:dog.moving,mode:dog.mode,gaitPhase:dog.gaitPhase||0,stride:dog.moving?Math.sin(dog.gaitPhase||0)*3:0},dogActive:dog.mode!=='home',catActive:activeCat,covered:{dog:sheltered(dog.x,dog.y),cat:sheltered(cat.x,cat.y)},clock};
+  return {life,pondContact:cat.mode==='pondStartle'?{x:269,y:459,progress:Math.min(1,(pondHop?.age||0)/.6)}:null,pondFish:cat.mode==='pondWatch'?pondLife(time,reduced).map(point):null,benchCat:{...point(benchCat),rainAlert:wet&&benchCat.mode==='shelter'&&!benchCat.moving,shake:wet&&!benchCat.moving?bg.shake:0,groom:wet&&!benchCat.moving?bg.groom:0,facing:bg.look||benchCat.facing,moving:benchCat.moving,mode:benchCat.mode,jump:benchCat.jump||0,gaitPhase:benchCat.gaitPhase||0,stride:benchCat.moving?Math.sin(benchCat.gaitPhase||0)*3:0},benchCatActive:benchCat.mode!=='home',dog:{...point(dog),rainAlert:wet&&dog.mode==='shelter'&&!dog.moving,shake:wet&&!dog.moving?dg.shake:0,groom:wet&&!dog.moving?dg.groom:0,facing:dg.look||dog.facing,moving:dog.moving,mode:dog.mode,gaitPhase:dog.gaitPhase||0,stride:dog.moving?Math.sin(dog.gaitPhase||0)*3:0},dogActive:dog.mode!=='home',catActive:activeCat,covered:{dog:sheltered(dog.x,dog.y),cat:sheltered(cat.x,cat.y)},clock};
  },get positions(){return{dog:point(dog),cat:point(cat),benchCat:point(benchCat)}}};
 }
 

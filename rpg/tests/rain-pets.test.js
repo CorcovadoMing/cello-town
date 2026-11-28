@@ -14,3 +14,42 @@ test('resting pets reserve separate shelter spots instead of drawing on top of e
 test('rain-only small-body routes stay near real trunks and retain human three-by-three exclusions',async()=>{const{petTrunkBlocked,rainPetGesture}=await import('../ambience.js');const{treeRainCanopies,canopyCoversGround}=await import('../rain-geometry.js');const rainNav=createNavigation({tileSize:15,blocked:(x,y)=>blocked(x,y)||petTrunkBlocked(trees,x,y)}),real=treeRainCanopies(trees),a=createRainPets({navigation,rainNavigation:rainNav,canopies:real,trees});let r,gestureSeen=false;for(let t=0;t<=45000;t+=50){r=a.update(t,{weather:'rain'});for(const p of[r.dog,r.benchCat,{x:r.life.cat.x,y:r.life.cat.groundY,mode:r.life.cat.phase}])if(p.mode==='shelter'){assert.ok(rainNav.isWalkable(p.x,p.y));assert.ok(!petTrunkBlocked(trees,p.x,p.y));}gestureSeen ||= r.dog.shake!==0||r.benchCat.groom>0;}assert.ok(gestureSeen);for(const p of[r.dog,r.benchCat,{x:r.life.cat.x,y:r.life.cat.groundY}]){const nearest=trees.map(([x,y,s])=>Math.hypot(p.x-x,p.y-(y+46*s))).sort((a,b)=>a-b)[0];assert.ok(nearest<46);assert.ok(real.some(c=>canopyCoversGround(c,p.y)&&Number.isFinite(c.columns[Math.floor(p.x-c.left)])));}assert.equal(r.dog.rainAlert,true);assert.equal(r.benchCat.rainAlert,true);assert.equal(r.life.cat.lie,0);assert.deepEqual(rainPetGesture(2250,0,true),{shake:0,groom:0});const returned=[false,false,false];for(let t=45050;t<=100000;t+=50){r=a.update(t,{weather:'sun'});returned[0] ||= !r.dogActive;returned[1] ||= !r.benchCatActive;returned[2] ||= !r.catActive;}assert.deepEqual(returned,[true,true,true]);});
 test('rain navigation does not alter sunny routines or pond timing',async()=>{const{petTrunkBlocked}=await import('../ambience.js');const rainNav=createNavigation({tileSize:15,blocked:(x,y)=>blocked(x,y)||petTrunkBlocked(trees,x,y)}),a=factory(),b=createRainPets({navigation,rainNavigation:rainNav,canopies,trees});for(let t=0;t<=170000;t+=50)assert.deepEqual(b.update(t,{weather:'sun'}),a.update(t,{weather:'sun'}));});
 test('one recognizable dog keeps attached ears, muzzle, collar and connected leg strides in four views',async()=>{const{dogPosePixels}=await import('../ambience.js');for(const facing of['left','right','up','down'])for(const stride of[-2,0,2]){const {pixels}=dogPosePixels(facing,true,stride,false),colors=new Set(pixels.values());for(const c of['C','D','L','B'])assert.ok(colors.has(c));assert.equal(colors.has('N'),facing!=='up');const seen=new Set(),queue=[pixels.keys().next().value];while(queue.length){const id=queue.pop();if(seen.has(id))continue;seen.add(id);const[x,y]=id.split(',').map(Number);for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){const n=(x+dx)+','+(y+dy);if(pixels.has(n)&&!seen.has(n))queue.push(n);}}assert.equal(seen.size,pixels.size,`${facing} stride ${stride} has no disconnected parts`);}const a=dogPosePixels('down',true,-2),b=dogPosePixels('down',true,2);assert.notDeepEqual([...a.pixels],[...b.pixels]);});
+test('sheltered gestures vary per animal and episode without rerolling routes',async()=>{
+ const {petTrunkBlocked}=await import('../ambience.js'),{treeRainCanopies}=await import('../rain-geometry.js');
+ const real=treeRainCanopies(trees),rainNavigation=createNavigation({tileSize:15,blocked:(x,y)=>blocked(x,y)||petTrunkBlocked(trees,x,y)});
+ function simulate(gestureSeed,depart=false,extended=false){
+  let rolls=0;
+  const a=createRainPets({navigation,rainNavigation,canopies:real,trees,gestureSeed,random:()=>{rolls++;return .37;}});
+  const samples=[[],[],[]],locations=[];
+  function step(t,weather,reduced){
+   const r=a.update(t,{weather,reduced});
+   const pets=[r.dog,r.life.cat,r.benchCat];
+   locations.push(pets.map(p=>[p.x,p.groundY??p.y,p.mode??p.phase]));
+   pets.forEach((p,i)=>{
+    const phase=p.mode??p.phase;
+    const action=Math.abs(p.shake||0)>.1?'shake':p.groom>.1?'groom':phase==='shelter'&&!p.moving&&p.facing!=='down'?'look':'';
+    if(!phase||phase!=='shelter'||p.moving||reduced||weather!=='rain'){
+     assert.equal(p.groom||0,0);
+     assert.equal(p.shake||0,0);
+    }
+    if(action&&phase==='shelter'&&!p.moving&&weather==='rain'&&!reduced)samples[i].push([t,action]);
+   });
+  }
+  for(let t=0;t<=(extended?350000:60000);t+=50)step(t,'rain',false);
+  if(depart){
+   for(let t=60050;t<=60500;t+=50)step(t,'rain',true);
+   for(let t=60550;t<=95000;t+=50)step(t,'sun',false);
+   for(let t=95050;t<=145000;t+=50)step(t,'rain',false);
+  }
+  return {samples,locations,rolls};
+ }
+ const a=simulate(654321),b=simulate(654321),c=simulate(55981),again=simulate(654321,true);
+ assert.deepEqual(a,b);assert.deepEqual(a.locations,c.locations);assert.equal(a.rolls,c.rolls);
+ assert.notDeepEqual(a.samples,c.samples);assert.ok(a.samples.every(x=>x.length));
+ assert.ok(new Set(a.samples.map(x=>JSON.stringify(x))).size===3);
+ assert.ok(again.samples.some(x=>x.some(([t])=>t>95050)));
+ const long=simulate(654321,false,true);
+ assert.ok(long.samples.every(actions=>actions.some(([t])=>t>170000)));
+ assert.ok(long.samples.flat().length<750,'long stretches are still quiet');
+ for(const x of a.samples)assert.ok(x.length<116,'at most three short gestures, not a continuous loop');
+});
