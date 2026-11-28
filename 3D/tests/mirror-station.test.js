@@ -22,3 +22,5 @@ test('the full-length mirror replaces the experimental vanity and carries the ou
  assert.match(app,/frame\.traverse\(o=>\{o\.userData\.station='wardrobe'/);
  assert.match(app,/wardrobe:mirrorRoom\?MIRROR_APPROACH/);
 });
+
+test('mirror glass stands upright and square with the wardrobe front',()=>{assert.match(app,/frame\.rotation\.set\(0,0,0\)/);});

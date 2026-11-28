@@ -10,7 +10,7 @@ function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));status.te
 const categories=[['faceShape','skin'],['face'],['hair','hairColor'],['upper','color'],['lower','lowerColor'],['shoes'],['hat'],['accessory']];
 let celloPerformance=null,rayMirrorFrame=null,mirrorCollider=null;
 const mirrorRoom=/\/experimental(?:\/|$)/.test(location.pathname)||new URLSearchParams(location.search).get('raymirror')==='1';
-const MIRROR_APPROACH={x:.65,z:-.44};
+const MIRROR_APPROACH={x:.04,z:-.48};
 let activeCategory=0,previewMode=null,previewYaw=0,roomSnapshot=null;
 const visibleCategories=()=>previewMode==='wardrobe'?[3,4,5,6,7]:[0,1,2];
 // Original flat silhouettes: only the room avatar uses the 3D renderer.
@@ -1666,10 +1666,10 @@ if(mirrorRoom){
  vanity.removeFromParent();
  $('wardrobe-open').setAttribute('aria-label','在全身鏡前換衣服');
  $('vanity-open').setAttribute('aria-label','在全身鏡前更換外觀');
- const frame=new T.Group();frame.name='full-length-ray-mirror-frame';frame.position.set(.65,1.01,-1.43);frame.rotation.set(-.22,.36,0);scene.add(frame);
+ const frame=new T.Group();frame.name='full-length-ray-mirror-frame';frame.position.set(.65,1.01,-1.43);frame.rotation.set(0,0,0);scene.add(frame);
  for(const side of [-1,1]){box(side*.425,0,0,.040,1.99,.062,'#9e7755',frame);box(0,side*.975,0,.872,.041,.062,'#b99163',frame);}
  for(const side of [-1,1])box(side*.407,0,.032,.007,1.90,.006,'#d2b076',frame);
- for(const side of [-1,1]){rod([side*.359,-.13,-.022],[side*.359,-.985,-.24],.018,'#9e7755',frame);box(side*.359,-.981,-.116,.067,.034,.285,'#896446',frame);}
+ for(const side of [-1,1]){rod([side*.359,-.13,-.022],[side*.359,-.985,-.24],.018,'#9e7755',frame);box(side*.359,-.981,.10,.067,.034,.60,'#896446',frame);}
  const surface=new T.Mesh(new T.PlaneGeometry(.816,1.944),new T.MeshBasicMaterial({color:'#b3c8c3',side:T.DoubleSide}));
  surface.position.z=.034;surface.name='full-length-mirror-surface';frame.add(surface);
  frame.traverse(o=>{o.userData.station='wardrobe';});
