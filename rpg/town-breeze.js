@@ -108,6 +108,11 @@ export function makePondHorizon(T,weather){
   [.16,-.49,.39,.54],[.43,-.26,.43,.45],[.68,-.03,.42,.31],[.87,.14,.26,.20]];
  const banks=[[-.86,.12,.37,.33],[-.59,-.07,.38,.43],[-.30,-.28,.42,.55],
   [.02,-.40,.43,.58],[.32,-.26,.43,.57],[.59,-.10,.36,.43],[.84,.07,.35,.34]];
+ const trailing=[[-.96,.22,.28,.08],[-.73,.10,.32,.12],[-.45,.04,.39,.18],[-.19,-.07,.40,.27],[.10,-.18,.37,.39],[.24,-.04,.32,.24],[.52,.06,.25,.15],[.79,.05,.16,.10]];
+ const towers=[[-.76,.19,.34,.24],[-.54,.10,.36,.36],[-.35,-.19,.28,.55],[-.08,-.38,.36,.57],[.21,-.26,.33,.44],[.44,.09,.41,.30],[.72,.16,.27,.24]];
+ const broken=[[-.83,-.01,.30,.14],[-.62,-.16,.31,.23],[-.43,-.24,.26,.18],[.05,.04,.32,.24],[.28,.08,.25,.25],[.52,.02,.19,.16],[.86,-.18,.24,.12]];
+ const shelf=[[-.98,.13,.38,.22],[-.71,.01,.45,.28],[-.46,-.09,.48,.36],[-.12,-.12,.40,.49],[.19,-.11,.42,.49],[.45,-.08,.43,.30],[.69,.06,.40,.29],[.95,.16,.25,.20]];
+ const rainCurtain=[[-.93,-.14,.35,.28],[-.60,-.2,.52,.44],[-.27,-.34,.42,.32],[-.05,-.23,.31,.31],[.33,-.20,.40,.40],[.62,-.19,.46,.31],[.9,.02,.28,.20]];
  const clamp01=x=>Math.max(0,Math.min(1,x));
  const fade=x=>{const t=clamp01(x);return t*t*(3-2*t);};
  function byteColor(h){return [1,3,5,7].map((i,k)=>h.length>i?parseInt(h.slice(i,i+2),16):k===3?255:0);}
@@ -117,7 +122,7 @@ export function makePondHorizon(T,weather){
   const layer=document.createElement('canvas');layer.width=width;layer.height=height;
   const ctx=layer.getContext('2d'),pixels=ctx.createImageData(width,height);
   const a=byteColor(core),b=byteColor(mid),c=byteColor(edge),salt=(x*.024+y*.046);
-  const heavy=shape===banks;
+  const heavy=shape===banks||shape===shelf||shape===rainCurtain;
   const fields=shape.map(([xx,yy,rx,ry],k)=>{
    const wobble=Math.sin(salt+k*2.41)*.055;
    return [xx+wobble,yy+wobble*.64,1/rx,1/ry];
@@ -156,10 +161,10 @@ export function makePondHorizon(T,weather){
   // This remains a dry sky, visibly different from the low rain banks.
   glow(690,65,300,154,[[0,'#fff5deaa'],[.35,'#fff4dd49'],[1,'#fff5dd00']]);
   g.save();g.translate(479,104);g.rotate(-.115);g.translate(-479,-104);
-  cloud(180,52,179,25,wisps,'#f4f4efdf','#fbfaf5ac','#f6f7f100');
-  cloud(340,80,345,23,wisps,'#eeeae0c8','#fffaeea9','#f4f3e900');
-  cloud(679,129,260,31,wisps,'#fff7e6d4','#fffcf0bd','#f4f3e900');
-  cloud(924,61,182,14,wisps,'#eff5f6c0','#f4f7f4a4','#e7eef500');
+  cloud(132,41,207,19,broken,'#f4f4efdf','#fbfaf5ac','#f6f7f100');
+  cloud(342,79,345,22,trailing,'#eeeae0c8','#fffaeea9','#f4f3e900');
+  cloud(678,128,267,25,wisps,'#fff7e6d4','#fffcf0bd','#f4f3e900');
+  cloud(928,52,158,24,broken,'#eff5f6c0','#f4f7f4a4','#e7eef500');
   g.restore();
  }else if(!rain){
   glow(728,88,172,112,[[0,'#fff5c8bc'],[.26,'#fff2cb72'],[1,'#fff1ca00']]);
@@ -167,22 +172,22 @@ export function makePondHorizon(T,weather){
   const disc=g.createLinearGradient(720,73,735,103);
   disc.addColorStop(0,'#fffad6');disc.addColorStop(1,'#ffdf94');
   g.fillStyle=disc;g.beginPath();g.arc(728,88,15.6,0,Math.PI*2);g.fill();
-  cloud(158,107,193,27,wisps,'#fff7dfdc','#f8f2d99c','#f7fbf000');
-  cloud(233,124,168,19,wisps,'#f9ebd59b','#f9f8e67a','#f8f8ec00');
-  cloud(404,65,112,23,sunnyPuffs,'#bac7d1bd','#fff9ebea','#f5ece28a');
-  cloud(897,119,123,22,sunnyPuffs,'#c4c9c9ad','#fff6e8da','#f1ede377');
-  cloud(864,138,167,13,wisps,'#fff5dcad','#fcf5e483','#f5f6e900');
-  cloud(571,143,106,12,wisps,'#fffbeb9c','#fffbef67','#ffffff00');
+  cloud(117,104,228,26,trailing,'#fff7dfdc','#f8f2d99c','#f7fbf000');
+  cloud(227,131,141,11,broken,'#f9ebd59b','#f9f8e67a','#f8f8ec00');
+  cloud(443,62,130,40,towers,'#bac7d1bd','#fff9ebea','#f5ece28a');
+  cloud(900,117,105,32,sunnyPuffs,'#c4c9c9ad','#fff6e8da','#f1ede377');
+  cloud(860,144,128,12,trailing,'#fff5dcad','#fcf5e483','#f5f6e900');
+  cloud(562,143,92,13,broken,'#fffbeb9c','#fffbef67','#ffffff00');
  }else{
   glow(648,133,281,133,[[0,'#fff0d2c8'],[.32,'#efe2d08e'],[1,'#d7cbbb00']]);
-  cloud(275,43,382,84,banks,'#62758ecf','#768ba1bf','#9eacb800');
-  cloud(522,68,315,89,banks,'#77869ecf','#a3aebfa6','#a5b1c200');
-  cloud(856,66,319,101,banks,'#596c86cd','#8e9bb291','#9ba7bc00');
-  cloud(89,100,214,73,banks,'#70849ab9','#a9b4c191','#a9b4c100');
-  cloud(321,116,258,53,wisps,'#98a6b7d1','#c1c9ca85','#bdc5c800');
-  cloud(863,111,209,56,banks,'#8494a9c5','#adb6c09a','#c5ccd000');
-  cloud(615,150,236,20,wisps,'#d5c8c6a5','#f0e0cf79','#e0cdc600');
-  cloud(372,166,194,13,wisps,'#d0cbcc99','#e1d9d48d','#e0d9d200');
+  cloud(253,36,393,100,rainCurtain,'#62758ecf','#768ba1bf','#9eacb800');
+  cloud(531,74,299,68,shelf,'#77869ecf','#a3aebfa6','#a5b1c200');
+  cloud(857,57,298,108,banks,'#596c86cd','#8e9bb291','#9ba7bc00');
+  cloud(74,98,238,55,shelf,'#70849ab9','#a9b4c191','#a9b4c100');
+  cloud(324,115,236,40,trailing,'#98a6b7d1','#c1c9ca85','#bdc5c800');
+  cloud(894,117,181,44,rainCurtain,'#8494a9c5','#adb6c09a','#c5ccd000');
+  cloud(625,151,254,20,broken,'#d5c8c6a5','#f0e0cf79','#e0cdc600');
+  cloud(368,169,181,10,trailing,'#d0cbcc99','#e1d9d48d','#e0d9d200');
  }
  for(const [y,amp,phase,ink] of [[230,18,.4,rain?'#a5b4ad':'#aebfae'],[252,17,2.1,rain?'#a5b2a3':'#aabc9c']]){
   g.beginPath();

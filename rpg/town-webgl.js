@@ -83,6 +83,7 @@ export const TOWN_PAINT_PALETTE=Object.freeze({
  soil:Object.freeze(['#d0c298','#beae83','#ded1ae','#c9bc92','#eee0bb']),
  pond:Object.freeze(['#6d9a8d','#3e796d','#34737f','#b4b482','#c9e0d5'])
 });
+const VILLAGE_PATH_OUTLINE=Object.freeze([[168,312],[179,302],[236,300],[319,302],[385,298],[453,302],[514,298],[566,302],[630,299],[637,283],[636,254],[648,244],[704,244],[716,253],[715,281],[719,300],[751,301],[779,303],[793,314],[790,356],[777,369],[709,371],[636,368],[562,372],[501,369],[498,414],[500,463],[497,510],[499,556],[489,564],[442,564],[428,553],[428,500],[430,459],[427,414],[426,369],[374,367],[310,370],[255,368],[182,368],[170,359]].map(Object.freeze));
 function landscapePigment(T,kind){
  const c=document.createElement('canvas');c.width=1152;c.height=672;
  const ctx=c.getContext('2d');
@@ -121,6 +122,38 @@ function landscapePigment(T,kind){
     ctx.lineWidth=.68+(i%3)*.16;ctx.beginPath();ctx.moveTo(xx,zz);ctx.quadraticCurveTo(xx+dx*.66,zz+dy*.81,xx+dx,zz+dy);ctx.stroke();
    }
    ctx.globalAlpha=1;
+  }
+ }
+ if(kind==='meadow'){
+  // Fine overlapping brush marks across the low turf, not geometry tufts.
+  // A large soft density field modulates noise, preserving paths/plant beds.
+  let turfSeed=952771;
+  const turfRandom=()=>((turfSeed=(Math.imul(turfSeed,1664525)+1013904223)>>>0)/4294967296);
+  const pigments=['#8aa85e','#add080','#b4c881','#82a45d','#a7c275'];
+  for(let i=0;i<3150;i++){
+   const xx=turfRandom()*W,zz=turfRandom()*H;
+   const q=.58+.17*Math.sin(xx*.031+zz*.018)+.12*Math.cos(xx*.072-zz*.034);
+   if(turfRandom()>q)continue;
+   const v=.37+turfRandom()*1.42,dx=(turfRandom()-.46)*v;
+   ctx.globalAlpha=.19+turfRandom()*.11;ctx.strokeStyle=pigments[i%5];ctx.lineWidth=.50+turfRandom()*.36;
+   ctx.beginPath();ctx.moveTo(xx,zz);ctx.quadraticCurveTo(xx+dx*.34,zz-v*.57,xx+dx,zz-v);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+ }
+ // Ground and path pigments feather around the same outline. Each edge
+ // wears a little differently; avoid the effect of a continuous border.
+ for(let e=0;e<VILLAGE_PATH_OUTLINE.length;e++){
+  const [x,z]=VILLAGE_PATH_OUTLINE[e], [u,v]=VILLAGE_PATH_OUTLINE[(e+1)%VILLAGE_PATH_OUTLINE.length];
+  const dx=u-x,dz=v-z,len=Math.hypot(dx,dz),angle=Math.atan2(dz,dx),n=Math.max(1,Math.ceil(len/12));
+  for(let j=0;j<n;j++){
+   const t=(j+.52)/n,xx=x+t*dx,zz=z+t*dz,k=.5+.5*Math.sin(e*2.15+j*.97);
+   if(kind==='meadow'){
+    glaze(xx,zz,9+k*10,3.3+k*4.0,angle,'#bdb47e',.12+k*.22);
+    if((e+j)%4===0)glaze(xx-1.2,zz+1.7,5.1+k*4.6,2.6+k*2.0,angle+.31,'#d0bc87',.16);
+   }else{
+    glaze(xx,zz,7+k*8,2.5+k*3.4,angle,'#a8b174',.18+k*.20);
+    if((e+j)%5===2)glaze(xx+.85,zz-.5,4.2+k*2.5,2.2+k*1.2,angle+.44,'#b8bf80',.19);
+   }
   }
  }
  // Fine, softly irregular pigment: tiny mineral flecks on the walking
@@ -522,7 +555,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  plinth.rotation.x=-Math.PI/2;plinth.position.y=-45;plinth.receiveShadow=true;scene.add(plinth);
  // The path is one junction, shaped and bevelled from its established
  // horizontal lane, centre walk, and short northern doorway approach.
- const pathLoop=[[168,312],[179,302],[236,300],[319,302],[385,298],[453,302],[514,298],[566,302],[630,299],[637,283],[636,254],[648,244],[704,244],[716,253],[715,281],[719,300],[751,301],[779,303],[793,314],[790,356],[777,369],[709,371],[636,368],[562,372],[501,369],[498,414],[500,463],[497,510],[499,556],[489,564],[442,564],[428,553],[428,500],[430,459],[427,414],[426,369],[374,367],[310,370],[255,368],[182,368],[170,359]];
+ const pathLoop=VILLAGE_PATH_OUTLINE;
  const trail=new T.Shape();
  pathLoop.forEach(([x,z],i)=>i?trail.lineTo(x-W/2,H/2-z):trail.moveTo(x-W/2,H/2-z));trail.closePath();
  // Shallow compacted gravel, not a raised platform. All path paint and

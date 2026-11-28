@@ -249,7 +249,31 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
  group.add(new T.Mesh(stoneGeo,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
  // The valley has its own silhouette and colour rhythm, not more grass
  // scatter. Only the low camera sees the non-walkable 3D background.
- const relief=[],reliefColors=[];
+ const relief=[],reliefColors=[],reliefUV=[],canopy=[],canopyColors=[];
+ let forestSeed=2143917;
+ const forestRand=()=>((forestSeed=(Math.imul(forestSeed,1664525)+1013904223)>>>0)/4294967296);
+ // Long connected woodland masses follow the folded terrain. A few
+ // diagonal openings remain between the stands, not uniform tree scatter.
+ const forestCover=(x,t,k)=>.63+.23*Math.sin(x*.008+2.8*t+k)
+   +.14*Math.sin(x*.019-5*t+k*.81)+.08*Math.cos(x*.041+3.7*t);
+ const forestInk=['#78999a','#668d80','#587e65'].map(c=>new T.Color(c));
+ // One static colour mask resolves thousands of overlapping crown tips
+ // without a per-tree draw. Broad stands sit under the smaller irregular
+ // mottles; far layers deliberately have less contrast.
+ const forestCanvas=document.createElement('canvas');
+ forestCanvas.width=1024;forestCanvas.height=192;
+ const forestCtx=forestCanvas.getContext('2d'),forestPixels=forestCtx.createImageData(1024,192);
+ for(let row=0;row<192;row++)for(let col=0;col<1024;col++){
+  const k=Math.floor(row/64),t=(row%64)/63,x=col/1023*4250-810;
+  const cover=Math.max(0,forestCover(x,t,k)-.20);
+  const crown=.51+.20*Math.sin(col*.77+row*2.16)+.13*Math.cos(col*1.83-row*.98)+.11*Math.sin(col*.32+row*1.14);
+  const f=Math.round(255-cover*(crown*44+38+k*13)*(1-t*t*.67));
+  const off=(row*1024+col)*4;
+  forestPixels.data[off]=f-2;forestPixels.data[off+1]=f;forestPixels.data[off+2]=f-1;forestPixels.data[off+3]=255;
+ }
+ forestCtx.putImageData(forestPixels,0,0);
+ const forestTexture=new T.CanvasTexture(forestCanvas);
+ forestTexture.colorSpace=T.SRGBColorSpace;forestTexture.anisotropy=2;
  // Elongated foothills: broad saddles and unequal shoulders instead of
  // singular high peaks. Layers descend and warm into the same aerial haze.
  const ridges=[
@@ -279,14 +303,41 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
     const y=-17+(height+17)*(1-t)**1.38+9*Math.sin(Math.PI*t)*Math.sin(x*.009+k);
     // Broad diagonal spurs and shadow folds sit under a low haze layer.
     const slope=.47+.12*Math.sin(x*.009+4.8*t+k)+.05*Math.cos(x*.019+10*t);
-    const color=sky.clone().lerp(body,slope+.19*t).lerp(mist,t*t*.70);
-    return [[run-W/2,y,crestZ+depth-H/2],color];
+    const cover=forestCover(x,t,k);
+    const color=sky.clone().lerp(body,slope+.19*t)
+     .lerp(forestInk[k],Math.max(0,cover-.21)*(.62+.12*k)).lerp(mist,t*t*.65);
+    return [[run-W/2,y,crestZ+depth-H/2],color,[(x+810)/4250,1-(k*64+.5+t*63)/192]];
    });
   });
   for(let i=1;i<profile.length;i++)for(let j=0;j<7;j++){
    const a=profile[i-1],b=profile[i];
-   for(const [position,color] of [a[j],a[j+1],b[j],a[j+1],b[j+1],b[j]]){
-    relief.push(...position);reliefColors.push(color.r,color.g,color.b);
+   for(const [position,color,uv] of [a[j],a[j+1],b[j],a[j+1],b[j+1],b[j]]){
+    relief.push(...position);reliefColors.push(color.r,color.g,color.b);reliefUV.push(...uv);
+   }
+  }
+  // Geometry is only the uneven upper crowns; the connected colour mass
+  // beneath them stands for the rest of the forest at this distance.
+  for(let i=1;i<profile.length;i++)for(let j=0;j<1;j++){
+   const a=profile[i-1],b=profile[i],n=[2,3,4][k];
+   for(let c=0;c<n;c++){
+    const u=(c+.08+.82*forestRand())/n;
+    const v=.03+.17*forestRand(),t=(j+v)/7;
+    const [x,y,z]=a[j][0].map((_,d)=>(a[j][0][d]*(1-u)+b[j][0][d]*u)*(1-v)
+       +(a[j+1][0][d]*(1-u)+b[j+1][0][d]*u)*v);
+    const cover=forestCover(x+W/2,t,k);
+    if(cover<.32||forestRand()>.38+.65*cover-t*.47)continue;
+    const h=(1.75+forestRand()*3.5)*(1+.18*k),w=h*(.52+forestRand()*.47),lean=(forestRand()-.5)*w;
+    const under=a[j][1].clone().lerp(b[j][1],u).lerp(a[j+1][1],v*.5);
+    const ink=under.clone().lerp(forestInk[k],.35+.28*forestRand()).multiplyScalar(.87+.23*forestRand());
+    const crown=[
+     [x-w*.69,y+.18*h,z+.88],[x-w*.82,y+.58*h,z+.73],
+     [x-w*.31+lean,y+.84*h,z+.5],[x+lean,y+h,z+.35],
+     [x+w*.51+lean,y+.73*h,z+.55],[x+w*.71,y+.40*h,z+.79],
+     [x+w*.56,y+.12*h,z+.94],[x,y+.45*h,z+1.01]
+    ];
+    for(const [index,shade] of [[0,.92],[1,1],[3,1.08],[0,.92],[3,1.08],[6,.92],[3,1.08],[4,1],[6,.92]]){
+     canopy.push(...crown[index]);canopyColors.push(ink.r*shade,ink.g*shade,ink.b*shade);
+    }
    }
   }
  }
@@ -296,7 +347,9 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
   geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.computeVertexNormals();
   const mesh=new T.Mesh(geo,material);group.add(mesh);return mesh;
  }
- paintedMesh(relief,reliefColors,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide}));
+ const forestGround=paintedMesh(relief,reliefColors,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,map:forestTexture}));
+ forestGround.geometry.setAttribute('uv',new T.Float32BufferAttribute(reliefUV,2));
+ if(canopy.length)paintedMesh(canopy,canopyColors,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide}));
  // Wildflowers gather in overlapping drifts. There is neither a parcel
  // boundary nor a repeated orientation: the tiny blooms flow into the grass.
  function triangle(output,paint,a,b,c,ink){
