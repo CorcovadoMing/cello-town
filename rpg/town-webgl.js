@@ -203,6 +203,28 @@ function landscapePigment(T,kind){
  const t=new T.CanvasTexture(c);
  t.colorSpace=T.SRGBColorSpace;t.anisotropy=4;return t;
 }
+// Fired clay is not wood: fine dry pits, cloudy kiln colour, paler worn
+// edges and faint mineral runs. The relief is independent of pigment.
+function roofClay(T){
+ const size=128,make=()=>Object.assign(document.createElement('canvas'),{width:size,height:size});
+ const a=make(),b=make(),ac=a.getContext('2d'),bc=b.getContext('2d'),ad=ac.createImageData(size,size),bd=bc.createImageData(size,size);
+ const hash=(x,y)=>{let h=Math.imul(x+347,374761393)+Math.imul(y+521,668265263);h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967296;};
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+  const u=x/(size-1),v=y/(size-1),edge=Math.min(x,y,size-1-x,size-1-y);
+  const m=Math.sin(12*u+3*Math.sin(v*8))*Math.cos(v*6-u*5),patch=Math.sin(u*23+v*15)*Math.sin(v*17-u*9);
+  const grain=hash(x,y)-.5,pit=grain>.43?-(grain-.43)*2.7:0;
+  const limestone=Math.pow(Math.max(0,Math.sin(u*51+.7*Math.sin(v*17))),16)*Math.pow(Math.max(0,Math.sin(v*9+u*15)),3)*14;
+  const rim=13*Math.exp(-edge*.22),shade=12*m+7*patch+9*grain+40*pit+rim+limestone;
+  const ridge=142+5*m+8*grain+163*pit-29*Math.exp(-edge*.38);
+  const i=4*(y*size+x);
+  ad.data[i]=214+shade;ad.data[i+1]=182+shade*.92;ad.data[i+2]=158+shade*.76;ad.data[i+3]=255;
+  bd.data[i]=bd.data[i+1]=bd.data[i+2]=ridge;bd.data[i+3]=255;
+ }
+ ac.putImageData(ad,0,0);bc.putImageData(bd,0,0);
+ const map=new T.CanvasTexture(a),bumpMap=new T.CanvasTexture(b);
+ map.colorSpace=T.SRGBColorSpace;map.anisotropy=bumpMap.anisotropy=4;
+ return {map,bumpMap};
+}
 function woodWearMap(T){
  const c=document.createElement('canvas');c.width=128;c.height=64;
  const g=c.getContext('2d');g.fillStyle='#ece6d5';g.fillRect(0,0,128,64);
@@ -392,12 +414,13 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const leafy=makeOrchardLeaf(T),needles=makeOrchardLeaf(T,true);
  const meadowPigment=landscapePigment(T,'meadow'),soilPigment=landscapePigment(T,'soil'),pondPigment=pondBed(T);
  const geometry={
-  box:new T.BoxGeometry(1,1,1),'weathered-board':new T.BoxGeometry(1,1,1), sphere:new T.IcosahedronGeometry(1,1),
+  box:new T.BoxGeometry(1,1,1),'weathered-board':new T.BoxGeometry(1,1,1),'fired-clay':new T.BoxGeometry(1,1,1), sphere:new T.IcosahedronGeometry(1,1),
   trunk:new T.CylinderGeometry(.36,.51,1,11,2), cone:new T.ConeGeometry(1,1,5),
   circle:new T.CircleGeometry(1,18), 'orchard-leaf':leafy.geometry,'orchard-needle':needles.geometry, 'window-glass':new T.BoxGeometry(1,1,1)
  };
  const material=new T.MeshLambertMaterial({flatShading:true});
  const boardSkin=new T.MeshLambertMaterial({map:woodWearMap(T),flatShading:true});
+ const claySkin=new T.MeshPhongMaterial({...roofClay(T),bumpScale:.18,shininess:8,specular:'#392a25',flatShading:true});
  const leafyMaterial=leafy.material;
  const bark=makeOrchardBark(T);
  const barkMaterial=new T.MeshPhongMaterial({...bark,bumpScale:.22,shininess:6,specular:'#272219'});
@@ -413,6 +436,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  }
  const box=(...args)=>shape('box',...args);
  const woodDetail=(...args)=>shape('weathered-board',...args);
+ const clayDetail=(...args)=>shape('fired-clay',...args);
  const sphere=(...args)=>shape('sphere',...args);
  function plane(x,z,y,sx,sz,tint,alpha){
   const [dx,dz]=local(x,z);
@@ -728,6 +752,35 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   box(x,46,fr+3,26,28,3,edge);shape('window-glass',x,46,fr+5,21,23,1.6,'#b8a581');box(x,46,fr+7,2.1,22,1.2,cream);box(x,46,fr+7,21,2,1.2,cream);box(x,33,fr+7,30,3,7,warm);
  }
  for(const z of [cy-15,cy+12]){box(cx+71,47,z,2,23,21,edge);box(cx+73,47,z,1,19,17,'#84aaa2');box(cx+74,47,z,1,19,2,cream);box(cx+74,47,z,1,2,17,cream);}
+ // The west wall faces the pond camera; give it real depth instead of a blank
+ // wash. Elements attach flush to the existing wall and are drawn in the
+ // normal house batches (not navigation geometry).
+ const west=cx-70;
+ for(const z of [cy-34,cy+33]){
+  woodDetail(west-1.5,42,z,3.5,70,4.4,'#906b4e');
+  box(west-3.28,42,z-.61,.33,65,1,'#b38a61');
+ }
+ for(const y of [12,67])woodDetail(west-1.45,y,cy,3.35,3.8,68,'#997451');
+ for(const z of [cy-14,cy+16]){
+  box(west-1.35,42,z,2.8,23,20,'#846549');
+  shape('window-glass',west-3.1,42,z,.9,18,15,'#a3a995');
+  box(west-3.65,42,z,1.15,19,1.45,'#d2b386');
+  box(west-3.65,42,z,1.15,1.55,15,'#d9b78a');
+  woodDetail(west-3.05,31,z,6.6,2.4,23,'#aa875e');
+  for(const k of [-1,1]){
+   woodDetail(west-2.25,42,z+k*12,2.15,21,4.7,'#657862');
+   box(west-3.55,42,z+k*12,.62,1.1,4.7,'#4a5b4b');
+  }
+ }
+ for(let course=0;course<2;course++){
+  let z=-35;
+  for(let j=0;z<35;j++){
+   const n=Math.min(35-z,5+(j*13+course*9)%10);
+   box(west-.92,3+course*4.3,cy+z+n/2,1.10,3.7,n-.35,
+    ['#958674','#afa18a','#998d78','#b3a28a'][(j+course*3)%4]);
+   z+=n;
+  }
+ }
  // True gables are triangular meshes, roof slopes are thick tiled slabs.
  const gable=new T.Shape();gable.moveTo(-70,0);gable.lineTo(70,0);gable.lineTo(0,43);gable.closePath();
  const gg=new T.ExtrudeGeometry(gable,{depth:76,bevelEnabled:false});
@@ -738,12 +791,19 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   for(let row=0;row<7;row++)for(let tile=0;tile<7;tile++){
    const offset=6+row*11;
    const wear=((row*19+tile*11+s*23)%8+8)%8;
-   woodDetail(cx+s*offset,128-offset*.56+(wear-3.5)*.13,cy-42+tile*13+(row%2)*2+(wear-3.5)*.24,11.4,2.1+wear*.06,12.6,
-    ['#a67257','#ad795d','#a06d55','#b17d62'][(row*3+tile+(s>0?1:0))%4],0,(wear-3.5)*.006,-s*slope);
+   clayDetail(cx+s*offset,128-offset*.56+(wear-3.5)*.13,cy-42+tile*13+(row%2)*2+(wear-3.5)*.24,11.8,2.1+wear*.09,12.6,
+    ['#ac795e','#bb8268','#a46e5a','#bd8a6b'][(row*3+tile+(s>0?1:0))%4],0,(wear-3.5)*.006,-s*slope);
   }
   box(cx+s*39,100,fr+10,91,4,4,'#c59d69',0,0,-s*slope);
  }
- box(cx,130,cy,5,4,98,'#a47a55');
+ // Individual ridge caps press down onto the two slopes. The
+ // old straight support is still beneath them so no roof gap can peek through.
+ box(cx,129.5,cy,4,2.5,98,'#8a604f');
+ for(let j=0;j<9;j++){
+  const z=cy-43.2+j*10.8,odd=(j*5)%7;
+  clayDetail(cx+(odd-3)*.15,131+(odd-3)*.074,z,5.7,3.2,10.68,
+   j%3===1?'#bf8f70':'#ad795f',0,(odd-3)*.013,0);
+ }
  box(cx-25,120,cy-19,12,33,13,'#aa7856');box(cx-25,138,cy-19,16,4,17,'#d3a77a');
  const eye=new T.Mesh(new T.CylinderGeometry(8,8,2,10),new T.MeshLambertMaterial({color:'#8daaaa'}));eye.rotation.x=Math.PI/2;eye.position.set(cx-W/2,96,fr+1-H/2);scene.add(eye);houseMesh.add(eye);
  // Timber tie beam and carved rafter cheeks at the original gable line.
@@ -845,7 +905,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const updateShore=addShoreCraft({T,scene,W,H,trees,room,shape});
  const swaying=[];
  for(const [kind,items] of batches){
-  const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='orchard-needle'?needles.material:kind==='trunk'?barkMaterial:kind==='window-glass'?windowGlass:kind==='weathered-board'?boardSkin:material,items.length);
+  const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='orchard-needle'?needles.material:kind==='trunk'?barkMaterial:kind==='window-glass'?windowGlass:kind==='weathered-board'?boardSkin:kind==='fired-clay'?claySkin:material,items.length);
   const houseIds=new Set();
   items.forEach(([matrix,tint,flex,x,z,house],i)=>{
    if(house)houseIds.add(i);
