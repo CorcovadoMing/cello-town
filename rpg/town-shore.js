@@ -30,6 +30,64 @@ function contactMap(T,W,H,seeds){
  }
  const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.anisotropy=2;return t;
 }
+// One stationary, local atlas straddles the water's rectangular mesh edge.
+ // Its varied shelf, mineral flecks, roots and reed contact are not a second
+ // water surface; the existing ripple shader, fish and rain rings stay live.
+function shorelineContact(T,scene,W,H){
+ const cx=146,cz=465,w=244,h=151,halfW=112.5,halfH=67.5;
+ const c=document.createElement('canvas');c.width=768;c.height=480;
+ const g=c.getContext('2d');g.scale(c.width/w,c.height/h);g.translate(w/2,h/2);
+ let seed=81931;
+ const rnd=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
+ const edges=[[-halfW,-halfH,1,0,0,1,w-19],[halfW,-halfH,0,1,-1,0,h-16],
+  [halfW,halfH,-1,0,0,-1,w-19],[-halfW,halfH,0,-1,1,0,h-16]];
+ function line(x,y,a,b,color,width){
+  g.beginPath();g.moveTo(x,y);g.lineTo(a,b);g.strokeStyle=color;g.lineWidth=width;g.stroke();
+ }
+ for(const [x,z,tx,tz,nx,nz,len] of edges){
+  // At the rim, patchy silt gives way to scattered grits and submerged leaves.
+  for(let q=0;q<len;q+=1.15){
+   const wav=Math.sin(q*.17)*1.8+Math.sin(q*.046)*3.1+Math.sin(q*.64)*.65;
+   const pocket=.30+.70*Math.pow((1+Math.sin(q*.097+len))/2,1.2);
+   const u=x+tx*q,v=z+tz*q;
+   const reach=(9+wav+4*rnd())*pocket;
+   const grad=g.createLinearGradient(u-nx*3,v-nz*3,u+nx*reach,v+nz*reach);
+   grad.addColorStop(0,'rgba(77,82,51,0)');
+   grad.addColorStop(.24,'rgba(63,71,46,.59)');
+   grad.addColorStop(.44,'rgba(105,103,65,.44)');
+   grad.addColorStop(.72,'rgba(162,150,93,.22)');
+   grad.addColorStop(1,'rgba(157,148,95,0)');
+   line(u-nx*3,v-nz*3,u+nx*reach,v+nz*reach,grad,1.65+rnd()*.8);
+  }
+  for(let i=0;i<len*2.1;i++){
+   const q=1+rnd()*(len-2),offset=-3+Math.pow(rnd(),1.75)*15;
+   const u=x+tx*q+nx*offset,v=z+tz*q+nz*offset;
+   const r=.14+rnd()*.73,s=.22+rnd()*1.06;
+   const color=['#263c2c75','#b9b18490','#d3c4a168','#859c6a85','#594a3668'][i%5];
+   g.beginPath();g.ellipse(u,v,s,r,rnd()*Math.PI,0,TAU);g.fillStyle=color;g.fill();
+   if(i%7===0&&offset>1)line(u-s*.5,v-r*.38,u+s*.62,v-r*.29,'#e0d6ad77',.22);
+  }
+ }
+ // Actual reed clusters get irregular roots, plant shade and small litter.
+ for(const [x,z,ang] of [[46,437,.16],[74,525,-1.12],[200,524,-1.7],[253,443,2.4],
+  [249,488,2.91],[252,510,3.42],[118,402,1.6]]){
+  g.save();g.translate(x-cx,z-cz);g.rotate(ang);
+  const shade=g.createRadialGradient(0,0,.1,0,0,1);shade.addColorStop(0,'#364b308b');shade.addColorStop(1,'#364b3000');
+  g.save();g.scale(8,3.7);g.fillStyle=shade;g.fillRect(-1,-1,2,2);g.restore();
+  for(let j=0;j<12;j++){
+   const ax=(rnd()-.5)*6,az=(rnd()-.5)*3,bx=ax+1+rnd()*6,bz=az+(rnd()-.5)*2.8;
+   g.beginPath();g.moveTo(ax,az);g.quadraticCurveTo((ax+bx)*.5,(az+bz)*.5+.9,bx,bz);
+   g.lineWidth=.2+rnd()*.44;g.strokeStyle=j%3===0?'#d8c79890':'#4d593b86';g.stroke();
+  }
+  g.restore();
+ }
+ const atlas=new T.CanvasTexture(c);atlas.colorSpace=T.SRGBColorSpace;atlas.anisotropy=2;
+ const material=new T.MeshBasicMaterial({map:atlas,transparent:true,depthWrite:false,
+  polygonOffset:true,polygonOffsetFactor:-1,opacity:.86});
+ const shelf=new T.Mesh(new T.PlaneGeometry(w,h),material);
+ shelf.rotation.x=-Math.PI/2;shelf.position.set(cx-W/2,2.19,cz-H/2);shelf.renderOrder=3;scene.add(shelf);
+ return weather=>{material.opacity=weather==='rain'?.98:weather==='breeze'?.9:.83;};
+}
 function farMeadow(T,scene,W,H){
  const geo=new T.PlaneGeometry(1450,640,55,31);geo.rotateX(-Math.PI/2);
  const p=geo.attributes.position,rgb=new Float32Array(p.count*3);
@@ -52,7 +110,7 @@ export function addShoreCraft({T,scene,W,H,trees,room,shape}){
  const contact=new T.Mesh(new T.PlaneGeometry(W,H),new T.MeshBasicMaterial({map:shadowTex,transparent:true,depthWrite:false,
   opacity:.90,polygonOffset:true,polygonOffsetFactor:-2}));
  contact.rotation.x=-Math.PI/2;contact.position.y=1.37;contact.renderOrder=2;scene.add(contact);
- const hills=farMeadow(T,scene,W,H);
+ const hills=farMeadow(T,scene,W,H),updateShelf=shorelineContact(T,scene,W,H);
  let seed=40839;
  const rand=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
  const stone=['#8b896b','#929472','#aaa381','#b8ad88','#6f806e','#8d9579'];
@@ -100,6 +158,6 @@ export function addShoreCraft({T,scene,W,H,trees,room,shape}){
   }
  }
  return (weather,close)=>{
-  hills.visible=close;contact.material.opacity=weather==='sun'?.94:weather==='rain'?.69:.84;
+  updateShelf(weather);hills.visible=close;contact.material.opacity=weather==='sun'?.94:weather==='rain'?.69:.84;
  };
 }

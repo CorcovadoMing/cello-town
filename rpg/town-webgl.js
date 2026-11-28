@@ -136,6 +136,71 @@ function landscapePigment(T,kind){
   }
   ctx.globalAlpha=1;
  }
+ // Site-specific wear goes into the same baked material as the broader
+ // pigment. Keep compacted footpaths quiet and concentrate detail on edges.
+ const pigmentRng=(start)=>()=>{start=(Math.imul(start,1664525)+1013904223)>>>0;return start/4294967296;};
+ if(kind==='soil'){
+  const roll=pigmentRng(83309),tau=2*Math.PI;
+  const stones=['#9b8361','#b09b75','#c2ad86','#cdb894','#957f62','#b1a18c'];
+  const verges=[
+   [[181,303],[241,300],[316,302],[384,298],[450,302],[513,298],[566,302],[629,299]],
+   [[181,367],[252,369],[310,370],[375,367],[427,369]],
+   [[500,370],[558,371],[632,368],[706,371],[774,370]],
+   [[427,375],[427,413],[431,457],[428,501],[429,550]],
+   [[500,375],[497,418],[500,459],[497,510],[498,550]],
+   [[638,294],[638,269],[638,255],[651,246],[703,246],[714,254],[714,285],[720,301],[772,305],[791,318],[790,353]]
+  ];
+  function chip(x,z,rx,rz,tint,alpha){
+   const spin=roll()*tau;
+   ctx.save();ctx.translate(x,z);ctx.rotate(spin);
+   ctx.globalAlpha=alpha;ctx.fillStyle=tint;ctx.beginPath();
+   for(let i=0;i<6;i++){
+    const a=tau*i/6,rr=.64+roll()*.36,u=Math.cos(a)*rx*rr,v=Math.sin(a)*rz*rr;
+    i?ctx.lineTo(u,v):ctx.moveTo(u,v);
+   }
+   ctx.closePath();ctx.fill();
+   if(rx>1.17){
+    ctx.globalAlpha*=.64;ctx.strokeStyle='#f4e4bf';ctx.lineWidth=.43;ctx.beginPath();
+    ctx.moveTo(-rx*.55,-rz*.24);ctx.quadraticCurveTo(-rx*.18,-rz*.65,rx*.46,-rz*.41);ctx.stroke();
+   }
+   ctx.restore();
+  }
+  for(const verge of verges)for(let j=1;j<verge.length;j++){
+   const [x,z]=verge[j-1],[xx,zz]=verge[j],dx=xx-x,dz=zz-z,d=Math.hypot(dx,dz),nx=-dz/d,nz=dx/d;
+   for(let i=0;i<Math.ceil(d/7);i++){
+    const t=(i+roll())/Math.ceil(d/7),a=x+dx*t,b=z+dz*t;
+    const exposed=roll()>.24;
+    if(exposed)glaze(a,b,3+roll()*9,2+roll()*4,(roll()-.5)*2.1,roll()<.42?'#8b955f':'#a29670',.14+roll()*.27);
+    for(let n=0;n<3+Math.floor(roll()*5);n++){
+     const along=(roll()-.5)*13,across=(roll()-.5)*17;
+     chip(a+dx/d*along+nx*across,b+dz/d*along+nz*across,.37+roll()*2,.21+roll()*1.1,stones[Math.floor(roll()*stones.length)],.25+roll()*.39);
+    }
+   }
+  }
+  for(const [x,z,rx,rz] of [[252,338,37,10],[403,336,44,11],[521,332,51,10],[663,334,36,12],[683,279,10,16],[463,410,10,24],[463,509,8,26]]){
+   glaze(x,z,rx,rz,0,'#efe2bf',.28);
+   for(let i=0;i<22;i++)chip(x+(roll()-.5)*rx*1.8,z+(roll()-.5)*rz*1.8,.48+roll()*1.22,.29+roll()*.63,stones[i%stones.length],.14+roll()*.28);
+  }
+ }
+ if(kind==='meadow'){
+  // Interrupted moss and short dry blades gather where runoff lingers or
+  // feet leave the gravel; the centre of the meadow stays legible.
+  const roll=pigmentRng(183223),inks=['#70874c','#83965d','#adba7a','#d3c496','#7c8f52','#98a663'];
+  const pockets=[[185,286,36,13],[299,379,55,13],[345,287,61,11],[475,286,37,12],[586,379,57,13],[738,381,46,12],
+   [421,437,14,35],[505,463,14,45],[402,512,20,29],[537,525,31,25],[757,262,39,22],[555,197,34,21],[326,454,49,22],
+   [305,70,64,25],[421,87,49,30],[561,71,49,29],[859,106,42,35],[902,194,38,31]];
+  for(const [x,z,rx,rz] of pockets){
+   glaze(x,z,rx,rz,(roll()-.5)*.2,inks[roll()<.45?0:3],.29);
+   for(let p=0;p<64;p++){
+    const a=roll()*2*Math.PI,rr=Math.sqrt(roll()),u=x+Math.cos(a)*rx*rr,v=z+Math.sin(a)*rz*rr;
+    const angle=(roll()-.5)*2.8,w=.42+roll()*1.82,h=.16+roll()*.39;
+    ctx.save();ctx.translate(u,v);ctx.rotate(angle);
+    ctx.globalAlpha=.21+roll()*.30;ctx.strokeStyle=inks[p%inks.length];ctx.lineWidth=h;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(-w*.48,w*.22);ctx.quadraticCurveTo(-w*.03,w*.15,w*.55,-w*.39);ctx.stroke();
+    ctx.restore();
+   }
+  }
+ }
  const t=new T.CanvasTexture(c);
  t.colorSpace=T.SRGBColorSpace;t.anisotropy=4;return t;
 }
@@ -334,8 +399,11 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const pathLoop=[[168,312],[179,302],[236,300],[319,302],[385,298],[453,302],[514,298],[566,302],[630,299],[637,283],[636,254],[648,244],[704,244],[716,253],[715,281],[719,300],[751,301],[779,303],[793,314],[790,356],[777,369],[709,371],[636,368],[562,372],[501,369],[498,414],[500,463],[497,510],[499,556],[489,564],[442,564],[428,553],[428,500],[430,459],[427,414],[426,369],[374,367],[310,370],[255,368],[182,368],[170,359]];
  const trail=new T.Shape();
  pathLoop.forEach(([x,z],i)=>i?trail.lineTo(x-W/2,H/2-z):trail.moveTo(x-W/2,H/2-z));trail.closePath();
+ // Shallow compacted gravel, not a raised platform. All path paint and
+ // transient traces use the same new elevation; walk/pick coordinates do not.
+ const roadTop=2.05,roadSink=4.25-roadTop;
  const pathMesh=new T.Mesh(paintTerrainUV(T,new T.ExtrudeGeometry(trail,{depth:1.85,bevelEnabled:true,bevelThickness:1.2,bevelSize:1.8,bevelSegments:2})),new T.MeshPhongMaterial({map:soilPigment,bumpMap:soilPigment,bumpScale:.69,shininess:3,specular:'#30271c',color:'#f7f4eb'}));
- pathMesh.rotation.x=-Math.PI/2;pathMesh.position.y=1.2;pathMesh.receiveShadow=true;scene.add(pathMesh);
+ pathMesh.rotation.x=-Math.PI/2;pathMesh.position.y=1.2-roadSink;pathMesh.receiveShadow=true;scene.add(pathMesh);
  const footfall=createFootfallTracker((x,z)=>insidePolygon(x,z,pathLoop));
  const stampTexture=(()=>{
   const c=document.createElement('canvas');c.width=16;c.height=24;
@@ -357,7 +425,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   for(let i=0;i<steps.length;i++){
    const mesh=steps[i],mark=recent[i];mesh.visible=Boolean(mark);if(!mark)continue;
    const [x,z]=local(mark.x,mark.z);
-   mesh.position.set(x,4.67,z);mesh.rotation.set(-Math.PI/2,0,-mark.yaw+(mark.side<0?.13:-.13));
+   mesh.position.set(x,4.67-roadSink,z);mesh.rotation.set(-Math.PI/2,0,-mark.yaw+(mark.side<0?.13:-.13));
    mesh.material.opacity=mark.opacity;mesh.material.color.set(mark.wet?'#59494d':'#7f6244');
   }
  }
@@ -370,7 +438,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  }
  for(const [x,z,w,d] of [[480,333,620,72],[464,463,72,192],[676,268,76,53]])for(let i=0;i<Math.ceil(w*d/760);i++){
   const dx=x-w*.43+rng()*w*.86,dz=z-d*.41+rng()*d*.82;
-  sphere(dx,3.9,dz,1.15+rng()*3.6,.3,.65+rng()*1.55,['#d9c096','#e6cfa5','#d3bb90'][i%3],0,(rng()-.5)*1.4);
+  sphere(dx,3.9-roadSink,dz,1.15+rng()*3.6,.3,.65+rng()*1.55,['#d9c096','#e6cfa5','#d3bb90'][i%3],0,(rng()-.5)*1.4);
  }
  // Broad pigment islands break the upper meadow into ground, sun and
  // orchard shade, without filling the readable centre with extra objects.
@@ -383,7 +451,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   const complete=points.map(([x,z,w])=>[x,z-w]).concat(points.slice().reverse().map(([x,z,w])=>[x,z+w]));
   complete.forEach(([x,z],i)=>i?q.lineTo(x-W/2,H/2-z):q.moveTo(x-W/2,H/2-z));q.closePath();
   const mesh=new T.Mesh(new T.ShapeGeometry(q),new T.MeshLambertMaterial({color:tint,transparent:true,opacity:a,depthWrite:false}));
-  mesh.rotation.x=-Math.PI/2;mesh.position.y=y;mesh.receiveShadow=true;scene.add(mesh);
+  mesh.rotation.x=-Math.PI/2;mesh.position.y=y-roadSink;mesh.receiveShadow=true;scene.add(mesh);
  };
  wornBand([[181,320,1],[210,321,5],[256,324,8],[302,319,7],[362,319,8],[421,322,7],[471,320,5],[522,316,5],[577,316,7],[641,319,7],[698,316,7],[746,324,6],[781,325,1]],4.36,'#b8a47e',.17);
  wornBand([[193,344,1],[227,342,5],[267,345,7],[311,348,8],[371,349,7],[444,347,9],[507,346,6],[576,342,7],[626,343,5],[685,345,7],[733,344,6],[763,347,1]],4.37,'#baa880',.14);
@@ -409,7 +477,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   contour.forEach(([x,z],i)=>i?path.lineTo(x-W/2,H/2-z):path.moveTo(x-W/2,H/2-z));
   path.closePath();
   const mesh=new T.Mesh(new T.ShapeGeometry(path),new T.MeshLambertMaterial({color:side>0?'#bf9f6a':'#c7a876',transparent:true,opacity:.095,depthWrite:false}));
-  mesh.rotation.x=-Math.PI/2;mesh.position.y=4.39;mesh.receiveShadow=true;scene.add(mesh);
+  mesh.rotation.x=-Math.PI/2;mesh.position.y=4.39-roadSink;mesh.receiveShadow=true;scene.add(mesh);
  }
  for(const [x,z,rx,rz,n] of [[202,301,19,6,8],[277,367,25,7,10],[339,298,22,5,9],[401,370,18,7,8],[529,367,24,6,8],[577,300,25,7,11],[735,367,28,7,12],[782,332,9,18,9],[430,441,6,26,8],[498,498,7,26,7],[711,281,7,14,7]]){
   for(let i=0;i<n;i++){
@@ -439,7 +507,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   scene.add(mesh);
   return {kind,x,z,w,d,ctx,soft,raw,down,thumb,map,mesh};
  }
- const wetLayers=[wetLayer('road',148,216,664,344,4.63),wetLayer('bed',742,410,158,97,9.75)];
+ const wetLayers=[wetLayer('road',148,216,664,344,4.63-roadSink),wetLayer('bed',742,410,158,97,9.75)];
  let previousMoisture=null;
  function updateWetLayers(moisture){
   if(moisture===previousMoisture)return;
@@ -592,7 +660,6 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  markingHouse=true;
  box(cx,5,cy,148,10,82,'#9c8d6b');
  box(cx,42,cy,140,72,76,'#e4c58e');
- for(let x=cx-61;x<=cx+65;x+=14)box(x,4,fr+1,7,1.3,1,'#bea985');
  for(let y=15;y<79;y+=9){
   box(cx,y,fr+1,140,.8,1.1,'#be9b61');box(cx+70,y,cy,.9,.8,75,'#aa8654');
  }
@@ -623,6 +690,34 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  box(cx,130,cy,5,4,98,'#a47a55');
  box(cx-25,120,cy-19,12,33,13,'#aa7856');box(cx-25,138,cy-19,16,4,17,'#d3a77a');
  const eye=new T.Mesh(new T.CylinderGeometry(8,8,2,10),new T.MeshLambertMaterial({color:'#8daaaa'}));eye.rotation.x=Math.PI/2;eye.position.set(cx-W/2,96,fr+1-H/2);scene.add(eye);houseMesh.add(eye);
+ // Timber tie beam and carved rafter cheeks at the original gable line.
+ // Thin layers are still real house instances, never a new interaction zone.
+ woodDetail(cx,76.3,fr+1.9,131,5.2,3.3,'#8f694d');
+ box(cx,78.5,fr+3.7,128,1.15,.65,'#ba9469');
+ for(const s of [-1,1]){
+  woodDetail(cx+s*41,87.8,fr+1.9,24,3.3,2.9,'#9b7551',0,0,-s*.55);
+  box(cx+s*58,74,fr+3.9,3,5.5,1.0,'#704c3b');
+ }
+ // Pair of carefully fitted, outward-opening shutters and the shadows cast
+ // by the sill supports. Existing glass, sash divisions and lights remain.
+ for(const x of [cx-45,cx+45])for(const s of [-1,1]){
+  const q=x+s*16.95;
+  woodDetail(q,46.1,fr+2.9,6.8,26,2.5,'#5e715d');
+  box(q-s*2.4,46.1,fr+4.3,.75,24,.7,'#89937b');
+  for(const y of [41,51])box(q,y,fr+4.6,6.1,1.2,.8,'#3e5048');
+  box(x+s*8,30.45,fr+7,2.5,3.1,2.6,'#8f6d4b',0,0,.19*s);
+ }
+ // Two staggered courses of hand-cut plinth stones. The original solid
+ // block remains as mortar and the step/walk footprint is untouched.
+ const stones=['#9b9280','#b1a48b','#a59984','#b6ab95'];
+ for(let row=0;row<2;row++){
+  let x=-69;
+  for(let i=0;x<69;i++){
+   const width=Math.min(69-x,8+(i*7+row*5)%12);
+   box(cx+x+width/2,2.6+row*4.25,fr+3.16,width-.45,3.7,.85,stones[(i*3+row)%stones.length]);
+   x+=width;
+  }
+ }
  box(cx,96,fr+3,2,12,1.5,cream);box(cx,96,fr+3,12,2,1.5,cream);
  for(const [dy,w] of [[8,52],[16,46],[24,39]])box(cx,3,fr+dy,w,6,7,wood);
  markingHouse=false;

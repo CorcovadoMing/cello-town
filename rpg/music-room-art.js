@@ -98,7 +98,20 @@ export function drawMusicRoom(g,key='sun'){
   F(g,[[-70,0,z],[70,0,z],[70,0,z+1],[-70,0,z+1]],'#b095665e');
   F(g,[[70,0,z],[70,68,z],[70,68,z+1],[70,0,z+1]],'#695b423f');
  }
- for(let x=608;x<744;x+=11)r(g,x,227+(x%7<3?4:0),7,2,'#b5a779');
+ // Timber lintel and braces belong to the same façade plane as the gable.
+ F(g,[[-65,0,73],[65,0,73],[65,0,79],[-65,0,79]],'#86694d');
+ F(g,[[-64,0,78],[64,0,78],[64,0,79],[-64,0,79]],'#bc966d');
+ for(const s of [-1,1]){
+  F(g,[[s*52,0,78],[s*53,0,82],[s*32,0,99],[s*30,0,96]],'#946e4f');
+  r(g,676+s*58-1,159,3,5,'#6e523f');
+ }
+ // A shallow stone plinth has staggered joints rather than long stripes.
+ const stone=['#a0957c','#b2a68d','#a89b83','#baae95'];
+ for(let row=0;row<2;row++)for(let x=-69,i=0;x<69;i++){
+  const width=Math.min(69-x,8+(i*7+row*5)%12);
+  r(g,676+x,227+row*4,width-1,3,stone[(i*3+row)%stone.length]);
+  x+=width;
+ }
  for(const x of [607,737]){r(g,x,153,3,67,'#ae8655');r(g,x+1,154,1,65,'#d0a769');}
  // Side window uses the same projection as the side wall, rather than a
  // flat rectangle glued across the return.
@@ -107,6 +120,13 @@ export function drawMusicRoom(g,key='sun'){
  F(g,[[70,33,31],[70,37,31],[70,37,53],[70,33,53]],'#d0ac72');
  F(g,[[70,24,40],[70,47,40],[70,47,43],[70,24,43]],'#d0ac72');
  F(g,[[72,19,28],[72,52,28],[70,53,31],[70,18,31]],'#c39661');
+ // Open shutters wrap the existing glazing, with hinge shadows and sill feet.
+ for(const x of [617,711])for(const s of [-1,1]){
+  const a=x+11+s*17;
+  r(g,a-3,171,6,25,'#5b705e');r(g,a-2-s,172,1,22,'#8c987e');
+  for(const y of [178,188])r(g,a-3,y,6,1,'#3f5546');
+  r(g,x+11+s*8,200,3,3,'#886749');
+ }
  wallWindow(g,617,170,sun);wallWindow(g,711,170,sun);
  const d=MUSIC_ROOM_DOOR;
  r(g,d.x,d.y,d.w,d.h,'#70583c');r(g,d.x+3,d.y+3,d.w-6,d.h-3,'#c39b65');
