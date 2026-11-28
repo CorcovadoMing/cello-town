@@ -1,3 +1,4 @@
+import {addShoreCraft} from './town-shore.js?v=1';
 import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=2';
 import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,makeOrchardSkin,makeOrchardVolumes,townSunVector} from './town-orchard.js?v=8';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
@@ -647,6 +648,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  for(let i=0;i<4;i++)for(const dx of [-9,9])box(stand.x+dx,40+i*3,stand.y+3.5,12,.5,1,'#af9a6e',-.19);
  addCabinAndPondCraft({box,sphere,shape},room);
  addBenchGardenCraft({box,sphere,shape},stand);
+ const updateShore=addShoreCraft({T,scene,W,H,trees,room,shape});
  const swaying=[];
  for(const [kind,items] of batches){
   const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='trunk'?barkMaterial:kind==='window-glass'?windowGlass:kind==='orchard-fir'?firMaterial:kind==='weathered-board'?boardSkin:kind.startsWith('orchard-')?crownMaterial:material,items.length);
@@ -741,14 +743,15 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
     sprite.rotation.y=close?Math.atan2(pondCamera.position.x-sprite.position.x,pondCamera.position.z-sprite.position.z):0;
    }
    updateGrass(clock,weather,motion);
+   updateShore(weather,close);
    scene.background=close?horizons[weather==='rain'?1:0]:mapBackground;
    if(weather!==lastWeather){
     lastWeather=weather;
     mapBackground.set(weather==='rain'?'#dcd8cd':'#eee5d6');
-    sun.intensity=weather==='sun'?1.86:weather==='breeze'?1.37:.59;
+    sun.intensity=weather==='sun'?1.98:weather==='breeze'?1.47:.65;
     sun.color.set(weather==='rain'?'#ffeac9':weather==='breeze'?'#ffe5bf':'#ffecc9');
-    fill.intensity=weather==='rain'?2.12:1.70;
-    porchFill.intensity=weather==='rain'?.45:.57;
+    fill.intensity=weather==='rain'?1.99:1.48;
+    porchFill.intensity=weather==='rain'?.40:.48;
     fill.color.set(weather==='rain'?'#f2f5e8':'#fbf2de');
     windowGlass.emissiveIntensity=weather==='rain'?.76:.32;
     renderer.shadowMap.needsUpdate=true;

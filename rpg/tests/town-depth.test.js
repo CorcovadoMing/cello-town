@@ -62,6 +62,7 @@ test('ground uses the formal palette as paint on geometry, not a veil over actor
  assert.match(renderer,/paintTerrainUV\(T,geo,w,d\)/);
  assert.match(renderer,/map:soilPigment/);
  assert.match(renderer,/updateWetLayers\(moisture\);\s*renderer.render/);
- assert.match(renderer,/weather==='sun'\?1.86:weather==='breeze'\?1.37:/);
+ const light=renderer.match(/sun\.intensity=weather==='sun'\?(\d[.\d]+):weather==='breeze'\?(\d[.\d]+):([.\d]+);/);
+ assert.ok(light&&Number(light[1])>Number(light[2])&&Number(light[2])>Number(light[3]),'sun and rain retain distinct contrast');
  assert.match(renderer,/'#ffe5bf':'#ffecc9'/);
 });
