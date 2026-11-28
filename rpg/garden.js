@@ -17,10 +17,9 @@ export function gardenPlants(state){return collection(state).flatMap((f,i)=>f.ea
 export function preparedSoilSlots(state){return collection(state).flatMap((f,i)=>f.earned?[]:[i]);}
 function preparedSoilArt(state){return preparedSoilSlots(state).map(slot=>{const {x,y}=plantPosition(slot);return `<g class="garden-prepared-soil" data-empty-slot="${slot}" transform="translate(${x} ${y})" aria-hidden="true"><ellipse cy="2" rx="29" ry="9" fill="#ac8a61" opacity=".72"/><path d="M-24 0Q0-8 24 0M-23 5Q0-3 23 5" fill="none" stroke="#705b42" stroke-width="2.2" stroke-linecap="round" opacity=".76"/><path d="M-21-2Q0-8 21-2M-20 3Q0-3 20 3" fill="none" stroke="#d0ad7b" stroke-width="1.4" stroke-linecap="round" opacity=".8"/></g>`;}).join('');}
 export function drawPreparedSoil(g,state){
- // Broader, orderly raised ridges remain legible at the town map's normal zoom.
- // Only empty, available positions are prepared; this is not a seeded/growing state.
- for(const slot of preparedSoilSlots(state)){const {x,y}=townPlantPosition(slot);g.save();g.translate(x,y+4);g.fillStyle='#9d794f';g.beginPath();g.ellipse(0,0,21,11,0,0,Math.PI*2);g.fill();g.lineCap='round';
-  for(const offset of[-6,0,6]){g.strokeStyle='#665238';g.lineWidth=3;g.beginPath();g.moveTo(-18,offset+2);g.quadraticCurveTo(0,offset,18,offset+2);g.stroke();g.strokeStyle='#c7a170';g.lineWidth=2.6;g.beginPath();g.moveTo(-17,offset);g.quadraticCurveTo(0,offset-2,17,offset);g.stroke();}g.restore();
+ // A few shallow rake marks on each empty position, not separate mounds.
+ for(const slot of preparedSoilSlots(state)){const {x,y}=townPlantPosition(slot);g.save();g.translate(x,y+3);g.lineCap='round';g.globalAlpha=.34;
+  for(const dy of[-3,2]){g.strokeStyle='#664f35';g.lineWidth=1.05;g.beginPath();g.moveTo(-8,dy+1);g.quadraticCurveTo(0,dy-1,9,dy);g.stroke();}g.restore();
  }
 }
 // Stylized botanical references, not cultivar identification (see QA-v20.md).

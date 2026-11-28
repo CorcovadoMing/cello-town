@@ -15,6 +15,8 @@ function normalized(s){
 // Preserve the main parity fixture: allow only the exact tested experimental
 // outdoor drawing revision and its accompanying module, not future drift.
 const reviewedExperimentalHashes={
+ 'rpg/garden.js':'76dd6cd336f756937afc76d96244f7aa7a53c6e55c8827e3397987b96ba56a74',
+ 'rpg/terrain-art.js':'eb6113cd6a5bebc2b26ee5c8c37fd737c0daf332eafe46c69e8a3be6b96b04ca',
  '3D/state.js':'355fe71a67eff5a244b2e42b0f45484f9173ee307e95c5f26d247941051711e8',
  '3D/room-polish.js':'67f7847e5a0d2c28d0c07e2b0187dadf77f249902582d610d7588276f827228c',
  '3D/app.js':'da36cba48b97bec8603e89c9f124bf773ea7101a9dad52af5566f1b6b0b2a442',
@@ -27,7 +29,7 @@ const reviewedExperimentalHashes={
  'rpg/index.html':'381eb2332ad31c91745fbea1d5382c00bd708adc1a1ddedf21026bd00f9a47b8',
  'rpg/town-depth.js':'3b082ca07119d517e0b747dd8ba8433c3aed0aa14bd18d07b2df6451c8efc7af',
  'rpg/music-room-art.js':'3292e702170bf184ab5f20403991b6e4395131184591b346463e5812f91e5a09',
- 'rpg/town-webgl.js':'445694c93422445a3bb4f6ca80a2762bb39973cd8fd67239b94da48a85890593',
+ 'rpg/town-webgl.js':'119d8b4a9670324516f4139ffab79e92436101ab6003882ce2d4589871e0d861',
  'rpg/town-orchard.js':'232c36fd5cd58006aedbfc8c332b25a99b689503d55ddf2655e893f45374dbd7',
  'rpg/town-craft.js':'68d1f1cfc80eb714f275ab2236c4cc990271ea5b1d8e09caf258862b7fb033ab',
  'rpg/rain-system.js':'7c06e4903209151f74401f093f22bd7e830435d1c434e20fd23ed655e49e6e4a',

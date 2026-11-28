@@ -1,3 +1,4 @@
+import {GARDEN_SOIL,GARDEN_ROWS,ROW_SECTION,rowPoint} from './town-bed.js?v=1';
 import {makeGroundRain} from './town-ground-rain.js?v=1';
 import {makeVerge} from './town-verge.js?v=1';
 import {makeCountryside} from './town-countryside.js?v=4';
@@ -406,7 +407,6 @@ function insidePolygon(x,z,path){
  }
  return inside;
 }
-const GARDEN_SOIL=Object.freeze([[750,425],[768,413],[795,409],[820,415],[841,409],[872,411],[889,421],[902,436],[897,451],[905,470],[898,489],[886,501],[862,508],[842,502],[814,507],[791,501],[765,505],[747,492],[737,474],[742,457],[736,445]].map(Object.freeze));
 function paintTerrainUV(T,geometry,spanX=W,spanZ=H){
  const pos=geometry.attributes.position,uv=new Float32Array(pos.count*2);
  for(let i=0;i<pos.count;i++){uv[2*i]=.5+pos.getX(i)/spanX;uv[2*i+1]=.5+pos.getY(i)/spanZ;}
@@ -789,26 +789,40 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   sphere(x,2,z,4+rng()*6,2+rng()*3,3+rng()*5,'#aaab8a',0,rng());
   if(x!==355)sphere(x+7,3,z+4,6,4,3,'#929b81',0,rng());
  }
- // Planting pockets are at the original positions, flush with the meadow.
+ // One tended bed, with two shallow rows and a narrow darker furrow.
  const gardenOutline=new T.Shape();
  GARDEN_SOIL.forEach(([x,z],i)=>i?gardenOutline.lineTo(x-821,460-z):gardenOutline.moveTo(x-821,460-z));
  gardenOutline.closePath();
  const gardenPatch=new T.Mesh(paintTerrainUV(T,new T.ShapeGeometry(gardenOutline),179,108),
-  new T.MeshPhongMaterial({map:soilPigment,bumpMap:soilPigment,bumpScale:.41,shininess:2,specular:'#46382a',color:'#c2a180'}));
+  new T.MeshPhongMaterial({map:soilPigment,bumpMap:soilPigment,bumpScale:.43,shininess:2,specular:'#46382a',color:'#b59879'}));
  gardenPatch.rotation.x=-Math.PI/2;gardenPatch.position.set(821-W/2,1.19,460-H/2);
  gardenPatch.receiveShadow=true;scene.add(gardenPatch);
- for(const [i,[x,z]] of [[767,482],[777,440],[827,440],[817,482],[867,482],[877,440]].entries()){
-  sphere(x,1.06,z,20.1+(i%3),1.39,11.6+(i%2)*1.6,['#a3855b','#a88b5e','#94784f'][i%3],0,(i-3)*.089);
-  for(let c=0;c<5;c++){
-   const dx=(c*13+i*17)%25-12,dz=((c*7+i*5)%13)-6;
-   sphere(x+dx,1.76,z+dz,.73+(c%3)*.35,.16,.56,i%3?'#b19a6c':'#7f694b',0,i*c);
+ const soilVert=[],soilColor=[],soilUV=[],soilIndices=[],sections=ROW_SECTION.length,count=20;
+ const clayTint=new T.Color('#d1b591');
+ for(const row of GARDEN_ROWS){
+  const start=soilVert.length/3;
+  for(let i=0;i<=count;i++)for(const [offset,lift,shade] of ROW_SECTION){
+   const [x,y,z]=rowPoint(row,i/count,offset,lift);
+   const grain=shade+.038*Math.sin(x*.31+z*.67);
+   soilVert.push(x-W/2,y,z-H/2);soilColor.push(clayTint.r*grain,clayTint.g*grain,clayTint.b*grain);
+   soilUV.push((x-731)/179,(z-404)/108);
+  }
+  for(let i=0;i<count;i++)for(let j=0;j<sections-1;j++){
+   const a=start+i*sections+j,b=a+sections;
+   soilIndices.push(a,a+1,b,b,a+1,b+1);
   }
  }
- for(const [i,[x,z]] of GARDEN_SOIL.entries()){
-  if(i%3===1)continue;
-  sphere(x,1.06,z,4.9+i%3,.62,2.7,'#9e905e',0,i*.48);
-  for(let j=0;j<3;j++)shape('cone',x+j*1.65,1.3,z-j*.75,.39,2.1+j*.67,.31,
-   j%2?'#a7ab72':'#84945f',.14,j,0);
+ const rows=new T.BufferGeometry();
+ rows.setAttribute('position',new T.Float32BufferAttribute(soilVert,3));rows.setAttribute('color',new T.Float32BufferAttribute(soilColor,3));
+ rows.setAttribute('uv',new T.Float32BufferAttribute(soilUV,2));rows.setIndex(soilIndices);rows.computeVertexNormals();
+ const rowMesh=new T.Mesh(rows,new T.MeshPhongMaterial({map:soilPigment,bumpMap:soilPigment,bumpScale:.33,
+  shininess:2,specular:'#443420',vertexColors:true}));rowMesh.receiveShadow=true;scene.add(rowMesh);
+ // Weathered stones are worked into the hem in a few places, not stacked
+ // as a rigid frame around each planting slot.
+ for(const [i,[x,z]] of [[745,426],[741,440],[739,451],[739,472],[747,491],
+  [757,498],[773,502],[788,503],[805,504],[854,503],[870,502],[884,499],[898,490],[903,474]].entries()){
+  const w=1.7+(i*7%6)*.43;
+  sphere(x,1.15,z,w,.52+(i%4)*.23,w*.61,['#a49b80','#aaa087','#9f9577','#b2a48a'][i%4],0,i*.81);
  }
  // House is a real small chalet: façade and all roof meshes share the same
  // local origin, actor contact coordinates and approach as the pixel original.

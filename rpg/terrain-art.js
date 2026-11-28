@@ -1,3 +1,4 @@
+import {GARDEN_SOIL,GARDEN_ROWS} from './town-bed.js?v=1';
 // Original baked pixel terrain. Drawing only; gameplay and water-life coordinates
 // remain owned by their existing modules. Two small canvases, never frame noise.
 export function createTerrainArt(makeCanvas){
@@ -26,16 +27,17 @@ export function createTerrainArt(makeCanvas){
   for(const[x,y]of[[25,432],[31,438],[24,444],[259,429],[263,434],[68,540],[74,542],[224,541],[31,512]]){r(x,y-7,2,9,'#64815a');r(x-4,y-3,2,5,'#7b965e');r(x+4,y-10,2,12,'#79935d');r(x+4,y-10,2,3,'#c0bd81');}
  });
  paint(bed,733,400,(g,r,p)=>{
-  // Exact established bed footprint; rich mulch stays beneath earned plants.
-  r(735,404,172,111,'#897657');r(738,407,166,105,'#655a45');r(744,412,154,93,'#84684c');
-  r(735,404,172,3,'#c8b48a');r(735,407,3,105,'#b8a079');r(738,512,166,3,'#6e5e46');
-  for(const[x,y,w]of[[744,413,151],[744,453,151],[744,495,151]]){r(x,y,w,3,'#957854');r(x+3,y+4,w-6,2,'#745c44');}
-  // Tiny deterministic mulch clusters; broad planting pockets remain restful.
-  for(let i=0;i<62;i++){const x=748+(i*43)%145,y=418+(i*29)%84;r(x,y,3+i%3,1,i%3?'#a1855b':'#635640');if(i%4===0)r(x+2,y+2,2,1,'#b49a6a');}
-  for(const[x,y]of[[767,440],[817,440],[867,440],[767,482],[817,482],[867,482]]){p([[x-18,y-5],[x-10,y-10],[x+14,y-9],[x+20,y-3],[x+16,y+8],[x-14,y+9],[x-21,y+3]],'#7b6148');r(x-12,y+7,24,2,'#93754f');}
-  // Irregular board grain and inset joints retain the familiar garden border.
-  for(const[x,y,w]of[[746,405,27],[794,405,38],[850,405,34],[744,509,40],[809,509,31],[857,509,37]])r(x,y,w,1,'#a58b64');
-  for(const x of[739,790,847,900]){r(x,405,2,5,'#857153');r(x,508,2,5,'#62573f');}
+  p(GARDEN_SOIL,'#866c4d');
+  g.save();g.beginPath();GARDEN_SOIL.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.clip();
+  for(const {center:y,start:x,end,spread} of GARDEN_ROWS){
+   p([[x,y-3],[x+8,y-spread],[end-8,y-spread],[end,y-3],[end-8,y+spread],[x+9,y+spread]],'#997951');
+   for(const [dy,c] of [[-9,'#a98a5f'],[1,'#a4875e'],[10,'#876847']]){
+    g.strokeStyle=c;g.lineWidth=1.5;g.beginPath();g.moveTo(x+4,y+dy);g.quadraticCurveTo((x+end)/2,y+dy-1.8,end-3,y+dy);g.stroke();
+   }
+  }
+  for(let i=0;i<93;i++){const x=742+(i*43)%158,y=415+(i*29)%88;r(x,y,1+i%3,1,i%3?'#a0835d':'#6c573e');}
+  g.restore();
+
  });
  return Object.freeze({drawPond:g=>g.drawImage(pond,10,370),drawBed:g=>g.drawImage(bed,733,400),stats:Object.freeze({canvases:2,rgbaBytes:(280*184+178*120)*4})});
 }
