@@ -76,5 +76,18 @@ export function makePondHorizon(T,rain){
   }
   g.lineTo(960,560);g.lineTo(0,560);g.closePath();g.globalAlpha=.56;g.fillStyle=ink;g.fill();
  }
+ // Atmospheric distance should stay behind the physical pasture.
+ // Offset the far profiles so they are neither evenly spaced nor a wall.
+ const skyline=[
+  [193,[[0,22],[83,10],[113,8],[186,-13],[274,-15],[356,4],[409,8],[510,-5],[594,-20],[669,-17],[761,1],[869,-3],[960,10]]],
+  [213,[[0,11],[95,16],[183,3],[302,8],[370,-1],[451,-14],[547,-23],[648,5],[778,13],[837,17],[960,-2]]]
+ ];
+ for(const [i,[height,contour]] of skyline.entries()){
+  g.beginPath();g.moveTo(0,height+contour[0][1]);
+  for(let j=1;j<contour.length;j++){const p=contour[j-1],n=contour[j];g.bezierCurveTo((p[0]*2+n[0])/3,height+p[1],(p[0]+n[0]*2)/3,height+n[1],n[0],height+n[1]);}
+  g.lineTo(960,560);g.lineTo(0,560);g.closePath();
+  g.fillStyle=(rain?['#9daea6','#a6b3a5']:['#b0bca5','#a6b49b'])[i];
+  g.globalAlpha=i===0?.43:.46;g.fill();
+ }
  const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;return t;
 }

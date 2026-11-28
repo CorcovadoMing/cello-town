@@ -2,7 +2,8 @@
 // wooded ridge. All coordinates are scenery: the map and collision stay put.
 const TAU=2*Math.PI;
 const pastureHeight=(x,z)=>-9+Math.min(1,Math.max(0,-z/480))*
- (70+36*Math.sin(x*.0049-z*.0062)+14*Math.cos(x*.009+z*.0042));
+ (70+36*Math.sin(x*.0049-z*.0062)+14*Math.cos(x*.009+z*.0042))
+ + Math.min(1,Math.max(0,-z/325))*31*Math.exp(-((x-1098)**2/224**2+(z+519)**2/201**2));
 export const FENCE_MARGIN=Object.freeze([0,68]);
 export function marginTrail(x){return 22+7*Math.sin(x*.009+.15)+4*Math.sin(x*.021);}
 export function makeCountryside({T,scene,W,H,shape,leafMaps}){
@@ -141,6 +142,42 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
    const c=ink[lane%3];for(let i=0;i<6;i++)fieldColors.push(c.r,c.g,c.b);
   }
  }
+ // Lead the pond camera through a gap rather than hiding all distant
+ // marks behind the near trees. One path enters a high open pasture,
+ // with two short branches tracing the slope. Same static terrain batch.
+ const pastureRoutes=[
+  [[631,-218,2.0],[703,-248,6.3],[777,-278,7.0],[840,-312,7.7],[872,-365,8.1],[929,-413,7.3],[1007,-453,6.2],[1075,-489,6.4],[1150,-513,5.4],[1227,-547,1.8]],
+  [[836,-315,6],[893,-329,4.6],[949,-332,4.1],[1016,-347,4.4],[1076,-366,3.1],[1154,-387,1.4]],
+  [[886,-384,4],[844,-407,5],[796,-422,3.4],[751,-446,1]]
+ ];
+ const trackTint=['#c3b88b','#bcad85','#b8a77b'].map(c=>new T.Color(c));
+ for(const [routeId,route] of pastureRoutes.entries()){
+  const steps=[];
+  for(let section=0;section<route.length-1;section++){
+   const [x,z,w]=route[section],[nx,nz,nw]=route[section+1];
+   for(let k=0;k<10;k++){
+    const t=k*.1,px=x+(nx-x)*t,pz=z+(nz-z)*t;
+    const thickness=w+(nw-w)*t+Math.sin(px*.08+pz*.038)*.84;
+    steps.push([px,pz,thickness]);
+   }
+  }
+  steps.push(route.at(-1));
+  const edge=[];
+  for(let j=0;j<steps.length;j++){
+   const [x,z,w]=steps[j],a=steps[Math.max(0,j-1)],b=steps[Math.min(steps.length-1,j+1)];
+   const dx=b[0]-a[0],dz=b[1]-a[1],d=Math.hypot(dx,dz);
+   edge.push([-1,0,1].map((sign,i)=>{
+    const px=x+(-dz/d)*sign*w,pz=z+(dx/d)*sign*w;
+    const t=trackTint[routeId].clone();
+    if(i!==1)t.lerp(olive,.71);
+    return [[px-W/2,pastureHeight(px,pz)+1.03,pz-H/2],t];
+   }));
+  }
+  for(let i=1;i<edge.length;i++)for(let b=0;b<2;b++){
+   const c=edge[i-1],n=edge[i];
+   for(const [pt,color] of [c[b],c[b+1],n[b],n[b],c[b+1],n[b+1]]){fieldPts.push(...pt);fieldColors.push(color.r,color.g,color.b);}
+  }
+ }
  fieldRows.setAttribute('position',new T.Float32BufferAttribute(fieldPts,3));
  fieldRows.setAttribute('color',new T.Float32BufferAttribute(fieldColors,3));fieldRows.computeVertexNormals();
  group.add(new T.Mesh(fieldRows,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide,transparent:true,opacity:.44,depthWrite:false})));
@@ -150,7 +187,13 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
  for(let tier=0;tier<3;tier++){
   const size=31+tier*17;
   const c3=Array.from({length:size},()=> {
-   const x=-335+rand()*1645,z=-63-tier*165-rand()*139,h=(18+rand()*54)*(1-tier*.16);
+   let x=-335+rand()*1645;const z=-63-tier*165-rand()*139,h=(18+rand()*54)*(1-tier*.16);
+   // Keep the uphill pasture in the light; gather the displaced trees
+   // into irregular flanking coppices without adding instances.
+   if(tier>0&&z<-268&&x>689+(z+320)*-.08&&x<1050){
+    const centre=x<881?598:1160;
+    x=centre+(x-centre)*.17+Math.sin(x*.091+z*.04)*49;
+   }
    return {x,z,h,w:h*(.31+rand()*.38),base:pastureHeight(x,z),broad:rand()>.46,angle:rand()*TAU};
   });
   for(let kind=0;kind<3;kind++){
@@ -180,7 +223,7 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
  // navigation and hidden in the overhead view, like the rest of the ridge.
  const stoneGeo=new T.BufferGeometry(),rock=[],stoneTints=[];
  const stoneColors=['#a9a087','#958d73','#afa38c','#a39b7d','#ada88e'].map(x=>new T.Color(x));
- for(const [x0,x1,crest,phase] of [[-226,127,-90,.1],[230,420,-154,1.7],[540,804,-123,2.38],[846,1032,-129,3.7]]){
+ for(const [x0,x1,crest,phase] of [[-226,127,-90,.1],[230,420,-154,1.7],[681,872,-382,2.38],[1026,1188,-466,3.7]]){
   let at=x0;
   while(at<x1){
    const width=6+patchRand()*9,x=at+width*.5;
