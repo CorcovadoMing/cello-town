@@ -1,4 +1,4 @@
-import {addOrchardTree,makeOrchardLeaf,townSunVector} from './town-orchard.js?v=2';
+import {addOrchardTree,makeOrchardLeaf,townSunVector} from './town-orchard.js?v=3';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
@@ -45,13 +45,15 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const porchFill=new T.DirectionalLight('#fff0db',.43);
  porchFill.position.set(70,260,610);
  scene.add(sun,fill,porchFill);
+ const leafy=makeOrchardLeaf(T);
  const geometry={
   box:new T.BoxGeometry(1,1,1), sphere:new T.IcosahedronGeometry(1,1),
   trunk:new T.CylinderGeometry(.36,.51,1,7), cone:new T.ConeGeometry(1,1,5),
-  circle:new T.CircleGeometry(1,18), 'orchard-leaf':makeOrchardLeaf(T)
+  circle:new T.CircleGeometry(1,18), 'orchard-leaf':leafy.geometry, 'window-glass':new T.BoxGeometry(1,1,1)
  };
  const material=new T.MeshLambertMaterial({flatShading:true});
- const leafyMaterial=new T.MeshLambertMaterial({flatShading:false,emissive:'#27351f',emissiveIntensity:.26});
+ const leafyMaterial=leafy.material;
+ const windowGlass=new T.MeshLambertMaterial({emissive:'#b88651',emissiveIntensity:.32});
  const batches=new Map();
  const model=new T.Object3D(),sample=new T.Vector3();
  const color=new T.Color();
@@ -275,7 +277,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  for(const y of [20,40]){box(cx,y,fr+6,26,15,1,'#3f6253');box(cx,y+1,fr+7,22,12,1,'#658d72');}
  sphere(cx+11,30,fr+8,2.1,2.2,1.1,'#eac078');
  for(const x of [cx-45,cx+45]){
-  box(x,46,fr+3,26,28,3,edge);box(x,46,fr+5,21,23,1.6,'#95bab1');box(x,46,fr+7,2.1,22,1.2,cream);box(x,46,fr+7,21,2,1.2,cream);box(x,33,fr+7,30,3,7,warm);
+  box(x,46,fr+3,26,28,3,edge);shape('window-glass',x,46,fr+5,21,23,1.6,'#b8a581');box(x,46,fr+7,2.1,22,1.2,cream);box(x,46,fr+7,21,2,1.2,cream);box(x,33,fr+7,30,3,7,warm);
  }
  for(const z of [cy-15,cy+12]){box(cx+71,47,z,2,23,21,edge);box(cx+73,47,z,1,19,17,'#84aaa2');box(cx+74,47,z,1,19,2,cream);box(cx+74,47,z,1,2,17,cream);}
  // True gables are triangular meshes, roof slopes are thick tiled slabs.
@@ -331,7 +333,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  for(const x of [-9,9])box(stand.x+x,43,stand.y+2.5,16,17,1.5,'#f1deb1',-.19);
  for(let i=0;i<4;i++)for(const dx of [-9,9])box(stand.x+dx,40+i*3,stand.y+3.5,12,.5,1,'#af9a6e',-.19);
  for(const [kind,items] of batches){
-  const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:material,items.length);
+  const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='window-glass'?windowGlass:material,items.length);
   items.forEach(([matrix,tint],i)=>{batch.setMatrixAt(i,matrix);batch.setColorAt(i,color.set(tint));});
   batch.instanceMatrix.needsUpdate=true;batch.instanceColor.needsUpdate=true;batch.castShadow=true;batch.receiveShadow=true;scene.add(batch);
  }
@@ -383,10 +385,11 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    if(weather!==lastWeather){
     lastWeather=weather;
     scene.background.set(weather==='rain'?'#c7c6bc':'#eee3d5');
-    sun.intensity=weather==='sun'?2.05:weather==='breeze'?1.48:.49;
-    fill.intensity=weather==='rain'?1.78:1.34;
-    porchFill.intensity=weather==='rain'?.22:.43;
-    fill.color.set(weather==='rain'?'#dceef2':'#e8f3f0');
+    sun.intensity=weather==='sun'?1.86:weather==='breeze'?1.37:.49;
+    sun.color.set(weather==='rain'?'#ffe7b0':'#ffe7b8');
+    fill.intensity=weather==='rain'?1.78:1.64;
+    porchFill.intensity=weather==='rain'?.22:.57;
+    fill.color.set(weather==='rain'?'#dceef2':'#f5f0dc');
     renderer.shadowMap.needsUpdate=true;
    }
    const lamp=townSunVector(now);

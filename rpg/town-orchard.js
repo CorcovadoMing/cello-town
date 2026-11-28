@@ -10,18 +10,45 @@ const profiles=[
 ];
 const recipe=[[0,-.12],[3,.08],[1,-.06],[2,.10],[4,.03],[5,-.20],[1,.13],[3,-.10],[2,.06],[5,.12],[0,.15],[2,-.13],[4,-.09],[1,.05]];
 export function orchardProfile(index){return profiles[(recipe[index]?.[0]??index%profiles.length)];}
-// A pointed irregular polygon with front and back ridges. Texture-free
-// raised faces catch light and cast real broken-up leaves into the shadows.
+// Painted compound leaves, not external art or opaque crown sprites.
+function leaflet(g,x,y,angle,len,wide,tone){
+ g.save();g.translate(x,y);g.rotate(angle);
+ const ink=g.createLinearGradient(0,1,wide,-len);
+ ink.addColorStop(0,`rgb(${tone-35},${tone-31},${tone-39})`);
+ ink.addColorStop(.57,`rgb(${tone-3},${tone},${tone-8})`);
+ ink.addColorStop(1,`rgb(${Math.min(255,tone+20)},${Math.min(255,tone+21)},${Math.min(255,tone+10)})`);
+ g.fillStyle=ink;g.beginPath();g.moveTo(-.7,0);
+ g.bezierCurveTo(-wide,-len*.23,-wide*.72,-len*.75,.43,-len);
+ g.bezierCurveTo(wide*.65,-len*.87,wide,-len*.38,.6,0);g.closePath();g.fill();
+ g.strokeStyle='rgba(248,248,236,.17)';g.lineWidth=.6;g.beginPath();g.moveTo(.5,-1);g.quadraticCurveTo(wide*.10,-len*.48,.61,-len*.86);g.stroke();g.restore();
+}
 export function makeOrchardLeaf(T){
- const cut=[[0,-.59],[-.23,-.40],[-.49,-.15],[-.41,.21],[-.27,.45],[-.06,.57],[.14,.55],[.30,.39],[.44,.09],[.36,-.17],[.20,-.44]];
- const vertices=[0,0,.16,0,0,-.13,...cut.flatMap(([x,y])=>[x,y,0])],indices=[];
- for(let i=0;i<cut.length;i++){
-  const a=2+i,b=2+(i+1)%cut.length;
-  indices.push(0,b,a,1,a,b);
+ const c=document.createElement('canvas');c.width=c.height=128;
+ const g=c.getContext('2d');
+ // An asymmetric cluster of five fronds: enough overlapping silhouettes
+ // to read at phone scale, but the alpha still keeps spaces between tips.
+ const stems=[[62,116,-.73,58],[61,105,.78,53],[63,101,-.31,78],[67,89,.46,65],[65,82,.04,70]];
+ for(let i=0;i<stems.length;i++){
+  const [x,y,a,len]=stems[i];
+  g.save();g.translate(x,y);g.rotate(a);
+  g.strokeStyle='#b3b09b';g.lineWidth=1.45;
+  g.beginPath();g.moveTo(0,0);g.quadraticCurveTo(3,-len*.48,0,-len);g.stroke();
+  for(let j=0;j<5;j++){
+   const d=.19+j*.153,h=(18+((i*5+j*7)%8))*(1-j*.06),tone=224+((i*17+j*23)%27);
+   leaflet(g,1.7,-len*d,-.75-j*.04,h,5.0-j*.28,tone+6);
+   if((i+j)%5!==3)leaflet(g,1.7,-len*(d+.075),.71+j*.09,h*.91,4.7-j*.28,tone);
+  }
+  leaflet(g,0,-len*.87,.13,15,4,224);g.restore();
  }
- const g=new T.BufferGeometry();
- g.setAttribute('position',new T.Float32BufferAttribute(vertices,3));g.setIndex(indices);g.computeVertexNormals();
- return g;
+ const texture=new T.CanvasTexture(c);
+ texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=2;
+ const geometry=new T.PlaneGeometry(1,1);
+ // MeshLambert's texture and alpha threshold are forwarded by Three's
+ // directional depth material, giving fine perforated leaf shadows.
+ const material=new T.MeshLambertMaterial({map:texture,alphaTest:.38,side:T.DoubleSide,
+  emissive:'#778967',emissiveIntensity:.29});
+ material.shadowSide=T.DoubleSide;
+ return {geometry,material};
 }
 export function addOrchardTree({shape},x,z,scale,index){
  const p=orchardProfile(index),bias=recipe[index]?.[1]??0,shift=bias*21;
@@ -42,26 +69,21 @@ export function addOrchardTree({shape},x,z,scale,index){
   const side=Math.sign(tx||1),tip=[tx+shift,th+(next()-.5)*6,tz],fork=near(bend,top,.30+j*.13),elbow=near(fork,tip,.55);
   elbow[0]+=side*5;elbow[1]-=2;
   branch(fork,elbow,3.8-j*.30,p.bark);branch(elbow,tip,2.55-j*.23,p.bark);
-  // Three overlapping broadlets hold the upper canopy together while
-  // branches below and the gaps between primary arms remain legible.
-  const hub=near(elbow,tip,.68);
-  for(let m=0;m<3;m++){
-   const u=m-1,wide=13+next()*6;
-   shape('orchard-leaf',x+(hub[0]+u*5)*scale,(hub[1]+7+u*2)*scale,z+(hub[2]+u*5)*scale,
-    wide*scale,wide*.95*scale,4.2*scale,p.leaf[m===0?1:2],.22,bias+j*.57+u*.46,-u*.53);
-  }
   for(let k=0;k<4;k++){
-   const anchor=near(elbow,tip,.30+k*.19),phi=(k/4)*Math.PI*2+bias*7+j*.46;
-   const end=[anchor[0]+Math.cos(phi)*span*.60,anchor[1]+4.8+(k%3)*1.3,anchor[2]+Math.sin(phi)*span*.58];
+   const anchor=near(elbow,tip,.27+k*.19),phi=(k/4)*Math.PI*2+bias*7+j*.46;
+   const end=[anchor[0]+Math.cos(phi)*span*.64,anchor[1]+4.8+(k%3)*1.3,anchor[2]+Math.sin(phi)*span*.58];
    branch(anchor,end,.82,p.bark);
-   for(let m=0;m<6;m++){
-    const v=near(anchor,end,.16+m*.18),offset=m%2===0?-1:1;
-    v[0]+=(Math.sin(phi)*offset*(2.0+next()*5));v[1]+=(next()-.4)*4;v[2]+=Math.cos(phi)*offset*(2.0+next()*5);
-    const length=(11+next()*8)*(k===3?.87:1.03),width=length*(.73+next()*.24);
-    shape('orchard-leaf',x+v[0]*scale,v[1]*scale,z+v[2]*scale,width*scale,length*scale,(3.7+next()*2.2)*scale,
-     p.leaf[Math.min(3,(m<2?0:1)+(Math.floor(next()*3)))],(next()-.5)*1.0,phi+(next()-.5)*1.7,(next()-.5)*1.45+offset*.42);
+   for(let m=0;m<2;m++){
+    const v=near(anchor,end,.54+m*.40),side=m?1:-1,wide=21+next()*9;
+    v[0]+=side*Math.sin(phi)*3;v[1]+=4+m*2;v[2]+=side*Math.cos(phi)*4;
+    shape('orchard-leaf',x+v[0]*scale,v[1]*scale,z+v[2]*scale,wide*scale,(wide*.77+next()*5)*scale,1,
+     p.leaf[2+((j+k+m)%2)],-.29+(next()-.5)*.78,phi*.59+side*.69,-.63+next()*1.28);
    }
   }
+  const light=near(elbow,tip,.77),w=22+next()*6;
+  shape('orchard-leaf',x+light[0]*scale,(light[1]+9)*scale,z+(light[2]-2)*scale,w*scale,w*.81*scale,1,
+   p.leaf[3],-.26,bias+j*.49,side*.37);
+
  }
 }
 // Same wall clock and 12-minute loop already used by the weather selector;
