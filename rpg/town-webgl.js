@@ -11,7 +11,10 @@ const local=(x,z)=>[x-W/2,z-H/2];
 // The art remains 3D, but every ground vertex follows the former Canvas
 // identity projection. Elevation projects only upward; no yaw across the
 // map, perspective scaling, camera tracking or touch offsets are introduced.
-const VIEW_Z=.88;
+// A slightly lower gaze makes upright sides taller on screen without
+// shifting the ground or changing the scale of pixel actors.
+const OUTDOOR_EYE_HEIGHT=950,OUTDOOR_EYE_DISTANCE=880;
+const VIEW_Z=OUTDOOR_EYE_DISTANCE/OUTDOOR_EYE_HEIGHT;
 const LOUNGE_SEAT_CENTER=16,LOUNGE_SEAT_DEPTH=3;
 export const LOUNGE_BODY_SHIFT=(LOUNGE_SEAT_CENTER+LOUNGE_SEAT_DEPTH/2)*VIEW_Z-8;
 // Lift the hips to the chair but keep the bottoms of both shoes planted.
@@ -39,7 +42,7 @@ export function benchCatLift({mode,y,jump=0}){
 }
 export function makeTownCamera(T){
  const camera=new T.OrthographicCamera(-W/2,W/2,H/2,-H/2,2,4200);
- camera.position.set(0,1000,1000*VIEW_Z);camera.lookAt(0,0,0);camera.updateMatrixWorld();
+ camera.position.set(0,OUTDOOR_EYE_HEIGHT,OUTDOOR_EYE_DISTANCE);camera.lookAt(0,0,0);camera.updateMatrixWorld();
  // Keep the orthographic clipping-depth row from Three.js; use exact screen
  // coefficients for the first two rows of the combined world-to-clip matrix.
  const worldToClip=new T.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);

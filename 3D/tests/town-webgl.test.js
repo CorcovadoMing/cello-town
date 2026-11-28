@@ -6,6 +6,7 @@ import {OrthographicCamera,Matrix4,Plane,Raycaster,Vector2,Vector3} from 'three'
 const T={OrthographicCamera,Matrix4};
 test('upright fixed 3D camera maps the full old Canvas ground exactly; elevation supplies depth',()=>{
  const camera=makeTownCamera(T),ray=new Raycaster(),plane=new Plane(new Vector3(0,1,0));
+ assert.deepEqual(camera.position.toArray(),[0,950,880]);
  const into=(x,z,h=0)=>new Vector3(x-ROOM_WIDTH/2,h,z-ROOM_HEIGHT/2).project(camera);
  const screen=(v)=>[(v.x+1)*ROOM_WIDTH/2,(1-v.y)*ROOM_HEIGHT/2];
  function out(v){
@@ -26,7 +27,7 @@ test('upright fixed 3D camera maps the full old Canvas ground exactly; elevation
   for(const h of [1,12,48,88,132]){
    const [raisedX,raisedY]=screen(into(x,z,h));
    assert.ok(Math.abs(raisedX-groundX)<1e-8);
-   assert.ok(Math.abs(raisedY-(groundY-.88*h))<1e-8);
+   assert.ok(Math.abs(raisedY-(groundY-(880/950)*h))<1e-8);
   }
  }
  const demarcate=(z)=>Math.abs(into(500,z).x-into(400,z).x);
