@@ -229,6 +229,6 @@ body,body *{font-family:var(--town-font)!important}
 .watch-choices button{margin:0;padding:3px 10px;border:1px solid transparent;border-radius:9px;background:transparent;color:#345045;min-height:40px;white-space:nowrap;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .watch-choices button[aria-pressed=true]{background:#f9f7ed;border-color:#d3dac4;box-shadow:0 1px 2px #2d473113}
 .watch-choices button:focus-visible{outline:2px solid #386e58;outline-offset:2px}
-.map-stage[data-watch="overlook"] :is(.quest-sign,.teacher-marker-layer,#toast),.map-stage[data-watch="pond"] :is(.quest-sign,.teacher-marker-layer,#toast){visibility:hidden}
-.map-stage[data-watch="overlook"] canvas,.map-stage[data-watch="pond"] canvas{cursor:default}
+.map-stage[data-watch="pond"] :is(.quest-sign,.teacher-marker-layer,#toast){visibility:hidden}
+.map-stage[data-watch="pond"] canvas{cursor:default}
 @media(max-width:360px){.town-watch{padding-inline:8px}.watch-choices button{padding-inline:8px}}

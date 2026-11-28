@@ -65,11 +65,14 @@ export function drawTeacher(g,{x,y,t=0,walking=false,facing='front',stride=0,obs
   if(!back){p(-5,-25,4,3,'#fff1d9');p(1,-25,4,3,'#fff1d9');p(-1,-21,2,3,'#ead292');}
   p(-7,-15,14,2,'#e3bf97');if(back){p(-1,-14,2,6,shade);p(-3,-15,6,2,'#f0cda0');}
  }
+ // Tapered neck meets the dress at the collar. Hair layers remain behind.
+ if(side){p(-1,-29,6,6,edge);p(0,-29,4,5,'#dda77f');p(1,-27,3,3,skin);}
+ else if(!back){p(-3,-28,6,5,'#dda77f');p(-2,-27,4,3,skin);}
  // Stepped silhouette stays within the original seated/head crop anchors.
  if(side){
   p(-7,-48,11,2,edge);p(-10,-46,17,3,edge);p(-12,-43,21,12,edge);
   p(-12,-33,7,12,edge);p(-10,-44,16,5,hair);p(-11,-40,9,17,hair);
-  p(-4,-40,12,11,skin);p(8,-34,2,3,edge);p(8,-33,1,2,skin);p(-2,-29,10,3,skin);
+  p(-4,-40,12,11,skin);p(8,-34,2,3,edge);p(8,-33,1,2,skin);p(-2,-29,8,2,skin);p(0,-27,5,1,skin);
   p(-5,-41,12,4,hair);p(-5,-38,4,3,hair);p(-3,-35,3,4,'#dda77f');p(-2,-34,2,2,skin);
   p(5,-35,2,blink?1:3,edge);p(6,-30,2,2,'#e9a29a');p(6,-27,2,1,'#ac7770');
   p(-9,-42,3,3,'#896354');p(-8,-39,2,9,'#79564b');p(-10,-27,4,4,'#543e3d');
@@ -89,7 +92,7 @@ export function drawTeacher(g,{x,y,t=0,walking=false,facing='front',stride=0,obs
    p(-4,-26,3,2,'#f5d486');p(1,-26,3,2,'#f5d486');p(-1,-26,2,3,'#d4ae68');
    p(-6,-21,12,2,'#d9a9bd');p(-1,-19,2,6,'#81556f');p(-6,-11,2,4,'#c993ac');p(5,-11,2,4,'#c993ac');
   }else{
-   p(-8,-40,16,12,skin);p(-6,-28,12,3,skin);p(-9,-42,18,4,hair);p(-8,-39,5,3,hair);p(-4,-41,5,3,hair);
+   p(-8,-40,16,12,skin);p(-6,-28,12,1,skin);p(-4,-27,8,1,skin);p(-9,-42,18,4,hair);p(-8,-39,5,3,hair);p(-4,-41,5,3,hair);
    p(-6,-35,2,blink?1:3,edge);p(4,-35,2,blink?1:3,edge);p(-7,-30,3,2,'#e9a29a');p(5,-30,3,2,'#e9a29a');p(-1,-29,3,1,'#ac7770');
    p(-7,-44,5,2,'#a3775e');p(-2,-43,4,1,'#b48b6d');p(3,-44,4,2,'#896354');p(-10,-35,2,8,'#79564b');p(8,-34,2,6,'#79564b');
    p(5,-43,3,2,'#f5d486');p(6,-42,2,1,'#c09b57');

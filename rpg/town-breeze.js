@@ -1,5 +1,5 @@
 const TAU=Math.PI*2;
-export const WATCH_VIEWS=Object.freeze(['play','overlook','pond']);
+export const WATCH_VIEWS=Object.freeze(['play','pond']);
 export const POND_SHOT=Object.freeze({
  eye:[96,62,536], target:[325,29,288], fov:48
 });

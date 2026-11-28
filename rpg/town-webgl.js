@@ -1,5 +1,5 @@
-import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=1';
-import {addOrchardTree,makeOrchardLeaf,makeOrchardSkin,makeOrchardVolumes,townSunVector} from './town-orchard.js?v=7';
+import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=2';
+import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,makeOrchardSkin,makeOrchardVolumes,townSunVector} from './town-orchard.js?v=8';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
@@ -224,6 +224,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const material=new T.MeshLambertMaterial({flatShading:true});
  const boardSkin=new T.MeshLambertMaterial({map:woodWearMap(T),flatShading:true});
  const leafyMaterial=leafy.material;
+ const barkMaterial=new T.MeshLambertMaterial({map:makeOrchardBark(T),flatShading:true});
  const crownMaterial=new T.MeshLambertMaterial({map:makeOrchardSkin(T),vertexColors:true,emissive:'#8eaa72',emissiveIntensity:.24});
  const firMaterial=new T.MeshLambertMaterial({map:makeOrchardSkin(T,true),vertexColors:true,emissive:'#76917a',emissiveIntensity:.20});
  const windowGlass=new T.MeshLambertMaterial({emissive:'#b88651',emissiveIntensity:.32});
@@ -648,7 +649,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  addBenchGardenCraft({box,sphere,shape},stand);
  const swaying=[];
  for(const [kind,items] of batches){
-  const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='window-glass'?windowGlass:kind==='orchard-fir'?firMaterial:kind==='weathered-board'?boardSkin:kind.startsWith('orchard-')?crownMaterial:material,items.length);
+  const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='trunk'?barkMaterial:kind==='window-glass'?windowGlass:kind==='orchard-fir'?firMaterial:kind==='weathered-board'?boardSkin:kind.startsWith('orchard-')?crownMaterial:material,items.length);
   items.forEach(([matrix,tint,flex,x,z],i)=>{
    batch.setMatrixAt(i,matrix);batch.setColorAt(i,color.set(tint));
    if(flex>0)swaying.push({batch,i,base:matrix,flex,x,z,seed:x*.006+z*.012});

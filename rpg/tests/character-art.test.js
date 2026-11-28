@@ -14,7 +14,17 @@ test('short back hair clears the neck while keeping the warm player identity',()
  const hairColors=new Set(['#503c32','#634a37','#403129','#75563b','#926d46','#a78356']);
  assert.ok(frame.some(r=>r[0]==='#503c32'));
  assert.ok(!frame.some(r=>hairColors.has(r[0])&&r[2]>=-28));
- assert.ok(frame.some(r=>r[0]==='#f4c998'&&r[2]===-28));
+ assert.ok(frame.some(r=>r[0]==='#f4c998'&&r[2]===-28&&r[1]===-1&&r[3]===3));
 });
 
 test('teacher nose stays compact in each mirrored profile without changing facial identity',()=>{for(const facing of ['left','right']){const frame=commands(drawTeacher,{facing,reduced:true});const nose=frame.find(c=>c[0]==='#493e43'&&c[1]===8&&c[2]===-34);assert.deepEqual(nose,['#493e43',8,-34,2,3]);assert.equal(frame.filter(c=>c[0]==='#e9a29a').length,1);}});
+
+test('upper and lower neck pixels bridge beneath the jaw along the collar centre',()=>{
+ for(const facing of ['front','back','left','right']){
+  const f=commands(drawPlayer,{facing,reduced:true});
+  const colorAt=(x,y)=>f.filter(r=>/^#/.test(r[0])&&r[1]<=x&&x<r[1]+r[3]&&r[2]<=y&&y<r[2]+r[4]).at(-1)?.[0];
+  assert.equal(colorAt(0,-27),'#f4c998',facing+' centre of neck');
+  assert.equal(colorAt(0,-24),'#f4c998',facing+' neck at collar');
+  assert.notEqual(colorAt(5,-26),'#f4c998',facing+' cheek ends before neck level');
+ }
+});

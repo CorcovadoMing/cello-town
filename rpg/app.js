@@ -1,4 +1,4 @@
-import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,makeTownWebGL} from './town-webgl.js?v=world-3d-014-living-town';
+import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,makeTownWebGL} from './town-webgl.js?v=world-3d-015-well-tailored';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';
@@ -7,15 +7,15 @@ import {createRainSystem} from './rain-system.js?v=36';
 import {treeRainCanopies,umbrellaPose} from './rain-geometry.js?v=35';
 import {MUSIC_ROOM,MUSIC_ROOM_DOOR,roomBlocks,drawMusicRoom,musicRoomRainCanopy} from './music-room-art.js?v=diorama-002';
 import {createLounge} from './lounge-state.js?v=46';
-import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella} from './lounge-art.js?v=49';
+import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella} from './lounge-art.js?v=50';
 import {createWetSoil,drawWetSoil} from './wet-soil.js?v=exp3';
 const RAIN_EXCLUSIONS=Object.freeze([{x:410,y:175,w:160,h:95}]);
 const wetSoil=createWetSoil({excludeRects:RAIN_EXCLUSIONS});
 import {createTownDepth} from './town-depth.js?v=diorama-002';
 import {createTownArt,drawBackFence} from './art-slice.js?v=exp3';
 import {createNavigation} from './navigation.js?v=51';
-import {createTeacher,drawTeacher,teacherFacing} from './teacher.js?v=49';
-import {facingForMotion,drawPlayer} from './avatar.js?v=43';
+import {createTeacher,drawTeacher,teacherFacing} from './teacher.js?v=50';
+import {facingForMotion,drawPlayer} from './avatar.js?v=44';
 import {resumeFromTap,requestPlaybackSession,clockStalled} from './audio-start.js?v=23';
 import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=23';
 import {installPullToRefreshGuard} from './scroll-guard.js?v=23';
@@ -38,7 +38,7 @@ function selectWatchView(next,reset=false){
  watchView=next;keys.clear();target=null;player.walking=false;teacherApproach.cancel();
  watchStage.dataset.watch=watchView;last3DPaint=-Infinity;
  for(const b of watchButtons)b.setAttribute('aria-pressed',String(b.dataset.watchView===watchView));
- mapHint.innerHTML=watchView==='play'?playHint:'景物照常流動，選「遊玩」即可繼續';
+ mapHint.innerHTML=watchView==='play'?playHint:'景物照常流動，選「俯視遊玩」即可繼續';
 }
 for(const button of watchButtons)button.onclick=()=>selectWatchView(button.dataset.watchView);
 const compactTown=matchMedia('(max-width: 600px)');
@@ -346,7 +346,6 @@ function drawWebGLTown(t,rainFrame,petFrame,moisture){
  drawPetPondContact(g,petFrame.pondContact);
  if(key==='rain')drawRainFrame(g,rainFrame);
  else drawTownWeather(g,t,key,reduced,RAIN_EXCLUSIONS);
- if(watchView==='overlook')return true;
  const project=v.project;
  const teacher=project(npc.x,npc.y+18,0),flowers=project(821,391,0);
  label('老師',teacher.x,teacher.y+6);label('你的花園',flowers.x,flowers.y);
