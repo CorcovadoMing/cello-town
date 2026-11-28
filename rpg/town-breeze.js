@@ -29,6 +29,20 @@ export function breezeAt(ms,x,z,weather,motion=true){
  const t=ms*.001,strength=weather==='breeze'?1.1:weather==='rain'?.82:.64;
  return strength*(.40+.29*Math.sin(t*1.45-x*.024-z*.014)+.17*Math.sin(t*2.4-x*.048+z*.009));
 }
+// The same east-southeast gust drives the pond, crowns and drifting leaves.
+export const TOWN_WIND=Object.freeze({x:1,z:.48});
+export function windLeafAt(ms,slot){
+ const i=slot%14,start=880+i*610+(i%3)*196,duration=2450+(i%5)*360;
+ const age=(ms-start)/duration,u=Math.max(0,Math.min(1,age));
+ const drift=34+(i%5)*5, flutter=Math.sin(u*14+i*1.8)*5*Math.sin(u*Math.PI);
+ return {appeared:age>=0,settled:age>=1,x:u*TOWN_WIND.x*drift-TOWN_WIND.z*flutter,
+  z:u*TOWN_WIND.z*drift+flutter,h:1-u*u,spin:i*1.91+u*(4+i%3)};
+}
+export function windLeafFloatAt(ms,slot){
+ const settledAt=880+slot*610+(slot%3)*196+2450+(slot%5)*360;
+ const age=Math.max(0,ms-settledAt),advance=24*(1-Math.exp(-age/6400));
+ return {x:TOWN_WIND.x*advance,z:TOWN_WIND.z*advance,bob:.16*Math.sin(age*.004+slot),tilt:.08*Math.sin(age*.003+slot)};
+}
 export function makeLivingGrass(T,scene,W,H,clear=()=>true){
  const geometry=new T.BufferGeometry(),p=[],rgb=[];
  const seed={v:82021};

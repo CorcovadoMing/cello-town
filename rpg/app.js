@@ -1,4 +1,4 @@
-import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,createTownFramePacer,makeTownWebGL} from './town-webgl.js?v=water-glint-039';
+import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,createTownFramePacer,makeTownWebGL} from './town-webgl.js?v=weather-040';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';
@@ -7,7 +7,7 @@ import {createRainSystem} from './rain-system.js?v=36';
 import {treeRainCanopies,umbrellaPose} from './rain-geometry.js?v=35';
 import {MUSIC_ROOM,MUSIC_ROOM_DOOR,musicRoomHouseHit,roomBlocks,drawMusicRoom,musicRoomRainCanopy} from './music-room-art.js?v=house-pick';
 import {createLounge} from './lounge-state.js?v=46';
-import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella} from './lounge-art.js?v=51';
+import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella,drawUmbrellaResident} from './lounge-art.js?v=rear-grip-040';
 import {createWetSoil,drawWetSoil} from './wet-soil.js?v=gait-033';
 const RAIN_EXCLUSIONS=Object.freeze([{x:410,y:175,w:160,h:95}]);
 const wetSoil=createWetSoil({excludeRects:RAIN_EXCLUSIONS});
@@ -314,6 +314,10 @@ function setTownView(view){
  watchBar.hidden=!view;watchStage.dataset.watch=watchView;
 
 }
+function drawActorUmbrella(actor,i,rainFrame,seated=false){
+ drawRainUmbrella(g,{...actor,kind:i===1?'teacher':'player',bodyShift:seated?LOUNGE_BODY_SHIFT:0},rainFrame.actorOpen[i],rainFrame.actorStage[i],rainFrame.actorGrip[i]);
+}
+const rearUmbrella=(actor,i,rainFrame)=>actor.facing==='back'&&rainFrame.actorStage[i]!=='closed';
 function drawWebGLTown(t,rainFrame,petFrame,moisture){
  const v=webglTown;if(!v)return false;
  if(compactTown.matches&&!compactPacer.paint(t))return true;
@@ -324,12 +328,15 @@ function drawWebGLTown(t,rainFrame,petFrame,moisture){
   try{paint();}finally{g=before;}
  },alt);
  const holding=i=>rainFrame.actorStage[i]!=='closed';
- const resident=(id,a,pose,seated)=>{
+ const resident=(id,a,i,pose,seated)=>{
   const paint=()=>person(a.x,a.y,t,pose);
-  sprite(id,a.x,a.y+4,56,80,()=>seated?drawGroundedSeated(g,a.x,a.y,paint):paint());
+  const body=()=>seated?drawGroundedSeated(g,a.x,a.y,paint):paint();
+  if(rearUmbrella(a,i,rainFrame)){
+   sprite(id+'-rear-umbrella',a.x,a.y+4,106,111,()=>drawUmbrellaResident(a.facing,body,()=>drawActorUmbrella(a,i,rainFrame,seated)));
+  }else sprite(id,a.x,a.y+4,56,80,body);
  };
- resident('player',player,{...player,holdingUmbrella:holding(0)},playerSeated);
- resident('teacher',npc,{teacher:true,holdingUmbrella:holding(1)},loungePose.mode==='seated');
+ resident('player',player,0,{...player,holdingUmbrella:holding(0)},playerSeated);
+ resident('teacher',npc,1,{teacher:true,holdingUmbrella:holding(1)},loungePose.mode==='seated');
  const {cat,visitor}=petFrame.life;
  if(cat)sprite('cat',cat.x,cat.groundY+6,64,52,()=>drawGardenCat(g,cat));
  if(visitor)sprite('visitor',visitor.x,visitor.y+25,45,47,()=>drawGardenVisitor(g,visitor),27);
@@ -348,7 +355,8 @@ function drawWebGLTown(t,rainFrame,petFrame,moisture){
  },benchCatLift(b));
  for(let i=0;i<2;i++)if(rainFrame.actorStage[i]!=='closed'){
   const a=i===0?player:npc;
-  sprite('umbrella'+i,a.x,a.y+10,105,111,()=>drawRainUmbrella(g,{...a,kind:i===1?'teacher':'player',bodyShift:(i===0?playerSeated:loungePose.mode==='seated')?LOUNGE_BODY_SHIFT:0},rainFrame.actorOpen[i],rainFrame.actorStage[i],rainFrame.actorGrip[i]));
+  if(rearUmbrella(a,i,rainFrame))continue;
+  sprite('umbrella'+i,a.x,a.y+10,105,111,()=>drawActorUmbrella(a,i,rainFrame,i===0?playerSeated:loungePose.mode==='seated'));
  }
  for(const f of gardenPlants(state)){
   const {x,y}=townPlantPosition(f.species);sprite('bloom'+f.species,x,y+6,43,53,()=>gardenBloom(x,y,f),9);
@@ -397,7 +405,12 @@ drawBenchLife(g,t,reducedMotion.matches,petFrame);
 if(gameWeather.key!=='rain')drawTownWeather(g,t,gameWeather.key,reducedMotion.matches,RAIN_EXCLUSIONS);
 for(const actor of [player,npc])townDepth.drawActorContact(g,actor.x,actor.y,gameWeather.key);
 // Ground anchors order visible silhouettes; collision footprints remain separate.
-let entities=[{y:petFrame.life.cat.groundY,draw:()=>drawGardenLife(g,t,reducedMotion.matches,petFrame)},...(petFrame.dogActive?[{y:petFrame.dog.y,draw:()=>drawRainDog(g,petFrame.dog)}]:[]),...(petFrame.benchCatActive?[{y:petFrame.benchCat.y,draw:()=>drawRainBenchCat(g,petFrame.benchCat)}]:[]),{y:stand.y,draw:drawPracticeStand},{y:MUSIC_ROOM.depth,house:true,draw:()=>townDepth.drawRoom(g,gameWeather.key,drawMusicRoom)},{y:231,draw:()=>{chairs.forEach(chair=>drawLoungeChair(g,chair));}},{y:245,draw:()=>drawLoungeTable(g,{rain:gameWeather.key==='rain',readingSide:loungePose.reading&&!dlg.open?chairs[loungePose.seatIndex].id:null})},...[player,npc].flatMap((actor,i)=>rainFrame.actorStage[i]!=='closed'?[{y:actor.y+21,draw:()=>drawRainUmbrella(g,{...actor,kind:i===1?'teacher':'player'},rainFrame.actorOpen[i],rainFrame.actorStage[i],rainFrame.actorGrip[i])}]:[]),...TREE_LAYOUT.map((a,i)=>({y:a[1]+46*a[2],draw:()=>tree(...a,t,i+1)})),{y:npc.y,draw:()=>person(npc.x,npc.y,t,{teacher:true,holdingUmbrella:rainFrame.actorStage[1]!=='closed'})},{y:player.y,draw:()=>person(player.x,player.y,t,{...player,holdingUmbrella:rainFrame.actorStage[0]!=='closed'})}];entities.sort((a,b)=>a.y-b.y);const houseAt=entities.findIndex(e=>e.house);
+const paintResident=(actor,i)=>{
+ const body=()=>person(actor.x,actor.y,t,{...actor,teacher:i===1,holdingUmbrella:rainFrame.actorStage[i]!=='closed'});
+ if(rearUmbrella(actor,i,rainFrame))drawUmbrellaResident(actor.facing,body,()=>drawActorUmbrella(actor,i,rainFrame));
+ else body();
+};
+let entities=[{y:petFrame.life.cat.groundY,draw:()=>drawGardenLife(g,t,reducedMotion.matches,petFrame)},...(petFrame.dogActive?[{y:petFrame.dog.y,draw:()=>drawRainDog(g,petFrame.dog)}]:[]),...(petFrame.benchCatActive?[{y:petFrame.benchCat.y,draw:()=>drawRainBenchCat(g,petFrame.benchCat)}]:[]),{y:stand.y,draw:drawPracticeStand},{y:MUSIC_ROOM.depth,house:true,draw:()=>townDepth.drawRoom(g,gameWeather.key,drawMusicRoom)},{y:231,draw:()=>{chairs.forEach(chair=>drawLoungeChair(g,chair));}},{y:245,draw:()=>drawLoungeTable(g,{rain:gameWeather.key==='rain',readingSide:loungePose.reading&&!dlg.open?chairs[loungePose.seatIndex].id:null})},...[player,npc].flatMap((actor,i)=>rainFrame.actorStage[i]!=='closed'&&!rearUmbrella(actor,i,rainFrame)?[{y:actor.y+21,draw:()=>drawActorUmbrella(actor,i,rainFrame)}]:[]),...TREE_LAYOUT.map((a,i)=>({y:a[1]+46*a[2],draw:()=>tree(...a,t,i+1)})),{y:npc.y,draw:()=>paintResident(npc,1)},{y:player.y,draw:()=>paintResident(player,0)}];entities.sort((a,b)=>a.y-b.y);const houseAt=entities.findIndex(e=>e.house);
  canvasRoomForeground=entities.slice(houseAt+1);entities.forEach(e=>e.draw());if(gameWeather.key==='rain')drawRainFrame(g,rainFrame);label('老師',npc.x,npc.y+24);drawQuestMarker(t);drawStandMarker(t);if(!dlg.open)drawQuietChat(g,quietChatPose.bubbles,{teacher:npc,player});if(near&&!['chair','seated'].includes(near)){g.strokeStyle='#fff2c3';g.lineWidth=2;g.beginPath();g.ellipse(near==='npc'?npc.x:near==='garden'?garden.x:stand.x,near==='npc'?npc.y:near==='garden'?garden.y:stand.y,24,10,0,0,Math.PI*2);g.stroke();}return 'canvas';}
 function teacherWithinReach(){return Math.hypot(player.x-npc.x,player.y-npc.y)<TEACHER_TALK_RADIUS;}
 function standWithinReach(){return Math.hypot(player.x-stand.x,player.y-stand.y)<48;}

@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella} from '../lounge-art.js';
+import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella,drawUmbrellaResident} from '../lounge-art.js';
 test('lounge art is finite and balanced, with seated identity and fixed layout',()=>{
  const before=JSON.stringify(LOUNGE_LAYOUT);let depth=0,rects=0;
  const g={save(){depth++;},restore(){depth--;assert.ok(depth>=0);},translate(...v){assert.ok(v.every(Number.isFinite));},scale(...v){assert.ok(v.every(Number.isFinite));},beginPath(){},clip(){},rect(...v){assert.ok(v.every(Number.isFinite));},fillRect(...v){rects++;assert.ok(v.every(Number.isFinite));assert.ok(v[2]>=0&&v[3]>=0);}};
@@ -22,4 +22,10 @@ test('large table book appears only when reading and never in rain',()=>{
 test('teacher umbrella is white-grey with a distinct round scalloped silhouette',()=>{
  function draw(kind){const r=[];const g={save(){},restore(){},translate(){},scale(){},fillRect(...a){r.push([this.fillStyle,...a])}};drawRainUmbrella(g,{x:0,y:0,kind},1);return r;}
  const p=draw('player'),t=draw('teacher');assert.ok(t.some(r=>r[0]==='#fffdf4'));assert.ok(!t.some(r=>['#c99ba5','#a97889','#efd9c4'].includes(r[0])));assert.notDeepEqual(p.map(r=>r.slice(1)),t.map(r=>r.slice(1)));
+});
+
+test('rear grip paints behind the moving body; front and sides stay in front',()=>{
+ for(const [facing,order] of [['back',['gear','body']],['front',['body','gear']],['left',['body','gear']],['right',['body','gear']]]){
+  const calls=[];drawUmbrellaResident(facing,()=>calls.push('body'),()=>calls.push('gear'));assert.deepEqual(calls,order);
+ }
 });

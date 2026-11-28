@@ -60,6 +60,12 @@ const easeGrip=q=>{const u=Math.max(0,Math.min(1,q));return u*u*(3-2*u);};
 export function umbrellaWrist(opening,preparation){
  return Math.round(-18-3*easeGrip(preparation)-12*easeGrip(opening));
 }
+// Paint one resident and its gear on the same plane. Rear sleeves, grip and
+// lower shaft are naturally occluded by the exact moving body silhouette.
+export function drawUmbrellaResident(facing,drawResident,drawUmbrella){
+ if(facing==='back'){drawUmbrella();drawResident();}
+ else{drawResident();drawUmbrella();}
+}
 export function drawRainUmbrella(g,{x,y,facing='front',kind='player',bodyShift=0},opening=1,stage='open',prep=1){
  if(stage==='closed')return;
  g.save();g.translate(x,y);if(facing==='left')g.scale(-1,1);

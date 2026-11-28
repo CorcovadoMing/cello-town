@@ -2,3 +2,14 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {FACE_SHAPES,FACE_NAMES,faceWidth,sampleFaceMotion,normalize} from '../state.js';
 test('eight soft silhouettes remain distinct, positive and legacy indexed',()=>{assert.equal(FACE_SHAPES.length,8);assert.equal(new Set(FACE_SHAPES.map(s=>[s.rx,s.ry,s.jaw,s.cheek].join(','))).size,8);for(let i=0;i<8;i++){assert.equal(normalize({faceShape:i,face:i}).face,i);const s=FACE_SHAPES[i];for(let y=-s.ry;y<=s.ry;y+=.01)assert.ok(faceWidth(s,y)>.25);}});
 test('eight facial loops are deterministic, unique, bounded, reuse their target and settle under reduced motion',()=>{const sequences=[];for(let i=0;i<8;i++){const target={},seq=[];for(let t=0;t<7000;t+=250){assert.equal(sampleFaceMotion(i,t,false,target),target);seq.push(JSON.stringify(target));assert.ok(Object.values(target).every(Number.isFinite));assert.ok(target.eyeL>=.5&&target.eyeR>=.5&&Math.abs(target.tilt)<=.05);}assert.ok(new Set(seq).size>2);sequences.push(seq.join(';'));assert.deepEqual(sampleFaceMotion(i,0,true),sampleFaceMotion(i,5000,true));}assert.equal(new Set(sequences).size,8);assert.equal(FACE_NAMES.length,8);});
+
+test('avatar uses shared subtle finishes while preserving face and articulation identities',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+ const art=app.slice(app.indexOf('const avatarSwatches='),app.indexOf('\nfunction rebuild()'));
+ assert.match(art,/avatarSwatches\.get\(kind\)/);
+ assert.match(art,/avatarMaterials\.get\(id\)/);
+ assert.match(art,/if\(!software&&kind!=='skin'\)/);
+ for(const name of ['polished-eye','sleeve-topstitch','shoe-toe-topstitch','fitted-scalp','face-motion-eye','leg-foot','avatar-upper-posture'])assert.ok(art.includes(name),name);
+ assert.doesNotMatch(art,/localStorage|requestAnimationFrame|getUserMedia/);
+});

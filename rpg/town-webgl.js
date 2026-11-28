@@ -3,7 +3,7 @@ import {makeGroundRain} from './town-ground-rain.js?v=1';
 import {makeVerge} from './town-verge.js?v=1';
 import {makeCountryside} from './town-countryside.js?v=woodland-037';
 import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=woodland-037';
-import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT,LAWN_DRIFTS,lawnAnchor} from './town-breeze.js?v=woodland-037';
+import {breezeAt,TOWN_WIND,windLeafAt,windLeafFloatAt,makeLivingGrass,makePondHorizon,POND_SHOT,LAWN_DRIFTS,lawnAnchor} from './town-breeze.js?v=wind-040';
 import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './town-orchard.js?v=woodland-037';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
@@ -385,13 +385,13 @@ function pondBed(T){
 }
 function pondSurface(T,map,spanX,spanZ){
  const material=new T.MeshLambertMaterial({map,color:'#eff8f4'});
- const phase={value:0},brightness={value:.9},detail={value:0},time={value:0};
+ const phase={value:0},brightness={value:.9},detail={value:0},time={value:0},wind={value:0};
  const light={value:new T.Vector3(0,1,0)},span={value:new T.Vector2(spanX,spanZ)};
  const fish={value:[new T.Vector4(),new T.Vector4(),new T.Vector4()]};
  const dye={value:['#588b91','#e17854','#8fa15a'].map(c=>new T.Color(c))};
  const clearSky=TOWN_PAINT_PALETTE.pond[4],sky={value:new T.Color(clearSky)};
  material.onBeforeCompile=shader=>{
-  Object.assign(shader.uniforms,{townWaterPhase:phase,townWaterBrightness:brightness,townWaterSky:sky,townWaterDetail:detail,townWaterTime:time,
+  Object.assign(shader.uniforms,{townWaterPhase:phase,townWaterBrightness:brightness,townWaterSky:sky,townWaterDetail:detail,townWaterTime:time,townBreezeRipple:wind,
    townWaterSun:light,townWaterSpan:span,townFish:fish,townFishDye:dye});
   shader.vertexShader=shader.vertexShader.replace('#include <common>',`
    #include <common>
@@ -409,7 +409,7 @@ function pondSurface(T,map,spanX,spanZ){
    #include <common>
    uniform float townWaterPhase;
    uniform float townWaterBrightness;
-   uniform float townWaterDetail,townWaterTime;
+   uniform float townWaterDetail,townWaterTime,townBreezeRipple;
    uniform vec3 townWaterSun;
    float townWaterGrain(vec2 v){
     vec3 p3=fract(vec3(v.xyx)*.1031);
@@ -497,13 +497,20 @@ function pondSurface(T,map,spanX,spanZ){
       *facing*sunlit*sunlit*pow(townWaterBrightness,3.);
     pool=mix(pool,vec3(.97,.94,.79),min(.55,.88*glint));
    }
-   diffuseColor.rgb = pool*(1.+longWave*.013+shortWave*.010);
+   // Windward wave fronts advect in world units; only a subtle band of
+   // water colour moves, not highlights, stars, or an opaque blue layer.
+   float dr=dot((uvPond-.5)*townWaterSpan,vec2(.9015,-.4327));
+   float ct=dot((uvPond-.5)*townWaterSpan,vec2(.4327,.9015));
+   float windTime=townWaterTime;
+   float windWave=sin(dr*.39-windTime*5.2+.42*sin(ct*.088-windTime*.6));
+   float gust=.59+.23*sin(dr*.034-windTime*.9)+.18*sin(ct*.054+windTime*.44);
+   diffuseColor.rgb = pool*(1.+longWave*.013+shortWave*.010+windWave*gust*townBreezeRipple*.145);
   `);
  };
  material.customProgramCacheKey=()=> 'town-pond-shallow-bottom-v2';
  let lastWeather;
  return {material,update(now,weather,lamp,motion,close,clock,cx,cz){
-  detail.value=close?1:0;time.value=motion?clock/1000:0;
+  detail.value=close?1:0;time.value=motion?clock/1000:0;wind.value=motion&&weather==='breeze'?1:0;
   phase.value=motion?(clock%96000)/96000*Math.PI*2:0;
   light.value.set(lamp.x,lamp.y,lamp.z).normalize();
   if(close)for(let i=0;i<3;i++){
@@ -872,7 +879,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   lowRain.visible=close&&rain&&motion;
   for(let i=0;i<ripples.length;i++){
    const ripple=ripples[i];
-   ripple.visible=close&&motion&&(rain||i<3);
+   ripple.visible=close&&motion&&(rain||(weather!=='breeze'&&i<3));
    if(!ripple.visible)continue;
    const duration=rain?1600:3400,shifted=t+(i*719),cycle=Math.floor(shifted/duration),u=shifted%duration/duration;
    const x=55+((i*49+cycle*83)%183),z=411+((i*31+cycle*23)%107),radius=1+u*(rain?9:18);
@@ -1191,6 +1198,60 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   }
   eaveDrops.instanceMatrix.needsUpdate=true;
  }
+ // One bounded cohort follows wind from actual trees and rests on the
+ // ground for this weather. Only its landed leaves fade into the next.
+ const leafShape=new T.Shape();
+ leafShape.moveTo(-1.7,0);leafShape.quadraticCurveTo(-.45,1.35,1.68,.26);
+ leafShape.quadraticCurveTo(.82,-1.06,-1.7,0);
+ const fallen=new T.InstancedMesh(new T.ShapeGeometry(leafShape,5),
+  new T.MeshLambertMaterial({color:'#ffffff',side:T.DoubleSide}),14);
+ fallen.name='wind-borne-and-settled-leaves';fallen.frustumCulled=false;fallen.visible=false;scene.add(fallen);
+ const leafPalette=['#b2834c','#a19b56','#b8a25e','#7e8b4a'];
+ const canopies=trees.filter(([x,y])=>x>84&&x<905&&y>123&&y<505);
+ const dropSlots=Array.from({length:fallen.count},(_,i)=>{
+  const [tx,ty,size]=canopies[(i*3+1)%canopies.length]||[410,316,1];
+  // Two leaves start at the southern edge of real bank-side crowns so
+  // their natural downwind fall reaches the pond rather than the path.
+  const pondward=i===0||i===4;
+  const bank=pondward?(trees.find(([x,y])=>x===(i===0?139:65)&&y>230)||[tx,ty,size]):[tx,ty,size];
+  const x=bank[0]+(pondward?(i===0?1:16):9+i%4*8);
+  const z=bank[1]+46*bank[2]+(pondward?(i===0?58:65):(i%3-1)*13);
+  fallen.setColorAt(i,color.set(leafPalette[i%4]));
+  return {x,z,y:46+size*(32+i%5*8),scale:1.05+(i%5)*.16};
+ });
+ let dropWeather='',windStart=0,windEnd=0,windAge=0,fadeAge=0,dropStamp=-1;
+ let leafObservation={airborne:0,settled:0,floating:0,fade:0,attach:0};
+ function updateFallenLeaves(t,weather,motion){
+  const windy=weather==='breeze',changed=weather!==dropWeather;
+  if(changed){
+   if(windy){windStart=t;windAge=0;fadeAge=0;}
+   else if(dropWeather==='breeze'){windEnd=t;fadeAge=t-windStart;}
+   dropWeather=weather;dropStamp=-1;
+  }
+  if(windy)windAge=t-windStart;
+  const fade=windy?1:fadeAge>0?(motion?Math.max(0,1-(t-windEnd)/5000):0):0;
+  fallen.visible=motion&&fade>0;
+  if(!fallen.visible){leafObservation={airborne:0,settled:0,floating:0,fade:0,attach:0};return;}
+  const step=Math.floor(t/37);if(step===dropStamp)return;
+  dropStamp=step;
+  let airborne=0,settled=0,floating=0,attach=0;
+  for(const [i,slot] of dropSlots.entries()){
+   const state=windLeafAt(windy?windAge:fadeAge,i);
+   let x=slot.x+state.x,z=slot.z+state.z;
+   const wet=state.settled&&insidePolygon(x,z,OPEN_POND_BANK);
+   const drift=wet?windLeafFloatAt(windy?windAge:fadeAge,i):null;
+   if(drift&&insidePolygon(x+drift.x,z+drift.z,OPEN_POND_BANK)){x+=drift.x;z+=drift.z;}
+   const visible=state.appeared&&(windy||state.settled);
+   if(visible){if(wet)floating++;else if(state.settled)settled++;else airborne++;attach+=x;}
+   model.position.set(x-W/2,wet?2.37+drift.bob:state.settled?4.7:4.7+slot.y*state.h,z-H/2);
+   model.rotation.set(state.settled?-Math.PI/2+(drift?.tilt||0):-.94+Math.sin(state.spin)*.44,
+    state.settled?0:state.spin*.73,state.spin);
+   const scale=visible?slot.scale*Math.sqrt(fade):0;model.scale.setScalar(scale);model.updateMatrix();
+   fallen.setMatrixAt(i,model.matrix);
+  }
+  fallen.instanceMatrix.needsUpdate=true;
+  leafObservation={airborne,settled,floating,fade,attach};
+ }
  let leafStep=-1,shadowStep=-1,leafWeather='';
  const bent=new T.Matrix4();
  function swayCrowns(now,weather,allowed){
@@ -1201,8 +1262,14 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   const updated=new Set();
   for(const {batch,i,base,flex,x,z,seed} of swaying){
    bent.copy(base);
-   const bend=flex*flex*(breezeAt(t,x,z,weather,allowed)*1.34+(allowed?.21*Math.sin(t*.0016+seed):0));
-   bent.elements[12]+=bend;bent.elements[14]+=.48*bend;
+   const windGain=weather==='breeze'?7.1:1.34;
+   const bend=flex*flex*(breezeAt(t,x,z,weather,allowed)*windGain+(allowed?.21*Math.sin(t*.0016+seed):0));
+   bent.elements[12]+=TOWN_WIND.x*bend;bent.elements[14]+=TOWN_WIND.z*bend;
+   if(weather==='breeze'&&allowed){
+    const lean=bend*.010,axisX=bent.elements[4],axisY=bent.elements[5],axisZ=bent.elements[6];
+    bent.elements[4]=axisX+axisY*lean;bent.elements[5]=axisY-axisX*lean;
+    bent.elements[6]=axisZ+axisY*lean*TOWN_WIND.z;
+   }
    batch.setMatrixAt(i,bent);updated.add(batch);
   }
   for(const batch of updated)batch.instanceMatrix.needsUpdate=true;
@@ -1308,13 +1375,14 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    paintedWater.update(now,weather,lamp,motion,close,clock,pondX,pondZ);
    updatePondLife(close,weather,clock,motion);
    swayCrowns(clock,weather,motion);
+   updateFallenLeaves(clock,weather,motion);
    // Wet the bevel itself, not just a flat sheet above it.
    pathMesh.material.color.lerpColors(dryTrail,wetTrail,groundRain(clock,weather,motion));
    updateEaveDrops(weather,motion?now:0);
    updateWetLayers(moisture);
    renderer.render(scene,camera);return true;
   },
-  stats:()=>({calls:renderer.info.render.calls,triangles:renderer.info.render.triangles}),
+  stats:()=>({calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,windLeaves:{...leafObservation}}),
   discard
  });
 }

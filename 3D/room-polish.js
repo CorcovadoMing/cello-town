@@ -132,6 +132,148 @@ export function installWestRoomDetail(T,scene){
 }
 
 
+/** Authored experimental room joinery. Existing room objects keep their picking
+ * geometry; all added surfaces are deliberately non-interactive. */
+export function installRoomMaterialArt(T,scene,{plants=[],rug=null,table=null}={}){
+ const art=new T.Group();art.name='authored-room-material-art';scene.add(art);
+ const fixed=(geometry,material,name,parent=art)=>{
+  const mesh=new T.Mesh(geometry,material);mesh.name=name;mesh.raycast=()=>{};
+  mesh.castShadow=false;mesh.receiveShadow=true;parent.add(mesh);return mesh;
+ };
+ const finish=(color,roughness=.82,extra={})=>new T.MeshStandardMaterial({color,roughness,...extra});
+ const put=(part,x,y,z)=>{part.position.set(x,y,z);return part;};
+ const bake=(name,parts,material,parent=art)=>{
+  const positions=[],uvs=[],normals=[];
+  const vertex=new T.Vector3(),normal=new T.Vector3(),normalMatrix=new T.Matrix3(),matrix=new T.Matrix4();
+  for(const [geometry,x,y,z,rot=0] of parts){
+   matrix.makeRotationY(rot).setPosition(x,y,z);normalMatrix.getNormalMatrix(matrix);
+   const a=geometry.attributes,n=geometry.index,rows=n?n.count:a.position.count;
+   for(let j=0;j<rows;j++){
+    const i=n?n.getX(j):j;
+    vertex.fromBufferAttribute(a.position,i).applyMatrix4(matrix);
+    normal.fromBufferAttribute(a.normal,i).applyMatrix3(normalMatrix).normalize();
+    positions.push(...vertex.toArray());normals.push(...normal.toArray());uvs.push(a.uv.getX(i),a.uv.getY(i));
+   }
+   geometry.dispose();
+  }
+  const merged=new T.BufferGeometry();
+  merged.setAttribute('position',new T.Float32BufferAttribute(positions,3));merged.setAttribute('normal',new T.Float32BufferAttribute(normals,3));merged.setAttribute('uv',new T.Float32BufferAttribute(uvs,2));
+  return fixed(merged,material,name,parent);
+ };
+ const box=(x,y,z,w,h,d)=>[new T.BoxGeometry(w,h,d),x,y,z];
+ // Wall panelling is lower than the sill and sits inside the existing wall
+ // envelopes. Long rails and stiles use three batches, not one draw per slat.
+ const back=[],face=[],edge=[];
+ for(const [x,w] of [[-1.50,2.78],[1.50,2.78]]){
+  back.push(box(x,.436,-2.279,w,.456,.010));
+  edge.push(box(x,.673,-2.264,w,.067,.026));
+  face.push(box(x,.710,-2.251,w,.019,.032));
+ }
+ for(const x of [-2.89,-2.26,-1.63,-1,-.37,.36,1,1.63,2.26,2.89]){
+  edge.push(box(x,.430,-2.265,.031,.460,.015));
+ }
+ back.push(box(-2.986,.422,.045,.008,.43,4.43));
+ edge.push(box(-2.969,.648,.045,.022,.057,4.43));
+ face.push(box(-2.955,.683,.045,.027,.016,4.43));
+ for(let i=0;i<8;i++)edge.push(box(-2.973,.424,-2.12+i*.61,.017,.43,.025));
+ bake('sage-inset-wainscot-fields',back,finish('#aaa98a'));
+ bake('olive-timber-wainscot-stiles',edge,finish('#9c9c7b'));
+ bake('ivory-wainscot-cap-bead',face,finish('#e2d0aa',.70));
+
+ // A gathered rosette of tapered, arcing leaves has real surface normals and
+ // a raised ridge; no billboard, round leaf blobs, external maps or per-frame updates.
+ const glaze=[finish('#bc8c70',.64),finish('#a77957',.68)];
+ const foliage=['#536b4e','#718459','#89965f'].map(color=>finish(color,.73,{side:T.DoubleSide}));
+ const soil=finish('#766343'),vein=finish('#b0a170',.90);
+ plants.forEach((plot,k)=>{
+  if(!plot)return;
+  const original=plot.children.slice();for(const mesh of original)mesh.visible=false;
+  const cover=new T.Group();cover.name=(k?'west':'east')+'-hand-thrown-plant';plot.add(cover);
+  // Existing hidden geometry remains the exact pointer occluder.
+  const r=k?.205:.235,profile=[[0,.05],[r*.66,.05],[r*.70,.075],[r*.71,.102],[r*.80,.124],[r*.86,.245],[r*.94,.438],[r,.481],[r*1.042,.491],[r*1.042,.516],[r*.95,.524],[r*.86,.513],[r*.84,.485],[r*.77,.443],[0,.444]];
+  const ceramic=new T.LatheGeometry(profile.map(([x,y])=>new T.Vector2(x,y)),24);
+  const rings=new T.TorusGeometry(r*.96,.008,5,24);rings.rotateX(-Math.PI/2);
+  const lowerRing=new T.TorusGeometry(r*.80,.006,5,24);lowerRing.rotateX(-Math.PI/2);
+  bake('ceramic-vessel-with-turned-foot',[[ceramic,0,0,0],[rings,0,.499,0],[lowerRing,0,.128,0]],glaze[k],cover);
+  put(fixed(new T.CylinderGeometry(r*.85,r*.83,.012,22),soil,'soil-inlaid-below-rim',cover),0,.481,0);
+  const pos=[[],[],[]],index=[[],[],[]],stems=[];
+  const count=k?11:13;
+  for(let i=0;i<count;i++){
+   const angle=i*2.399963+k*.44,radX=Math.cos(angle),radZ=Math.sin(angle),interior=i%4===0;
+   const length=(k?.64:.48)+(i%5)*(k?.052:.039),half=(k?.063:.104)+(i%3)*.010;
+   const reach=interior?.055:(k?.206:.299)+(i%3)*.025,baseY=.49+(i%4)*.019;
+   const color=i%3,a=pos[color],ix=index[color],offset=a.length/3;
+   const point=(s,u)=>{
+    const swell=Math.pow(Math.sin(Math.PI*s),.76),offset=half*swell*u;
+    const crown=(1-Math.abs(u))*half*.34*swell;
+    const r=reach*(s*.84+s*s*.16)+.022+Math.sin(s*Math.PI)*.025;
+    const y=baseY+length*(s*(interior?.99:.93)-s*s*(interior?.04:.35))+crown;
+    return new T.Vector3(radX*r-radZ*offset,y+offset*.24*Math.sin(angle),radZ*r+radX*offset);
+   };
+   for(let row=0;row<=8;row++)for(let col=0;col<=4;col++)a.push(...point(row/8,col/2-1).toArray());
+   for(let row=0;row<8;row++)for(let col=0;col<4;col++){
+    const v=offset+row*5+col;ix.push(v,v+5,v+1,v+1,v+5,v+6);
+   }
+   const path=new T.CatmullRomCurve3([point(.04,0),point(.29,0),point(.58,0),point(.83,0)].map(p=>p.add(new T.Vector3(0,.002,0))));
+   stems.push([new T.TubeGeometry(path,6,.0026,3,false),0,0,0]);
+  }
+  for(let j=0;j<3;j++){
+   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(pos[j],3));geometry.setIndex(index[j]);geometry.computeVertexNormals();
+   fixed(geometry,foliage[j],'curved-leaf-cluster-'+j,cover);
+  }
+  bake('fine-leaf-ribs',stems,vein,cover);
+ });
+ // The existing gameplay table and score do not move. A thin bead, drawer
+ // hardware and small stack live under the page, within its original footprint.
+ if(table){
+  const drawer=[],inlay=[],books=[];
+  drawer.push(box(0,.535,.251,.663,.017,.032),box(0,.427,.253,.518,.012,.019));
+  inlay.push(box(0,.486,.253,.483,.005,.010),box(0,.442,.253,.483,.005,.010));
+  for(const x of [-.216,.216])inlay.push(box(x,.463,.253,.005,.046,.010));
+  for(const x of [-.224,.224])drawer.push(box(x,.222,0,.021,.021,.37));
+  drawer.push(box(0,.227,0,.464,.019,.371));
+  for(let i=0;i<3;i++)books.push(box(-.058+i*.029,.247+i*.022,.028-i*.019,.225-i*.022,.018,.144+i*.012));
+  bake('side-table-drawer-lip-and-lower-shelf',drawer,finish('#795d4b',.74),table);
+  bake('side-table-warm-inlay',inlay,finish('#d1b18b',.65),table);
+  bake('side-table-archival-folio-covers',books,finish('#8b8862',.88),table);
+  const papers=books.map((_,i)=>box(-.058+i*.029,.249+i*.022,.031-i*.019,.207-i*.022,.009,.144+i*.012));
+  bake('side-table-folio-paper-edges',papers,finish('#e1cba4',.91),table);
+ }
+ // A single local woven image on the original rug geometry, not a new floor
+ // plane; rings and stepped motifs are made at garment-scale, not noisy speckle.
+ if(rug){
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=384;
+  const ctx=canvas.getContext('2d');
+  if(ctx){
+   const center=192;ctx.translate(center,center);ctx.fillStyle='#b7b087';ctx.fillRect(-192,-192,384,384);
+   function disc(r,fill){ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();}
+   disc(189,'#697a61');disc(176,'#d9c6a0');disc(170,'#7e8866');disc(153,'#b9ad80');disc(143,'#d0bd94');
+   for(let n=0;n<12;n++){
+    ctx.save();ctx.rotate(n*Math.PI/6);
+    ctx.fillStyle=n%2?'#a06b50':'#7b865e';
+    ctx.beginPath();ctx.moveTo(0,-164);ctx.lineTo(11,-156);ctx.lineTo(0,-149);ctx.lineTo(-11,-156);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#e3ccaa';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(0,-183);ctx.lineTo(9,-180);ctx.lineTo(16,-183);ctx.stroke();
+    ctx.restore();
+   }
+   for(let i=0;i<8;i++){
+    ctx.save();ctx.rotate(i*Math.PI/4);
+    ctx.fillStyle=i%2?'#a58e6c':'#8b9570';
+    ctx.beginPath();ctx.moveTo(0,-119);ctx.quadraticCurveTo(30,-80,0,-51);ctx.quadraticCurveTo(-30,-80,0,-119);ctx.fill();
+    ctx.strokeStyle='#dfc4a3';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(0,-110);ctx.lineTo(0,-62);ctx.stroke();
+    ctx.restore();
+   }
+   disc(45,'#b19b71');disc(37,'#ddd0ad');disc(24,'#918965');
+   for(let y=-191;y<=191;y+=3){
+    ctx.strokeStyle=y%2?'#2f38231c':'#fff8df2d';ctx.lineWidth=.60;ctx.beginPath();ctx.moveTo(-192,y);ctx.lineTo(192,y);ctx.stroke();
+   }
+   const map=new T.CanvasTexture(canvas);map.colorSpace=T.SRGBColorSpace;
+   // Existing lighting installation runs after this helper on the same receiver.
+   rug.material=new T.MeshStandardMaterial({color:'#f6ecd6',map,roughness:.94});
+  }
+ }
+ return art;
+}
+
 // Experimental: this object itself resolves a specular ray against world geometry.
 // Static triangles are world-space; avatar BVHs stay local to each animated mesh.
 export function createRoomRayMirror(T, roots, avatar, renderer, {cat=null,light=null}={}){

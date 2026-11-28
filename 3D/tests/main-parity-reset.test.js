@@ -15,25 +15,26 @@ function normalized(s){
 // Preserve the main parity fixture: allow only the exact tested experimental
 // outdoor drawing revision and its accompanying module, not future drift.
 const reviewedExperimentalHashes={
+ '3D/window-landscape.js':'fa6ac99b13edca08a0ff6f8121e7a12f7b9eda27d3bfb877e345bf4d2bbe1a43',
  'rpg/garden.js':'76dd6cd336f756937afc76d96244f7aa7a53c6e55c8827e3397987b96ba56a74',
  'rpg/terrain-art.js':'eb6113cd6a5bebc2b26ee5c8c37fd737c0daf332eafe46c69e8a3be6b96b04ca',
  '3D/state.js':'355fe71a67eff5a244b2e42b0f45484f9173ee307e95c5f26d247941051711e8',
- '3D/room-polish.js':'e2ef92eaa1eeb89625378b256008232376d1c090be762100e82ba845a8336cfc',
- '3D/app.js':'8ca8889e41da2e99f20b4089b5b179e036bd8088c854a5e21be476caaf8c2281',
+ '3D/room-polish.js':'c0c5765ee21efd2c417fcc24c1fa3410c11113ffa24f0cc1f9c12a2486dc18fb',
+ '3D/app.js':'3dcefae7aff88facdb40f0e9998103a79b90bfe705b6782e4f793187fd8d6f97',
  'rpg/ambience.js':'53b9ced48a8a1867bc76ab7c8758e73e8e106dc985368a170bb134391f9cb0a2',
  'rpg/town-countryside.js':'cfa5e8cf22c653121af4b35bebec2719ecf996fc1dc638e5e85ce9e9217f0530',
  'rpg/town-shore.js':'c931b436edf07085a6322285063411856bc97d4572c488623535947ffde9aa06',
- 'rpg/town-breeze.js':'87c0573c346210462a3ffeb2a2e1c2364a91d02d6ff85b2e4756be36e22dd26a',
+ 'rpg/town-breeze.js':'5ee13d0757bf03906ace68a9398b1807cb38f3937b0073b3dc60eae6a5f69fe3',
  'rpg/style.css':'5ead5010e045d1bdc85ec3e0c5c5b3a29fa5063720582676e6e94c7999c101ee',
- 'rpg/app.js':'db7d1c002e1659b2b867a6961c6de2d6550851041a8989442549271be723bf50',
- 'rpg/index.html':'b46735eb18967400e71a3cc63478991352caa74888c71c79b653ec561bc7e705',
+ 'rpg/app.js':'0103da8463257d097188c9ec3cbee79eef359b0e27107361dc1c31350912af59',
+ 'rpg/index.html':'1e723fc1d6547fc0883ad0321d51ecc7d1f06eafb849a9a7a87d24b05f842c51',
  'rpg/town-depth.js':'3b082ca07119d517e0b747dd8ba8433c3aed0aa14bd18d07b2df6451c8efc7af',
  'rpg/music-room-art.js':'3292e702170bf184ab5f20403991b6e4395131184591b346463e5812f91e5a09',
- 'rpg/town-webgl.js':'0e06587681bde869788950d2d3c6eb4f0def86e375e01237ef58703d773161d1',
+ 'rpg/town-webgl.js':'505795250021664bd0f7291ad471a9f46b98b04f11e16568d1deec3b9e14422f',
  'rpg/town-orchard.js':'babad8ab4eaa7869390eae298c01a787c21d9a8f61b6ea1d93804439927fbf21',
  'rpg/town-craft.js':'68d1f1cfc80eb714f275ab2236c4cc990271ea5b1d8e09caf258862b7fb033ab',
  'rpg/rain-system.js':'7c06e4903209151f74401f093f22bd7e830435d1c434e20fd23ed655e49e6e4a',
- 'rpg/lounge-art.js':'d0ced0c0032593bccab8f8120397b6041fd96e8aeab711131fc29ffb47d87a20',
+ 'rpg/lounge-art.js':'45eae6f334d2f407a4877f97cf62cdf6aec94192cfa67a7135679f73c6ffce42',
  'rpg/avatar.js':'8f831f25d96a68db6d9cd731c49039d6e0caea90f8e9c8e0852bb2054f26da51',
  'rpg/teacher.js':'fe836e8871369fe1795df386125f8fa296e7618de1064e7fb49a8d9e6db1fe37'
 };
