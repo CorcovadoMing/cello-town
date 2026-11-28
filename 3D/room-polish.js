@@ -258,8 +258,31 @@ export function installRoomMaterialArt(T,scene,{plants=[],rug=null,table=null}={
   }
  }
  const glaze=clayBand?[finish('#ffeddd',.71,{map:clayBand}),finish('#ebd9bc',.76,{map:clayBand})]:[finish('#bc8c70',.64),finish('#a77957',.68)];
- const foliage=['#536b4e','#718459','#89965f'].map(color=>finish(color,.73,{side:T.DoubleSide}));
- const soil=finish('#766343'),vein=finish('#b0a170',.90);
+ // Paint the lamina in its own UV coordinates: the main rib and soft,
+ // upward vein arcs follow each curved leaf, not the camera or room axes.
+ let leafTexture=null;
+ if(typeof document!=='undefined'){
+  const canvas=document.createElement('canvas');canvas.width=96;canvas.height=128;
+  const g=canvas.getContext('2d');
+  if(g){
+   const wax=g.createLinearGradient(0,0,96,0);
+   [[0,'#8c9b75'],[.20,'#bbc5a3'],[.45,'#e8e9cb'],[.52,'#ced8b9'],[.82,'#aab897'],[1,'#869775']]
+    .forEach(([x,c])=>wax.addColorStop(x,c));
+   g.fillStyle=wax;g.fillRect(0,0,96,128);
+   g.lineCap='round';
+   for(let n=0;n<7;n++)for(const side of [-1,1]){
+    const at=27+n*13,reach=33-(n>4?(n-4)*4:0);
+    g.strokeStyle='#fbf2cb5e';g.lineWidth=.9;
+    g.beginPath();g.moveTo(48,at);g.quadraticCurveTo(48+side*16,at-1,48+side*reach,at-18);g.stroke();
+   }
+   g.strokeStyle='#f9ecc28a';g.lineWidth=1.3;
+   g.beginPath();g.moveTo(48,120);g.quadraticCurveTo(49,42,48,13);g.stroke();
+   leafTexture=new T.CanvasTexture(canvas);leafTexture.colorSpace=T.SRGBColorSpace;
+  }
+ }
+ const foliage=['#6f8b60','#839868','#97a475'].map(color=>finish(color,.61,
+  {side:T.DoubleSide,...(leafTexture?{map:leafTexture}:{})}));
+ const soil=finish('#766343'),vein=finish('#a6ab79',.90);
  plants.forEach((plot,k)=>{
   if(!plot)return;
   const original=plot.children.slice();for(const mesh of original)mesh.visible=false;
@@ -280,21 +303,26 @@ export function installRoomMaterialArt(T,scene,{plants=[],rug=null,table=null}={
   }
   bake('ceramic-vessel-with-turned-foot',[[ceramic,0,0,0],[rings,0,.499,0],[lowerRing,0,.128,0]],glaze[k],cover);
   put(fixed(new T.CylinderGeometry(r*.85,r*.83,.012,22),soil,'soil-inlaid-below-rim',cover),0,.481,0);
-  const pos=[[],[],[]],index=[[],[],[]],stems=[];
+  const pos=[[],[],[]],uv=[[],[],[]],index=[[],[],[]],stems=[];
   const count=k?11:13;
   for(let i=0;i<count;i++){
    const angle=i*2.399963+k*.44,radX=Math.cos(angle),radZ=Math.sin(angle),interior=i%4===0;
-   const length=(k?.64:.48)+(i%5)*(k?.052:.039),half=(k?.063:.104)+(i%3)*.010;
+   const length=(k?.64:.48)+(i%5)*(k?.052:.039),half=(k?.072:.119)+(i%3)*.010;
+   const twist=(i%2?1:-1)*(.11+(i%4)*.052);
    const reach=interior?.055:(k?.206:.299)+(i%3)*.025,baseY=.49+(i%4)*.019;
    const color=i%3,a=pos[color],ix=index[color],offset=a.length/3;
    const point=(s,u)=>{
-    const swell=Math.pow(Math.sin(Math.PI*s),.76),offset=half*swell*u;
-    const crown=(1-Math.abs(u))*half*.34*swell;
+    const swell=Math.pow(Math.sin(Math.PI*s),k?.79:.54)*(k?.88+s*.19:.73+s*.40);
+    const asym=1+.11*u*Math.sin(s*4+angle),offset=half*swell*u*asym;
+    const crown=(1-u*u)*half*.38*swell;
     const r=reach*(s*.84+s*s*.16)+.022+Math.sin(s*Math.PI)*.025;
-    const y=baseY+length*(s*(interior?.99:.93)-s*s*(interior?.04:.35))+crown;
-    return new T.Vector3(radX*r-radZ*offset,y+offset*.24*Math.sin(angle),radZ*r+radX*offset);
+    const arch=interior?.040:k?.34:.47;
+    const y=baseY+length*(s*(interior?.99:1.03)-s*s*arch)+crown;
+    return new T.Vector3(radX*r-radZ*offset,y+offset*twist,radZ*r+radX*offset);
    };
-   for(let row=0;row<=8;row++)for(let col=0;col<=4;col++)a.push(...point(row/8,col/2-1).toArray());
+   for(let row=0;row<=8;row++)for(let col=0;col<=4;col++){
+    a.push(...point(row/8,col/2-1).toArray());uv[color].push(col/4,row/8);
+   }
    for(let row=0;row<8;row++)for(let col=0;col<4;col++){
     const v=offset+row*5+col;ix.push(v,v+5,v+1,v+1,v+5,v+6);
    }
@@ -302,7 +330,7 @@ export function installRoomMaterialArt(T,scene,{plants=[],rug=null,table=null}={
    stems.push([new T.TubeGeometry(path,6,.0026,3,false),0,0,0]);
   }
   for(let j=0;j<3;j++){
-   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(pos[j],3));geometry.setIndex(index[j]);geometry.computeVertexNormals();
+   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(pos[j],3));geometry.setAttribute('uv',new T.Float32BufferAttribute(uv[j],2));geometry.setIndex(index[j]);geometry.computeVertexNormals();
    fixed(geometry,foliage[j],'curved-leaf-cluster-'+j,cover);
   }
   bake('fine-leaf-ribs',stems,vein,cover);

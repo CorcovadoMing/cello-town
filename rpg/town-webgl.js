@@ -1,6 +1,6 @@
 import {GARDEN_SOIL,GARDEN_ROWS,ROW_SECTION,rowPoint} from './town-bed.js?v=1';
 import {makeGroundRain} from './town-ground-rain.js?v=1';
-import {makeVerge} from './town-verge.js?v=2';
+import {makeVerge} from './town-verge.js?v=3';
 import {drawLoungeBook,loungePageTurn} from './lounge-art.js?v=reader-041';
 import {makeCountryside} from './town-countryside.js?v=margin-leaves-046';
 import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=silt-shelf-045';

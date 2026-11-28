@@ -39,21 +39,34 @@ export function makeVerge(T,scene,W,H){
    }
   }
  }
+ // Three garden-scale silhouettes: broad buttercup, fine daisy and a
+ // shallow, cupped wild rose. Lobes rather than points catch the sun.
  function flower(x,y,z,tone,seed,scale=1){
-  const petalCount=[5,6,5][seed%3],radius=(2.65+(seed%4)*.24)*scale;
-  const face=seed*2.399963,tilt=.17+.08*(seed%3);
-  const v=(a,r,h=0)=>V(x+Math.cos(a)*r,y+Math.sin(a-face)*r*tilt+h,z+Math.sin(a)*r);
-  const center=v(0,0),floret=['#efbe64','#e5a450','#eec46e'][seed%3];
+  const variety=seed%3,p=[{count:5,span:.47,cup:.16},
+   {count:8,span:.29,cup:.07},{count:5,span:.52,cup:.28}][variety];
+  const radius=(2.65+(seed%4)*.24)*scale,face=seed*2.399963;
+  const tilt=.12+.065*(seed%3);
+  const v=(a,r,h=0)=>V(x+Math.cos(a)*r,y+Math.sin(a-face)*r*tilt+h*scale,z+Math.sin(a)*r);
+  const shade=['#e8a64c','#da963c','#d99750'][variety],pollen=['#f8d47d','#f3be57','#f5bf67'][variety];
+  const petalCount=p.count,disc=radius*(variety===1?.29:.24),step=TAU/petalCount;
+  const center=v(0,0,.22);
   for(let i=0;i<petalCount;i++){
-   const a=face+i*TAU/petalCount,d=TAU/petalCount*.36;
-   const r=radius*(1+.07*Math.sin(seed+i*2)),start=v(a,r*.21),tip=v(a,r,.35);
-   const trimL=v(a-d*.40,r*.88,.19),trimR=v(a+d*.40,r*.88,.06);
-   const left=v(a-d,r*.70,.16),right=v(a+d,r*.70,.02);
-   const mid=v(a,r*.63,.33);
-   tri(start,left,mid,tone,[.73,.92,1.03]);tri(start,mid,right,tone,[.73,1.03,.85]);
-   tri(left,trimL,mid,tone,[.92,1.07,1.03]);tri(mid,trimL,tip,tone,[1.03,1.07,1.13]);
-   tri(mid,tip,trimR,tone,[1.03,1.13,.97]);tri(mid,trimR,right,tone,[1.03,.97,.85]);
-   tri(center,v(a+.02,r*.275,.39),v(a+TAU/petalCount+.02,r*.275,.39),floret,[1.12,1,.85]);
+   const a=face+i*step,d=step*p.span,r=radius*(1+.06*Math.sin(seed+i*2));
+   const stem=v(a,r*.16);
+   const fan=[
+    v(a-d*.38,r*.37,.03),v(a-d,r*.69,p.cup*.91),v(a-d*.79,r*.90,p.cup*1.3),
+    v(a-d*.29,r*.995,p.cup*1.04),v(a+d*.29,r,p.cup*.94),
+    v(a+d*.79,r*.91,p.cup*.81),v(a+d,r*.70,p.cup*.52),v(a+d*.40,r*.37,.03)
+   ];
+   const fold=v(a,r*.68,p.cup*.77);
+   const rim=[.78,.91,1.035,1.13,1.10,1.02,.92,.82];
+   tri(stem,fan[0],fold,tone,[.72,rim[0],1.04]);tri(stem,fold,fan[7],tone,[.72,1.04,rim[7]]);
+   for(let j=0;j<fan.length-1;j++)tri(fan[j],fan[j+1],fold,tone,[rim[j],rim[j+1],1.04]);
+   // Raised pollen ring and a smaller amber recess distinguish the corolla.
+   const a1=a-step*.5,a2=a+step*.5,inner=v(a1,disc*.60,.22),outer=v(a1,disc,.19);
+   const inner2=v(a2,disc*.60,.22),outer2=v(a2,disc,.19);
+   tri(center,inner,inner2,shade,[.83,1.03,.98]);
+   tri(inner,outer,outer2,pollen,[1.15,.91,1.03]);tri(inner,outer2,inner2,pollen,[1.15,1.03,1.06]);
   }
   if(seed%3!==1){
    blade(x-.44,z+.5,face+.6,3.5*scale,.82*scale,'#779557');
