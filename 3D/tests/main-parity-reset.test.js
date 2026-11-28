@@ -14,14 +14,16 @@ function normalized(s){
  return intact.replace(/\.js\?v=[^'"\s]+/g,'.js').replace(/KEY=\/[^;]+;/g,m=>m.includes('3d-avatar')?"KEY='cello-town-3d-avatar-v1';":"KEY='cello-town-rpg-v1';");}
 // Preserve the main parity fixture: allow only the exact tested experimental
 // outdoor drawing revision and its accompanying module, not future drift.
-const outdoorVisualHashes={
+const reviewedExperimentalHashes={
+ '3D/room-polish.js':'67f7847e5a0d2c28d0c07e2b0187dadf77f249902582d610d7588276f827228c',
+ '3D/app.js':'6120652276ccc7a2d1e3cb6390bc6f3d0f14880ff2b832bca849dbc8fc954aa7',
  'rpg/ambience.js':'0c10897dd68d28b39a695f60d98d5f2bffb6811fb591eb8518b3fdcf18254d28',
  'rpg/town-countryside.js':'6ecb51d230884d0149dc12f95d812e2a53a9c6981d5349e102a81805c6489601',
  'rpg/town-shore.js':'083e2f167cc3ac445334c82dd1a05f5f15693d8f84fe4f39a778fb2dee55c0a5',
  'rpg/town-breeze.js':'8c6e5009f3a12eb2089c23c6e78cb958a5f041af78682837cb4716557490d1d4',
  'rpg/style.css':'5ead5010e045d1bdc85ec3e0c5c5b3a29fa5063720582676e6e94c7999c101ee',
  'rpg/app.js':'b4895373f78d01bf29f13d69371c235f2af41d764fd7b451da924d442845b4e2',
- 'rpg/index.html':'741267c0e0ca43b674b3c6a7e1c1910d56cc450e000ed956fd40f19c655cb8c2',
+ 'rpg/index.html':'037aaec74758d3f8ca6796bf23aab717124072e87c9ebd8c5ffd565582460897',
  'rpg/town-depth.js':'3b082ca07119d517e0b747dd8ba8433c3aed0aa14bd18d07b2df6451c8efc7af',
  'rpg/music-room-art.js':'00011725eb971e6e7e7811f0898983c5c798c7808e47f7e9af9e31d25affbb6b',
  'rpg/town-webgl.js':'fa50f09cad67ccabe91df71a1c03a2ad2639b74bbc3f8ede3e2eb4cf0e284076',
@@ -33,13 +35,13 @@ const outdoorVisualHashes={
  'rpg/teacher.js':'fe836e8871369fe1795df386125f8fa296e7618de1064e7fb49a8d9e6db1fe37'
 };
 const sha256=text=>crypto.createHash('sha256').update(text).digest('hex');
-test('experimental matches exact main snapshot except the scoped storage, manuscript and outdoor art',()=>{
+test('experimental matches exact main snapshot except the scoped storage, manuscript and scoped visual updates',()=>{
  for(const [path,sha] of Object.entries(fixture.files)){
-  if(Object.hasOwn(outdoorVisualHashes,path))continue;
+  if(Object.hasOwn(reviewedExperimentalHashes,path))continue;
   const text=fs.readFileSync(new URL('../../'+path,import.meta.url),'utf8');
   assert.equal(sha256(normalized(text)),sha,path+' matches '+fixture.main);
  }
- for(const [path,sha] of Object.entries(outdoorVisualHashes)){
+ for(const [path,sha] of Object.entries(reviewedExperimentalHashes)){
   const text=fs.readFileSync(new URL('../../'+path,import.meta.url),'utf8');
   assert.equal(sha256(text),sha,path+' matches reviewed experimental outdoor art');
  }

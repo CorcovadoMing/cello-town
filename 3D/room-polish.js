@@ -130,3 +130,199 @@ export function installWestRoomDetail(T,scene){
  group.userData.wallSegment={minZ,maxZ,base:bottom,top};clock.userData.wallBackX=-2.990;clock.userData.permanent=true;plant.userData.wallBackX=-2.990;plant.userData.wallMounted=true;
  return {group,clock,wall,plant};
 }
+
+
+// Experimental: this object itself resolves a specular ray against world geometry.
+// Static triangles are world-space; avatar BVHs stay local to each animated mesh.
+export function createRoomRayMirror(T, roots, avatar, renderer, {cat=null}={}){
+ const N=1024,MAX=160,SIDE=6,TILE=96, nodes=[], triangles=[], uvs=[];
+ if(!renderer.capabilities.isWebGL2||renderer.capabilities.maxTextureSize<N)return null;
+ const excluded=new Set(),dynamic=[], tmp=new T.Vector3(), texCoord=new T.Vector2(), inv=new T.Matrix4();
+ const atlasCanvas=document.createElement('canvas');atlasCanvas.width=atlasCanvas.height=SIDE*TILE;
+ const brush=atlasCanvas.getContext('2d');
+ const tileBySource=new Map();let mappedTriangles=0, avatarMapMeshes=0,avatarMeshes=0;
+ function mapFor(mesh){
+  const map=mesh.material.map,uv=mesh.geometry.attributes.uv,im=map?.image;
+  if(!brush||!uv||!im||im.complete===false||!(im.width>0&&im.height>0)||
+     ![T.SRGBColorSpace,'',T.NoColorSpace].includes(map.colorSpace)||map.channel!==0)return null;
+  let tile=tileBySource.get(im);
+  if(tile===undefined){
+   if(tileBySource.size>=SIDE*SIDE)return null;
+   tile=tileBySource.size;
+   try{brush.drawImage(im,(tile%SIDE)*TILE,Math.floor(tile/SIDE)*TILE,TILE,TILE);}
+   catch{return null;}
+   tileBySource.set(im,tile);
+  }
+  if(map.matrixAutoUpdate)map.updateMatrix();
+  const wrap=v=>v===T.RepeatWrapping?1:v===T.MirroredRepeatWrapping?2:0;
+  return {map,uv,tile,flags:wrap(map.wrapS)+3*wrap(map.wrapT)+(map.flipY?9:0)+(map.colorSpace===T.SRGBColorSpace?18:0)};
+ }
+ const eligible=m=>m.isMesh&&!m.isInstancedMesh&&!m.isSkinnedMesh&&m.geometry?.attributes?.position&&
+  !Array.isArray(m.material)&&m.material?.color&&m.material.colorWrite!==false&&m.material.visible!==false&&
+  !m.material.transparent&&!m.material.alphaTest;
+ function raw(mesh,matrix,actor=false){
+  const g=mesh.geometry,p=g.attributes.position,i=g.index, nt=i?i.count:p.count, m=mesh.material, rgb=m.color.toArray();
+  const result=[],meta=mapFor(mesh);if(meta&&actor)avatarMapMeshes++;
+  for(let k=0;k+2<nt;k+=3){
+   const ids=[0,1,2].map(j=>i?i.getX(k+j):k+j);
+   const v=ids.map(j=>{tmp.fromBufferAttribute(p,j);if(matrix)tmp.applyMatrix4(matrix);return tmp.toArray();});
+   const uv=meta?ids.flatMap(j=>texCoord.fromBufferAttribute(meta.uv,j).applyMatrix3(meta.map.matrix).toArray()).concat(meta.tile,meta.flags):null;
+   if(uv)mappedTriangles++;
+   const min=v[0].map((_,j)=>Math.min(v[0][j],v[1][j],v[2][j])), max=v[0].map((_,j)=>Math.max(v[0][j],v[1][j],v[2][j]));
+   result.push({v,min,max,rgb,uv});
+  }
+  return result;
+ }
+ function tree(items,depth=0){
+  const lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];
+  for(const p of items)for(let k=0;k<3;k++){lo[k]=Math.min(lo[k],p.min[k]);hi[k]=Math.max(hi[k],p.max[k]);}
+  const id=nodes.length;nodes.push(null);
+  if(items.length<=6||depth>=25){
+   const start=triangles.length/12;
+   for(const p of items){
+    triangles.push(...p.v[0],p.rgb[0],...p.v[1],p.rgb[1],...p.v[2],p.rgb[2]);
+    uvs.push(...(p.uv||[0,0,0,0,0,0,-1,0]));
+   }
+   nodes[id]=[...lo,-start-1,...hi,items.length];
+  }else{
+   const spread=lo.map((x,j)=>hi[j]-x),axis=spread.indexOf(Math.max(...spread));
+   items.sort((a,b)=>a.min[axis]+a.max[axis]-b.min[axis]-b.max[axis]);
+   const mid=items.length>>1,left=tree(items.slice(0,mid),depth+1),right=tree(items.slice(mid),depth+1);
+   nodes[id]=[...lo,left,...hi,right];
+  }
+  return id;
+ }
+ function tex(values,width=N){
+  const height=Math.ceil(values.length/(width*4)),data=new Float32Array(width*height*4);data.set(values);
+  const t=new T.DataTexture(data,width,height,T.RGBAFormat,T.FloatType);t.needsUpdate=true;return t;
+ }
+ let nt,tt,uvsTex,atlas,move,root=-1,avatarSignature='',staticCount=0,enabled=true;
+ const mesh=new T.Mesh(new T.PlaneGeometry(.64,1.72),new T.MeshBasicMaterial({color:'#b8cbc4'}));
+ const actors=[avatar,...(cat?[cat]:[])],bounds=actors.map(()=>new T.Box3());
+ const low=[new T.Vector3(),new T.Vector3()],high=[new T.Vector3(),new T.Vector3()];
+ const sun=new T.Vector3(-.35,.8,-.44).normalize(),view=new T.Matrix4(),viewport=new T.Vector2(), normal=new T.Vector3(0,0,1);
+ function makeMaterial(){
+  const material=new T.ShaderMaterial({glslVersion:T.GLSL3,uniforms:{nt:{value:nt},tt:{value:tt},uvsTex:{value:uvsTex},atlas:{value:atlas},mapped:{value:1},move:{value:move},nr:{value:root},count:{value:dynamic.length},al:{value:low},ah:{value:high},ivp:{value:view},size:{value:viewport},sun:{value:sun},paneNormal:{value:normal},mirrorOn:{value:1}},
+  vertexShader:`out vec3 pane;void main(){pane=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*viewMatrix*vec4(pane,1.);}`,
+  fragmentShader:`precision highp float;
+  uniform sampler2D nt,tt,uvsTex,atlas,move;uniform int nr,count,mirrorOn,mapped;
+  uniform mat4 ivp;uniform vec2 size;uniform vec3 sun,paneNormal,al[2],ah[2];
+  in vec3 pane;out vec4 outColor;
+  #define gl_FragColor outColor
+  float best=100.;vec3 shade=vec3(.40,.49,.47);int iterations=0, winning=-1;vec2 bary;
+  vec4 get(sampler2D t,int i){return texelFetch(t,ivec2(i%1024,i/1024),0);}
+  float bb(vec3 o,vec3 inv,vec3 l,vec3 h){
+   vec3 a=(l-o)*inv,b=(h-o)*inv,n=min(a,b),f=max(a,b);
+   float d=max(n.x,max(n.y,n.z)),e=min(f.x,min(f.y,f.z));
+   return e>=max(d,.0)&&d<best?max(d,0.):1e9;
+  }
+  void trace(int start,vec3 o,vec3 d,mat3 normalMap){
+   vec3 inv=1./mix(d,vec3(1e-8),lessThan(abs(d),vec3(1e-8)));
+   int stack[28];int top=0;stack[0]=start;
+   for(int k=0;k<256;k++){
+    if(top<0||iterations>=512)break;iterations++;
+    int i=stack[top--];vec4 a=get(nt,i*2),b=get(nt,i*2+1);
+    if(bb(o,inv,a.xyz-vec3(.00001),b.xyz+vec3(.00001))>best)continue;
+    if(a.w<0.){
+     int first=int(-a.w)-1;
+     for(int j=0;j<6;j++){
+      if(j>=int(b.w))break;
+      int n=(first+j)*3;vec4 v=get(tt,n),u=get(tt,n+1),w=get(tt,n+2);
+      vec3 e=u.xyz-v.xyz,f=w.xyz-v.xyz,p=cross(d,f);float det=dot(e,p);
+      if(abs(det)<1e-8)continue;
+      vec3 t=o-v.xyz;float a=dot(t,p)/det;if(a<0.||a>1.)continue;
+      vec3 q=cross(t,e);float b=dot(d,q)/det;if(b<0.||a+b>1.)continue;
+      float hit=dot(f,q)/det;if(hit<=.0002||hit>=best)continue;
+      vec3 norm=normalize(normalMap*cross(e,f));if(det<0.)norm=-norm;
+      best=hit;winning=first+j;bary=vec2(a,b);shade=vec3(v.w,u.w,w.w)*(.68+.32*max(dot(norm,sun),0.));
+     }
+    }else{
+     int l=int(a.w),r=int(b.w);vec4 ll=get(nt,l*2),lu=get(nt,l*2+1),rl=get(nt,r*2),ru=get(nt,r*2+1);
+     float dl=bb(o,inv,ll.xyz-vec3(.00001),lu.xyz+vec3(.00001)),dr=bb(o,inv,rl.xyz-vec3(.00001),ru.xyz+vec3(.00001));
+     if(top>=24)continue;
+     if(dl<dr){if(dr<best)stack[++top]=r;if(dl<best)stack[++top]=l;}
+     else{if(dl<best)stack[++top]=l;if(dr<best)stack[++top]=r;}
+    }
+   }
+  }
+  float wrapUv(float v,int mode){
+   if(mode==1)return fract(v);
+   if(mode==2)return 1.-abs(mod(v,2.)-1.);
+   return clamp(v,0.,1.);
+  }
+  vec3 linearSwatch(vec3 c){return mix(c/12.92,pow((max(c,vec3(.04045))+.055)/1.055,vec3(2.4)),greaterThan(c,vec3(.04045)));}
+  void main(){
+   if(mirrorOn==1){
+    vec2 xy=gl_FragCoord.xy/size*2.-1.;
+    vec4 a=ivp*vec4(xy,-1.,1.), b=ivp*vec4(xy,1.,1.);
+    vec3 n=normalize(paneNormal), incoming=normalize(b.xyz/b.w-a.xyz/a.w);
+    vec3 d=reflect(incoming,n),o=pane+d*.0003;
+    if(nr>=0)trace(nr,o,d,mat3(1.));
+    vec3 invD=1./mix(d,vec3(1e-8),lessThan(abs(d),vec3(1e-8)));
+    bool seesA=bb(o,invD,al[0]-vec3(.00001),ah[0]+vec3(.00001))<best;
+    bool seesC=bb(o,invD,al[1]-vec3(.00001),ah[1]+vec3(.00001))<best;
+    for(int i=0;i<${MAX};i++){
+     if(i>=count||iterations>=512)break;int k=i*5;vec4 m=get(move,k+4);if(m.x<0.||(m.y<.5?!seesA:!seesC))continue;
+     mat4 im=mat4(get(move,k),get(move,k+1),get(move,k+2),get(move,k+3));
+     trace(int(m.x),(im*vec4(o,1.)).xyz,(im*vec4(d,0.)).xyz,transpose(mat3(im)));
+    }
+   }
+   if(winning>=0&&mapped==1){
+    vec4 a=get(uvsTex,winning*2),b=get(uvsTex,winning*2+1);
+    if(b.z>=0.){
+     vec2 uv=a.xy*(1.-bary.x-bary.y)+a.zw*bary.x+b.xy*bary.y;
+     int flags=int(b.w),tile=int(b.z),ww=flags%9;
+     uv=vec2(wrapUv(uv.x,ww%3),wrapUv(uv.y,ww/3));
+     if(flags%18>=9)uv.y=1.-uv.y;
+     vec2 grid=vec2(float(tile%6),float(tile/6));
+     vec3 swatch=texture(atlas,(grid*96.+.5+uv*95.)/576.).rgb;
+     shade*=flags>=18?linearSwatch(swatch):swatch;
+    }
+   }
+   gl_FragColor=vec4(mix(shade,vec3(.54,.61,.60),.055),1.);
+   #include <tonemapping_fragment>
+   #include <colorspace_fragment>
+  }`});return material;
+ }
+ function prepare(){
+  nodes.length=triangles.length=uvs.length=dynamic.length=0;
+  mappedTriangles=avatarMapMeshes=0;tileBySource.clear();brush?.clearRect(0,0,atlasCanvas.width,atlasCanvas.height);
+  const plain=[];roots.forEach(root=>{if(excluded.has(root))return;root.updateWorldMatrix(true,true);root.traverseVisible(m=>{if(eligible(m))for(const p of raw(m,m.matrixWorld))plain.push(p);});});
+  staticCount=plain.length;root=plain.length?tree(plain):-1;
+  avatarMeshes=0;
+  actors.forEach((actor,group)=>actor.traverse(m=>{if(eligible(m)&&dynamic.length<MAX){
+   const v=raw(m,null,group===0);if(v.length){dynamic.push({m,group,index:tree(v)});if(group===0)avatarMeshes++;}
+  }}));
+  avatarSignature=actors.map(o=>o.children.map(x=>x.id).join(',')).join(';');
+  if(nodes.length*2>N*renderer.capabilities.maxTextureSize||triangles.length/4>N*renderer.capabilities.maxTextureSize)return false;
+  nt?.dispose();tt?.dispose();move?.dispose();uvsTex?.dispose();atlas?.dispose();
+  nt=tex(nodes.flat());tt=tex(triangles);uvsTex=tex(uvs);move=tex(new Float32Array(MAX*5*4));
+  atlas=new T.CanvasTexture(atlasCanvas);atlas.flipY=false;atlas.generateMipmaps=false;
+  atlas.minFilter=atlas.magFilter=T.LinearFilter;atlas.needsUpdate=true;
+  const old=mesh.material;mesh.material=makeMaterial();old.dispose();return true;
+ }
+ function update(){
+  if(!enabled||mesh.material.uniforms?.mirrorOn.value===0)return;
+  // Shared geometry textures are built once except when the player changes outfit.
+  if(avatarSignature!==actors.map(o=>o.children.map(x=>x.id).join(',')).join(';')&&!prepare()){enabled=false;return;}
+  const u=mesh.material.uniforms;if(!u)return;
+  {
+   view.multiplyMatrices(camera.matrixWorld,camera.projectionMatrixInverse);renderer.getDrawingBufferSize(viewport);
+   normal.set(0,0,1).transformDirection(mesh.matrixWorld);
+  }
+  for(let i=0;i<actors.length;i++){
+   bounds[i].setFromObject(actors[i]);low[i].copy(bounds[i].min);high[i].copy(bounds[i].max);
+  }
+  for(let i=0;i<dynamic.length;i++){
+   const entry=dynamic[i],index=i*20;let vis=true;
+   for(let o=entry.m;o;o=o.parent){if(!o.visible){vis=false;break;}if(o===actors[entry.group])break;}
+   inv.copy(entry.m.matrixWorld).invert();move.image.data.set(inv.elements,index);move.image.data[index+16]=vis?entry.index:-1;move.image.data[index+17]=entry.group;
+  }
+  move.needsUpdate=true;
+ }
+ let camera;
+ mesh.onBeforeRender=(r,s,c)=>{camera=c;update();};mesh.castShadow=false;mesh.receiveShadow=false;mesh.name='physical-full-length-test-mirror';mesh.raycast=()=>{};
+ if(!prepare())return null;
+ return {mesh,stats:()=>({staticCount,total:triangles.length/12,branches:nodes.length,avatarMeshes,catMeshes:dynamic.length-avatarMeshes,atlasTiles:tileBySource.size,mappedTriangles,avatarMapMeshes}),
+  swatches(v){mesh.material.uniforms.mapped.value=v?1:0;},enabled(v){mesh.material.uniforms.mirrorOn.value=v?1:0;},includeRoot(o,v){if(v)excluded.delete(o);else excluded.add(o);prepare();},dispose(){nt.dispose();tt.dispose();move.dispose();uvsTex.dispose();atlas.dispose();mesh.material.dispose();mesh.geometry.dispose();}};
+}

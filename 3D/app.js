@@ -1,5 +1,5 @@
 import {createWindowLandscape} from './window-landscape.js?v=exp3';
-import {decoratePerformanceRoom,installWestRoomDetail} from './room-polish.js?v=exp3';
+import {decoratePerformanceRoom,installWestRoomDetail,createRoomRayMirror} from './room-polish.js?v=exp3-mirror26';
 import * as T from './vendor/three.module.js';
 import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=exp3';
 const $=id=>document.getElementById(id),area=$('scene'),status=$('save-status');let state=defaults();try{state=normalize(JSON.parse(localStorage.getItem(KEY)));}catch{status.textContent='無法讀取本機設定，仍可自由試穿。';}
@@ -8,7 +8,7 @@ const HAIR_ACCESSORY={bow:'#c88f83',beret:'#718f83',tie:'#d9b77d'};
 const labels={faceShape:'臉型',face:'神情',hair:'髮型',skin:'膚色',hairColor:'髮色',outfit:'衣服',upper:'上身',lower:'下身',shoes:'鞋子',lowerColor:'下身顏色',color:'上身顏色',hat:'頭飾',accessory:'小配件'},colorNames={skin:['奶油蜜桃','溫暖杏色','焦糖棕','可可棕'],hairColor:['栗子棕','蜂蜜金','午夜黑','紅茶棕'],color:['森林綠','珊瑚粉','丁香紫','暖陽黃'],lowerColor:['森林綠','珊瑚粉','丁香紫','暖陽黃','鼠尾草灰','燕麥棕','暖石灰','奶油米']};
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));status.textContent='穿搭已自動保存在這個瀏覽器。';}catch{status.textContent='這次穿搭尚未儲存；瀏覽器不允許本機儲存。';}}
 const categories=[['faceShape','skin'],['face'],['hair','hairColor'],['upper','color'],['lower','lowerColor'],['shoes'],['hat'],['accessory']];
-let celloPerformance=null;
+let celloPerformance=null,rayMirrorFrame=null;
 let activeCategory=0,previewMode=null,previewYaw=0,roomSnapshot=null;
 const visibleCategories=()=>previewMode==='wardrobe'?[3,4,5,6,7]:[0,1,2];
 // Original flat silhouettes: only the room avatar uses the 3D renderer.
@@ -704,7 +704,7 @@ const pinContact=new T.Group();pinContact.name='cello-endpin-contact';pinContact
 if(!software){const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d'),fade=g.createRadialGradient(16,16,0,16,16,16);fade.addColorStop(0,'rgba(63,61,50,.42)');fade.addColorStop(.28,'rgba(63,61,50,.25)');fade.addColorStop(1,'rgba(63,61,50,0)');g.fillStyle=fade;g.fillRect(0,0,32,32);const map=new T.CanvasTexture(c),o=new T.Mesh(new T.PlaneGeometry(.072,.072),new T.MeshBasicMaterial({map,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1}));o.rotation.x=-Math.PI/2;o.raycast=()=>{};pinContact.add(o);}else{for(const[r,opacity]of[[.028,.06],[.013,.12]]){const o=new T.Mesh(new T.CircleGeometry(r,16),new T.MeshBasicMaterial({color:'#565349',transparent:true,opacity,depthWrite:false}));o.rotation.x=-Math.PI/2;o.raycast=()=>{};pinContact.add(o);}}
 
 
-function plant(x,z,variant=0){const start=scene.children.length;const pot=variant?'#ba927e':'#c7b49a';cylinder(x,.27,z,variant?.20:.24,variant?.16:.18,.48,pot);cylinder(x,.51,z,variant?.205:.245,variant?.205:.245,.035,pot);cylinder(x,.53,z,.18,.18,.012,'#776c4d');for(let n=0;n<(variant?8:6);n++){const a=n*2.4,r=variant?.19:.23,y=variant?.84+(n%3)*.13:.78+(n%2)*.10;rod([x,.53,z],[x+Math.cos(a)*r,y,z+Math.sin(a)*r],.012,'#7d946e');const leaf=ball(x+Math.cos(a)*r,y,z+Math.sin(a)*r,variant?.085:.14,variant?.27:.24,.065,n%2?'#839d75':'#a1b58b');leaf.rotation.z=Math.cos(a)*(variant?.5:.7);leaf.rotation.y=-a;}const group=new T.Group();group.position.set(x,0,z);for(const o of scene.children.slice(start)){o.position.x-=x;o.position.z-=z;group.add(o);}scene.add(group);return group;}plant(2.5,.65);const westFloorPlant=plant(-2.6,1.3,1);westFloorPlant.name='west-floor-plant';
+function plant(x,z,variant=0){const start=scene.children.length;const pot=variant?'#ba927e':'#c7b49a';cylinder(x,.27,z,variant?.20:.24,variant?.16:.18,.48,pot);cylinder(x,.51,z,variant?.205:.245,variant?.205:.245,.035,pot);cylinder(x,.53,z,.18,.18,.012,'#776c4d');for(let n=0;n<(variant?8:6);n++){const a=n*2.4,r=variant?.19:.23,y=variant?.84+(n%3)*.13:.78+(n%2)*.10;rod([x,.53,z],[x+Math.cos(a)*r,y,z+Math.sin(a)*r],.012,'#7d946e');const leaf=ball(x+Math.cos(a)*r,y,z+Math.sin(a)*r,variant?.085:.14,variant?.27:.24,.065,n%2?'#839d75':'#a1b58b');leaf.rotation.z=Math.cos(a)*(variant?.5:.7);leaf.rotation.y=-a;}const group=new T.Group();group.position.set(x,0,z);for(const o of scene.children.slice(start)){o.position.x-=x;o.position.z-=z;group.add(o);}scene.add(group);return group;}const eastFloorPlant=plant(2.5,.65);const westFloorPlant=plant(-2.6,1.3,1);westFloorPlant.name='west-floor-plant';
 // BEGIN SIDE TABLE MANUSCRIPT
 // A low wood table replaces the two decorative towels at the same room edge.
 const scoreTable=new T.Group();scoreTable.name='score-side-table';
@@ -1461,7 +1461,9 @@ function renderPerformanceView(t){
   livingLandscape.tick(t*.001,reduced.matches);for(const c of livingLandscape.clouds)c.material.uniforms.opacity.value*=amount;
  }
  realRoomPolish?.updatePresentation?.(performanceLens);
- renderer.render(scene,camera);
+ const mirrorWasVisible=rayMirrorFrame?.visible;
+ if(rayMirrorFrame)rayMirrorFrame.visible=false;
+ try{renderer.render(scene,camera);}finally{if(rayMirrorFrame)rayMirrorFrame.visible=mirrorWasVisible;}
 }
 
 const performanceKeys=new Set(),performancePointers=new Set();
@@ -1628,7 +1630,37 @@ if(!software){
 }
  // END INTERIOR SURFACE FINISH
 const realRoomPolish=software?null:decoratePerformanceRoom(T,scene);const realStool=performanceParts().stool;realStool.position.set(STOOL_CENTER.x,0,STOOL_CENTER.z);realStool.rotation.y=PERFORMANCE_YAW;realStool.scale.y=.455/.375;realStool.visible=true;
+// Opt-in full-length mirror. The vanity and other room controls stay available.
 requestAnimationFrame(frame);
+if(!software&&new URLSearchParams(location.search).get('raymirror')==='1')requestAnimationFrame(()=>setTimeout(()=>{
+ const oldGlass=[mirrorBase,mirrorStem,mirrorBack,mirrorGlass,mirrorHint].filter(Boolean);
+ let frame=null,reflected=null;const originalPlant=eastFloorPlant.position.clone();
+ try{
+  // Actual meshes; exclude animated avatar, target markers and cutaway proxies.
+  eastFloorPlant.position.set(2.80,0,1.64);
+ for(const glass of oldGlass)glass.visible=false;
+ const roots=scene.children.filter(o=>o!==avatar&&o!==targetMarker&&o!==doorCutaway&&o!==roomCat.group);
+ reflected=createRoomRayMirror(T,roots,avatar,renderer,{cat:roomCat.group});
+ if(!reflected)throw new Error('mirror unavailable');
+  frame=new T.Group();frame.name='full-length-ray-mirror-frame';frame.position.set(2.64,1.01,-.44);frame.rotation.set(-.32,-.36,0);scene.add(frame);
+  for(const side of [-1,1]){box(side*.425,0,0,.040,1.99,.062,'#9e7755',frame);box(0,side*.975,0,.872,.041,.062,'#b99163',frame);}
+  for(const side of [-1,1])box(side*.407,0,.032,.007,1.90,.006,'#d2b076',frame);
+  // Low rear splay keeps this freestanding frame physically supported.
+  for(const side of [-1,1]){rod([side*.359,-.13,-.022],[side*.359,-.985,-.24],.018,'#9e7755',frame);box(side*.359,-.981,-.116,.067,.034,.285,'#896446',frame);}
+  frame.traverse(o=>{o.raycast=()=>{};});
+  reflected.mesh.scale.set(1.275,1.13,1);reflected.mesh.position.z=.035;frame.add(reflected.mesh);
+  // Compile synchronously so a rejected shader restores the original fixture.
+  let shaderRejected=false;
+  const originalShaderError=renderer.debug.onShaderError;
+  renderer.debug.onShaderError=(...args)=>{shaderRejected=true;originalShaderError?.(...args);};
+  try{renderer.compile(reflected.mesh,camera,scene);renderer.properties.get(reflected.mesh.material).currentProgram?.getUniforms();}finally{renderer.debug.onShaderError=originalShaderError;}
+  if(shaderRejected)throw new Error('mirror shader unavailable');
+  rayMirrorFrame=frame;
+ }catch{
+  eastFloorPlant.position.copy(originalPlant);frame?.removeFromParent();reflected?.dispose();
+  for(const glass of oldGlass)glass.visible=true;
+ }
+},0));
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();release();$('scene-status').textContent='3D 畫面暫停，請重新整理恢復。';status.textContent='3D 顯示中斷，穿搭設定仍保留。請重新整理。';});
 
 // Warm only fetched bytes after the room is usable. Never execute town code/audio
