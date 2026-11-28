@@ -1,8 +1,8 @@
-import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,createTownFramePacer,makeTownWebGL} from './town-webgl.js?v=valley-035';
+import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,createTownFramePacer,makeTownWebGL} from './town-webgl.js?v=greens-036';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';
-import {createTerrainArt} from './terrain-art.js?v=32';
+import {createTerrainArt} from './terrain-art.js?v=greens-036';
 import {createRainSystem} from './rain-system.js?v=36';
 import {treeRainCanopies,umbrellaPose} from './rain-geometry.js?v=35';
 import {MUSIC_ROOM,MUSIC_ROOM_DOOR,musicRoomHouseHit,roomBlocks,drawMusicRoom,musicRoomRainCanopy} from './music-room-art.js?v=house-pick';
@@ -20,7 +20,7 @@ import {resumeFromTap,requestPlaybackSession,clockStalled} from './audio-start.j
 import {demoEnvelope,applyDemoEnvelope,stopVoices} from './audio-envelope.js?v=23';
 import {installPullToRefreshGuard} from './scroll-guard.js?v=23';
 import {foliageWind,fishVariants,drawPondLife,drawGardenLife,drawGardenCat,drawGardenVisitor,drawTownWeather,drawBenchLife,drawRainFrame,createRainPets,createPetTrunkBlocker,drawRainDog,drawRainBenchCat,drawPetPondContact} from './ambience.js?v=gait-033';
-import {gardenScene,gardenPlants,townPlantPosition,drawPreparedSoil,weatherAt} from './garden.js?v=32';
+import {gardenScene,gardenPlants,townPlantPosition,drawPreparedSoil,weatherAt} from './garden.js?v=greens-036';
 import {DEV_TOOLS} from './config.js?v=23';
 import {fresh,normalize,accept,complete,turnIn,again,NOTES,questView,resetRound,clearStoredRecords,FLOWERS,collection,bloomCount,addElapsed,formatElapsed,historyDuration,completeRoundForTest} from './model.js?v=23';
 installPullToRefreshGuard();

@@ -2,9 +2,9 @@ import {GARDEN_SOIL,GARDEN_ROWS,ROW_SECTION,rowPoint} from './town-bed.js?v=1';
 import {makeGroundRain} from './town-ground-rain.js?v=1';
 import {makeVerge} from './town-verge.js?v=1';
 import {makeCountryside} from './town-countryside.js?v=4';
-import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=open-southwest-2';
-import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=valley-sky-4';
-import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './town-orchard.js?v=9';
+import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=greens-036';
+import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=greens-036';
+import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './town-orchard.js?v=greens-036';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
