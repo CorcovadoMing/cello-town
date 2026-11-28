@@ -108,7 +108,7 @@ const CAT_BACK_REST=[
 // through the same tiny time-based foot wiggle used for a leisurely stroll.
 export function petGaitCycle(speed=58){const u=Math.max(0,Math.min(1,(speed-37)/21));return 12+12*u*u*(3-2*u);}
 export function advancePetGait(p,distance,speed=58){p.gaitPhase=((p.gaitPhase||0)+distance/petGaitCycle(speed)*Math.PI*2)%(Math.PI*2);return p.gaitPhase;}
-export function articulatePaws(pixels,{h,vertical,phase,fur='O',shade='S',anchors=[6,9,19,22]}){
+export function articulatePaws(pixels,{h,vertical,phase,fur='O',shade='S',anchors=[6,9,19,22],sideForward=1}){
  const top=h-5;
  for(const id of [...pixels.keys()])if(Number(id.split(',')[1])>=top)pixels.delete(id);
  // Diagonal pairs: rear-near + front-far, then rear-far + front-near.
@@ -118,7 +118,8 @@ export function articulatePaws(pixels,{h,vertical,phase,fur='O',shade='S',anchor
   // Paw is planted for half a cycle, travels backward relative to the body,
   // then lifts and swings forward. Hip stays attached to the same silhouette.
   const swing=t<.5?1-4*t:-1+4*(t-.5),lift=t<.5?0:Math.sin((t-.5)*Math.PI*2)*2;
-  const dx=vertical?0:Math.round(swing*2),end=h-1-(leg.far?1:0)-Math.round(lift)+(vertical?Math.round(swing):0);
+  // The horizontal dog atlas faces left; the horizontal cat atlas faces right.
+  const dx=vertical?0:Math.round(swing*2)*sideForward,end=h-1-(leg.far?1:0)-Math.round(lift)+(vertical?Math.round(swing):0);
   for(let y=top;y<=end;y++){const x=leg.x+Math.round(dx*(y-top)/Math.max(1,end-top));for(let k=0;k<2;k++)pixels.set((x+k)+','+y,y===end?'L':leg.far?shade:fur);}
  }
 }
@@ -531,7 +532,7 @@ export function dogPosePixels(facing='left',moving=false,stride=0,alert=false,ga
  // Tail attaches at the rump, independent of paw motion.
  const tail=vertical?[[12,13],[13,12],[14,11],[15,10],[15,9]]:[[30,9],[31,9],[32,8],[33,7],[33,6],[32,5]];
  for(const[x,y]of tail)pixels.set(x+','+y,'C');
- if(moving)articulatePaws(pixels,{h,vertical,phase:gaitPhase??(stride>0?1:4),fur:'C',shade:'D',anchors:[8,10,23,25]});
+ if(moving)articulatePaws(pixels,{h,vertical,phase:gaitPhase??(stride>0?1:4),fur:'C',shade:'D',anchors:[8,10,23,25],sideForward:-1});
  if(alert&&vertical){for(let y=12;y<h-1;y++){pixels.set('4,'+y,'C');pixels.set('12,'+y,'C');}pixels.set('4,'+(h-1),'L');pixels.set('12,'+(h-1),'L');}
  return {pixels,w,h,vertical};
 }

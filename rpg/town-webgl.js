@@ -5,7 +5,7 @@ import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './to
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
-import {drawWetSoil} from './wet-soil.js?v=exp5';
+import {drawWetSoil} from './wet-soil.js?v=gait-033';
 
 // Keep phase on high-refresh displays without repeatedly rounding from the
 // last paint. Allow jitter on a 60 Hz display; never queue a catch-up paint.
