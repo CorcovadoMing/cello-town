@@ -8,5 +8,5 @@ test('Town page offers its own anonymous form as a no-referrer footer link, not 
   assert.match(footer,/<a href="https:\/\/docs\.google\.com\/forms\/d\/e\/1FAIpQLScfHc3fqJL5cJjAi_-kuzQPDHVyWZdy9GsMT2fhNXkyHx7oNA\/viewform" referrerpolicy="no-referrer">匿名意見回饋（不需登入）<\/a>/);
   assert.doesNotMatch(html,/<(?:form|iframe)\b/i);
   assert.equal((html.match(/docs\.google\.com\/forms/g)||[]).length,1);
-  assert.match(html,/aria-label="版本 20261128-037">20261128-037<\/span>/);
+  assert.match(html,/aria-label="版本 20261129-038">20261129-038<\/span>/);
 });

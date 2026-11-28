@@ -24,7 +24,7 @@ test('hand-placed seams, plants and metal fittings preserve paths, entries and g
  const renderer=fs.readFileSync(new URL('../town-webgl.js',import.meta.url),'utf8');
  assert.match(renderer,/eaveDrops.visible=weather==='rain'/);
  assert.match(renderer,/updateEaveDrops\(weather,motion\?now:0\);\s*updateWetLayers\(moisture\)/);
- assert.match(renderer,/paintedWater.update\(now,weather,lamp,motion\)/);
+ assert.match(renderer,/paintedWater.update\(now,weather,lamp,motion,close,clock,pondX,pondZ\)/);
  assert.match(renderer,/swayCrowns\(clock,weather,motion\)/);
  assert.match(renderer,/mesh|new T.MeshLambertMaterial/);
 });

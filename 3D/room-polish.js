@@ -134,7 +134,7 @@ export function installWestRoomDetail(T,scene){
 
 // Experimental: this object itself resolves a specular ray against world geometry.
 // Static triangles are world-space; avatar BVHs stay local to each animated mesh.
-export function createRoomRayMirror(T, roots, avatar, renderer, {cat=null}={}){
+export function createRoomRayMirror(T, roots, avatar, renderer, {cat=null,light=null}={}){
  const N=1024,MAX=160,SIDE=6,TILE=96, nodes=[], triangles=[], uvs=[];
  if(!renderer.capabilities.isWebGL2||renderer.capabilities.maxTextureSize<N)return null;
  const excluded=new Set(),dynamic=[], tmp=new T.Vector3(), texCoord=new T.Vector2(), inv=new T.Matrix4();
@@ -200,13 +200,15 @@ export function createRoomRayMirror(T, roots, avatar, renderer, {cat=null}={}){
  const mesh=new T.Mesh(new T.PlaneGeometry(.64,1.72),new T.MeshBasicMaterial({color:'#b8cbc4'}));
  const actors=[avatar,...(cat?[cat]:[])],bounds=actors.map(()=>new T.Box3());
  const low=[new T.Vector3(),new T.Vector3()],high=[new T.Vector3(),new T.Vector3()];
- const sun=new T.Vector3(-.35,.8,-.44).normalize(),view=new T.Matrix4(),viewport=new T.Vector2(), normal=new T.Vector3(0,0,1);
+ const sun=new T.Vector3(-.35,.8,-.44).normalize(),lightTarget=new T.Vector3(),tint=new T.Color(1,1,1);
+ const roomLightStrength={value:1};
+ const view=new T.Matrix4(),viewport=new T.Vector2(), normal=new T.Vector3(0,0,1);
  function makeMaterial(){
-  const material=new T.ShaderMaterial({glslVersion:T.GLSL3,uniforms:{nt:{value:nt},tt:{value:tt},uvsTex:{value:uvsTex},atlas:{value:atlas},mapped:{value:1},move:{value:move},nr:{value:root},count:{value:dynamic.length},al:{value:low},ah:{value:high},ivp:{value:view},size:{value:viewport},sun:{value:sun},paneNormal:{value:normal},mirrorOn:{value:1}},
+  const material=new T.ShaderMaterial({glslVersion:T.GLSL3,uniforms:{nt:{value:nt},tt:{value:tt},uvsTex:{value:uvsTex},atlas:{value:atlas},mapped:{value:1},move:{value:move},nr:{value:root},count:{value:dynamic.length},al:{value:low},ah:{value:high},ivp:{value:view},size:{value:viewport},sun:{value:sun},roomLightTint:{value:tint},roomLightStrength,paneNormal:{value:normal},mirrorOn:{value:1}},
   vertexShader:`out vec3 pane;void main(){pane=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*viewMatrix*vec4(pane,1.);}`,
   fragmentShader:`precision highp float;
   uniform sampler2D nt,tt,uvsTex,atlas,move;uniform int nr,count,mirrorOn,mapped;
-  uniform mat4 ivp;uniform vec2 size;uniform vec3 sun,paneNormal,al[2],ah[2];
+  uniform mat4 ivp;uniform vec2 size;uniform vec3 sun,paneNormal,al[2],ah[2],roomLightTint;uniform float roomLightStrength;
   in vec3 pane;out vec4 outColor;
   #define gl_FragColor outColor
   float best=100.;vec3 shade=vec3(.40,.49,.47);int iterations=0, winning=-1;vec2 bary;
@@ -234,7 +236,7 @@ export function createRoomRayMirror(T, roots, avatar, renderer, {cat=null}={}){
       vec3 q=cross(t,e);float b=dot(d,q)/det;if(b<0.||a+b>1.)continue;
       float hit=dot(f,q)/det;if(hit<=.0002||hit>=best)continue;
       vec3 norm=normalize(normalMap*cross(e,f));if(det<0.)norm=-norm;
-      best=hit;winning=first+j;bary=vec2(a,b);shade=vec3(v.w,u.w,w.w)*(.68+.32*max(dot(norm,sun),0.));
+      best=hit;winning=first+j;bary=vec2(a,b);shade=vec3(v.w,u.w,w.w)*(mix(.51,.68,roomLightStrength)+.32*roomLightStrength*max(dot(norm,sun),0.));
      }
     }else{
      int l=int(a.w),r=int(b.w);vec4 ll=get(nt,l*2),lu=get(nt,l*2+1),rl=get(nt,r*2),ru=get(nt,r*2+1);
@@ -279,7 +281,7 @@ export function createRoomRayMirror(T, roots, avatar, renderer, {cat=null}={}){
      shade*=flags>=18?linearSwatch(swatch):swatch;
     }
    }
-   gl_FragColor=vec4(mix(shade,vec3(.54,.61,.60),.055),1.);
+   gl_FragColor=vec4(mix(shade*roomLightTint,vec3(.54,.61,.60),.055),1.);
    #include <tonemapping_fragment>
    #include <colorspace_fragment>
   }`});return material;
@@ -306,6 +308,11 @@ export function createRoomRayMirror(T, roots, avatar, renderer, {cat=null}={}){
   // Shared geometry textures are built once except when the player changes outfit.
   if(avatarSignature!==actors.map(o=>o.children.map(x=>x.id).join(',')).join(';')&&!prepare()){enabled=false;return;}
   const u=mesh.material.uniforms;if(!u)return;
+  if(light?.isDirectionalLight){
+   light.getWorldPosition(sun).sub(light.target.getWorldPosition(lightTarget)).normalize();
+   roomLightStrength.value=Math.max(.4,Math.min(1,light.intensity/2.88));
+   tint.setRGB(.7+.3*light.color.r,.7+.3*light.color.g,.7+.3*light.color.b);
+  }
   {
    view.multiplyMatrices(camera.matrixWorld,camera.projectionMatrixInverse);renderer.getDrawingBufferSize(viewport);
    normal.set(0,0,1).transformDirection(mesh.matrixWorld);
@@ -325,4 +332,75 @@ export function createRoomRayMirror(T, roots, avatar, renderer, {cat=null}={}){
  if(!prepare())return null;
  return {mesh,stats:()=>({staticCount,total:triangles.length/12,branches:nodes.length,avatarMeshes,catMeshes:dynamic.length-avatarMeshes,atlasTiles:tileBySource.size,mappedTriangles,avatarMapMeshes}),
   swatches(v){mesh.material.uniforms.mapped.value=v?1:0;},enabled(v){mesh.material.uniforms.mirrorOn.value=v?1:0;},includeRoot(o,v){if(v)excluded.delete(o);else excluded.add(o);prepare();},dispose(){nt.dispose();tt.dispose();move.dispose();uvsTex.dispose();atlas.dispose();mesh.material.dispose();mesh.geometry.dispose();}};
+}
+
+// Static, bounded light transport from the room's actual arched opening.
+// Rays carry only light energy: geometry, visibility and floor navigation are unchanged.
+export function traceRoomDaylight(T,{scene,opening,aperture,mullions,receivers}){
+ const start=performance.now(),weatherMix={value:0};
+ const N=72,origin=opening.getWorldPosition(new T.Vector3());
+ const source=[[.42,.65],[.36,.61],[.48,.69],[.39,.69],[.46,.60]];
+ const windowZ=origin.z+.109,xy=new T.Vector3(),direction=new T.Vector3(),raycaster=new T.Raycaster(),hits=[];
+ const total={primary:0,through:0,bounce:0,bounced:0};
+ scene.updateMatrixWorld(true);
+ const fits=(x,y)=>y>=.10&&Math.abs(x)<aperture.half&&x*x+Math.max(0,y-aperture.spring)**2<aperture.half**2;
+ function transmits(x,y,z,dx,dy){
+  const depth=z-windowZ,u=x-depth*dx-origin.x,v=y+depth*dy-origin.y;
+  if(!fits(u,v))return 0;
+  xy.set(x,y,z);
+  raycaster.set(xy,direction.set(-dx,dy,-1).normalize());raycaster.near=.002;raycaster.far=Math.hypot(depth,depth*dx,depth*dy)+.018;
+  hits.length=0;raycaster.intersectObjects(mullions,false,hits);
+  return hits.length?0:1;
+ }
+ const floor=new Float32Array(N*N),bounces=[];
+ for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+  const x=-3+(i+.5)*6/N,z=-2.33+(j+.5)*4.66/N;
+  if(z<windowZ)continue;
+  let v=0;
+  for(const [dx,dy] of source){total.primary++; v+=transmits(x,.020,z,dx,dy);}
+  total.through+=v;floor[i+j*N]=v/source.length;
+  if(v>=3&&(i%9===4)&&(j%9===4))bounces.push([x,z,v/source.length]);
+ }
+ // A sparse Lambertian bounce off the directly lit floor. Each of those
+ // patches contributes toward the plaster facing the room; mullions block
+ // any source ray but no moving-door, player, or cloth shadow is baked in.
+ function plaster(x,y,z){
+  let q=0;
+  for(const [sx,sz,strength] of bounces){
+   const a=sx-x,b=y-.020,c=sz-z,r2=a*a+b*b+c*c+.12;
+   const facing=z<-2.23?Math.max(0,c):Math.max(0,a);
+   total.bounce++;
+   if(facing<=0||b<=0)continue;
+   q+=strength*b*facing/(r2*r2)*.40;total.bounced++;
+  }
+  return Math.min(1,q);
+ }
+ function bake(key){
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=N;
+  const ctx=canvas.getContext('2d'),pixels=ctx.createImageData(N,N);
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+   const at=(i+j*N)*4,x=-3+(i+.5)*6/N,y=(j+.5)*3.12/N,z=-2.33+(i+.5)*4.66/N;
+   const energy=key==='floor'?floor[i+j*N]:key==='rear'?plaster(x,y,-2.23):plaster(-2.99,y,z);
+   pixels.data[at]=pixels.data[at+1]=pixels.data[at+2]=Math.round(255*energy);pixels.data[at+3]=255;
+  }
+  ctx.putImageData(pixels,0,0);
+  const tex=new T.CanvasTexture(canvas);tex.flipY=false;tex.generateMipmaps=false;
+  tex.minFilter=tex.magFilter=T.LinearFilter;return tex;
+ }
+ const maps={floor:bake('floor'),rear:bake('rear'),side:bake('side')};
+ for(const [mesh,key] of receivers){
+  const material=mesh.material;
+  const uv=key==='floor'?'vec2((windowWorld.x+3.)/6.,(windowWorld.z+2.33)/4.66)':
+   key==='rear'?'vec2((windowWorld.x+3.)/6.,windowWorld.y/3.12)':'vec2((windowWorld.z+2.33)/4.66,windowWorld.y/3.12)';
+  const original=material.onBeforeCompile;
+  material.onBeforeCompile=function(shader,renderer){
+   original.call(this,shader,renderer);shader.uniforms.roomWindowLight={value:maps[key]};shader.uniforms.roomRainMix=weatherMix;
+   shader.vertexShader='varying vec3 windowWorld;\n'+shader.vertexShader.replace('#include <project_vertex>',
+    '#include <project_vertex>\nwindowWorld=(modelMatrix*vec4(transformed,1.)).xyz;');
+   shader.fragmentShader='uniform sampler2D roomWindowLight; uniform float roomRainMix; varying vec3 windowWorld;\n'+shader.fragmentShader.replace('#include <opaque_fragment>',
+    `float daylight=texture2D(roomWindowLight,${uv}).r;\n outgoingLight *= mix(vec3(.85,.86,.88),vec3(.91,.94,1.0),roomRainMix)+daylight*mix(vec3(${key==='floor'?'.47,.36,.17':'.46,.29,.13'}),vec3(.025,.035,.052),roomRainMix);\n#include <opaque_fragment>`);
+  };
+  material.customProgramCacheKey=()=>`town-room-transport-v1-${key}`;material.needsUpdate=true;
+ }
+ return { ...total, bounceSources:bounces.length,ms:performance.now()-start,setRain:rain=>{weatherMix.value=rain?1:0;} };
 }

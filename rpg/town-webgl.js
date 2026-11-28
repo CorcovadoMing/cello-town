@@ -357,30 +357,74 @@ function pondBed(T){
   }
   g.restore();
  }
+ // Broad ochre sediment tongues under the shallower shore and small, worn
+ // stones. Unlike the bank meshes, these marks stay below the moving surface.
+ for(const [x,y,a] of [[.11,.48,-.19],[.45,.82,.24],[.61,.44,-.35],[.80,.32,.42],[.88,.66,.27],[.24,.19,-.23]]){
+  stain(x*w,y*h,79,31,a,'#ae9a69ba');stain((x+.025)*w,(y-.023)*h,62,14,a,'#c1a77981');
+  for(let i=0;i<21;i++){
+   const t=rnd()*Math.PI*2,rad=Math.sqrt(rnd()),px=x*w+Math.cos(t)*93*rad,py=y*h+Math.sin(t)*35*rad;
+   const r=1.8+Math.pow(rnd(),1.9)*9.2,q=.48+rnd()*.30,rot=(rnd()-.5)*2.5;
+   const inks=['#96927d','#b4ab84','#8b9485','#ad9983','#babc99','#827a6a'];
+   const ink=inks[i%inks.length],sides=5+(i%3);
+   g.save();g.translate(px,py);g.rotate(rot);
+   g.fillStyle='#3c49394f';g.beginPath();g.ellipse(.15*r,.30*r,r*1.13,r*q,.1,0,Math.PI*2);g.fill();
+   g.beginPath();
+   for(let k=0;k<sides;k++){
+    const b=k*Math.PI*2/sides,z=r*(.72+rnd()*.28),u=Math.cos(b)*z,v=Math.sin(b)*z*q;
+    if(k)g.lineTo(u,v);else g.moveTo(u,v);
+   }
+   g.closePath();
+   const facet=g.createLinearGradient(-r*.3,-r*q,r*.25,r*q);
+   facet.addColorStop(0,'#cdc0a1');facet.addColorStop(.34,ink);facet.addColorStop(1,'#60695f');
+   g.fillStyle=facet;g.fill();
+   g.strokeStyle='#e0d4b54d';g.lineWidth=.48;g.stroke();g.restore();
+  }
+ }
  const texture=new T.CanvasTexture(c);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=4;
  return texture;
 }
-function pondSurface(T,map){
+function pondSurface(T,map,spanX,spanZ){
  const material=new T.MeshLambertMaterial({map,color:'#eff8f4'});
- const phase={value:0},brightness={value:.9},lightX={value:.48};
+ const phase={value:0},brightness={value:.9},detail={value:0},time={value:0};
+ const light={value:new T.Vector3(0,1,0)},span={value:new T.Vector2(spanX,spanZ)};
+ const fish={value:[new T.Vector4(),new T.Vector4(),new T.Vector4()]};
+ const dye={value:['#588b91','#e17854','#8fa15a'].map(c=>new T.Color(c))};
  const clearSky=TOWN_PAINT_PALETTE.pond[4],sky={value:new T.Color(clearSky)};
  material.onBeforeCompile=shader=>{
-  Object.assign(shader.uniforms,{townWaterPhase:phase,townWaterBrightness:brightness,townWaterLightX:lightX,townWaterSky:sky});
+  Object.assign(shader.uniforms,{townWaterPhase:phase,townWaterBrightness:brightness,townWaterSky:sky,townWaterDetail:detail,townWaterTime:time,
+   townWaterSun:light,townWaterSpan:span,townFish:fish,townFishDye:dye});
   shader.vertexShader=shader.vertexShader.replace('#include <common>',`
    #include <common>
    varying float townWaterGrazing;
+   varying vec3 townWaterView;
   `).replace('#include <project_vertex>',`
    #include <project_vertex>
    vec3 surfaceToCamera = isOrthographic ? vec3(0.,0.,1.) : normalize(-mvPosition.xyz);
    townWaterGrazing = abs(dot(normalize(normalMatrix * vec3(0.,0.,1.)), surfaceToCamera));
+   townWaterView=inverseTransformDirection(surfaceToCamera,viewMatrix);
   `);
-  shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`
+  shader.fragmentShader=shader.fragmentShader
+   .replace('#include <shadowmap_pars_fragment>','#include <shadowmap_pars_fragment>\n#include <shadowmask_pars_fragment>')
+   .replace('#include <common>',`
    #include <common>
    uniform float townWaterPhase;
    uniform float townWaterBrightness;
-   uniform float townWaterLightX;
+   uniform float townWaterDetail,townWaterTime;
+   uniform vec3 townWaterSun;
+   float townWaterGrain(vec2 v){
+    vec3 p3=fract(vec3(v.xyx)*.1031);
+    p3+=dot(p3,p3.yzx+33.33);
+    return fract((p3.x+p3.y)*p3.z);
+   }
+   uniform vec2 townWaterSpan;
+   uniform vec4 townFish[3];
+   uniform vec3 townFishDye[3];
+   float townEllipse(vec2 p,vec2 radii){
+    return 1.-smoothstep(.76,1.05,length(p/radii));
+   }
    uniform vec3 townWaterSky;
    varying float townWaterGrazing;
+   varying vec3 townWaterView;
   `).replace('#include <map_fragment>',`
    #include <map_fragment>
    vec2 uvPond = vMapUv;
@@ -400,22 +444,75 @@ function pondSurface(T,map){
    vec3 sky = mix(townWaterSky,vec3(.12,.26,.20),shade*.78);
    vec3 bed = mix(diffuseColor.rgb*.91,diffuseColor.rgb*vec3(1.12,1.08,.91),shallow);
    vec3 pool = mix(bed,sky,reflectedSky*(.84+longWave*.10+shortWave*.06));
-   float sunLane = 1.-smoothstep(.04,.36,abs(uvPond.x-townWaterLightX+.16*(uvPond.y-.48)));
-   float blade = smoothstep(.72,1.,longWave)*smoothstep(.35,1.,shortWave)*smoothstep(-.10,.93,crossWave);
-   float sparkle = (.045+.24*grazing)*blade*sunLane*smoothstep(.005,.08,edgeDistance)*townWaterBrightness;
-   diffuseColor.rgb = mix(pool,vec3(.88,.91,.67),sparkle)*(1.+longWave*.018+shortWave*.011);
+   if(townWaterDetail>0.5){
+    // Snell-law ray from the water surface to each fish's depth plane.
+    vec3 eye=normalize(townWaterView);
+    vec3 N=normalize(vec3(.10*shortWave+.06*crossWave,1.,.105*longWave));
+    vec3 rq=refract(-eye,N,1./1.333);
+    float fresnel=.021+.979*pow(1.-max(0.,dot(N,eye)),5.);
+    float depth=mix(5.6,20.0,smoothstep(.018,.51,edgeDistance));
+    float floorRay=depth/max(.18,-rq.y);
+    vec2 bedUV=clamp(uvPond+vec2(rq.x,-rq.z)*floorRay/townWaterSpan,.006,.994);
+    vec3 mud=texture2D(map,bedUV).rgb;
+    vec3 clearBottom=mix(mud*vec3(1.12,1.10,.95),vec3(.13,.29,.24),1.-exp(-floorRay*.028));
+    float clearWeight=(1.-fresnel)*(.23+.77*pow(townWaterBrightness,.72));
+    pool=mix(pool,clearBottom,clearWeight*(.42+.52*shallow));
+    float transmission=(1.-fresnel)*(.54+.46*townWaterBrightness);
+    for(int j=0;j<3;j++){
+     vec4 f=townFish[j];
+     float dist=f.z/max(.14,-rq.y);
+     vec2 hit=(uvPond-f.xy)*townWaterSpan+vec2(rq.x,-rq.z)*dist;
+     float c=cos(f.w),q=sin(f.w);
+     vec2 P=vec2(c*hit.x+q*hit.y,-q*hit.x+c*hit.y);
+     float k=float(j), swish=sin(townWaterTime*9.+k*1.7+P.x*.20);
+     float body=townEllipse(P-vec2(1.1,0.),vec2(8.5+k*.65,3.35+k*.25));
+     float stem=townEllipse(P+vec2(6.4,0.),vec2(4.8,1.30));
+     float tail=townEllipse(vec2(P.x+10.7,P.y-swish*1.35),vec2(3.4,2.6));
+     float fins=townEllipse(vec2(P.x+.4,P.y+P.x*.30+1.85),vec2(3.1,1.7));
+     float fishAlpha=max(body,max(stem*.80,max(tail*.72,fins*.58)));
+     vec3 tint=mix(townFishDye[j]*.56,townFishDye[j]*1.22,
+       min(1.,smoothstep(-2.6,1.7,-P.y)+.18*townEllipse(P-vec2(3.,-1.2),vec2(2.8,1.))));
+     float eyeMark=body*townEllipse(P-vec2(5.2,-.45),vec2(.92,.82));
+     tint=mix(tint,vec3(.025,.040,.031),eyeMark*.84);
+     pool=mix(pool,tint,fishAlpha*transmission*exp(-dist*.018));
+    }
+    // The current sun map includes the moving, alpha-tested leaves.
+    float sunlit=getShadowMask();
+    float facing=.23+.77*pow(max(dot(N,normalize(townWaterSun+eye)),0.),8.);
+    // A compact pulse per irregular water cell; the cores stay pinpoints.
+    vec2 uvSpark=uvPond*vec2(83.,49.)+vec2(.14*longWave,.14*shortWave);
+    vec2 cell=floor(uvSpark);
+    float a=townWaterGrain(cell),b=townWaterGrain(cell+vec2(15.8,41.2));
+    vec2 delta=fract(uvSpark)-vec2(.26+.48*a,.24+.52*b);
+    float r=mix(.085,.205,fract(a*14.7));
+    float point=(1.-smoothstep(.22*r,r,length(delta)));
+    float halo=(1.-smoothstep(.52*r,1.85*r,length(delta)))*.26;
+    float flicker=sin(townWaterTime*(1.9+4.*b)+a*23.0+crossWave*.9);
+    float sparkleDuty=smoothstep(.58,.96,a)*smoothstep(.62,.995,flicker);
+    float glint=(point+halo)*sparkleDuty*facing*sunlit*sunlit*pow(townWaterBrightness,3.);
+    pool=mix(pool,vec3(.99,.97,.81),min(.76,1.42*glint));
+   }
+   diffuseColor.rgb = pool*(1.+longWave*.013+shortWave*.010);
   `);
  };
- material.customProgramCacheKey=()=> 'town-pond-silt-sky-sw-v2';
+ material.customProgramCacheKey=()=> 'town-pond-shallow-bottom-v2';
  let lastWeather;
- return {material,update(now,weather,lamp,motion){
-  phase.value=motion?now%96000/96000*Math.PI*2:0;
+ return {material,update(now,weather,lamp,motion,close,clock,cx,cz){
+  detail.value=close?1:0;time.value=motion?clock/1000:0;
+  phase.value=motion?(clock%96000)/96000*Math.PI*2:0;
+  light.value.set(lamp.x,lamp.y,lamp.z).normalize();
+  if(close)for(let i=0;i<3;i++){
+   const a=(motion?clock*.00017:0)+i*2.09;
+   const x=140+Math.sin(a)*67,z=464+Math.cos(a*.83+i)*42;
+   const heading=Math.atan2(.83*Math.sin(a*.83+i)*42,Math.cos(a)*67);
+   const depth=7+i*2.5+1.8*Math.sin(a*1.6+i);
+   fish.value[i].set(.5+(x-cx)/spanX,.5+(cz-z)/spanZ,depth,heading);
+  }
   if(lastWeather!==weather){
    lastWeather=weather;
    brightness.value=weather==='rain'?.09:weather==='breeze'?.60:.94;
    sky.value.set(weather==='rain'?'#a5b8b4':weather==='breeze'?'#c2d4cd':clearSky);
   }
-  lightX.value=.46+Math.max(-1,Math.min(1,(lamp.x-45)/270))*.21;
  }};
 }
 // A short-lived ground trace from actual walking, with distance-based spacing.
@@ -753,7 +850,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const shelf=new T.Mesh(pondShape(1.035),new T.MeshLambertMaterial({color:'#727d66'}));
  shelf.rotation.x=-Math.PI/2;shelf.position.set(pondX-W/2,.78,pondZ-H/2);
  shelf.receiveShadow=true;scene.add(shelf);
- const paintedWater=pondSurface(T,pondPigment);
+ const paintedWater=pondSurface(T,pondPigment,pondW,pondD);
  const water=new T.Mesh(pondShape(1),paintedWater.material);
  water.rotation.x=-Math.PI/2;water.position.set(pondX-W/2,2.15,pondZ-H/2);
  water.receiveShadow=true;scene.add(water);
@@ -762,32 +859,11 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   const mesh=new T.Mesh(rippleGeometry,new T.MeshBasicMaterial({color:'#e4f0d6',side:T.DoubleSide,transparent:true,opacity:0,depthWrite:false}));
   mesh.rotation.x=-Math.PI/2;mesh.renderOrder=5;mesh.visible=false;scene.add(mesh);return mesh;
  });
- const fishGeometry=new T.PlaneGeometry(1,1);
- const fishImage=(()=>{
-  const c=document.createElement('canvas');c.width=64;c.height=32;const g=c.getContext('2d');
-  g.fillStyle='#f4e5be';g.beginPath();g.ellipse(34,15,15,7,0,0,Math.PI*2);g.fill();
-  g.fillStyle='#bae3d1';g.beginPath();g.moveTo(24,15);g.lineTo(10,8);g.lineTo(13,16);g.lineTo(8,24);g.closePath();g.fill();
-  g.fillStyle='#fff4ce';g.beginPath();g.ellipse(37,12,6,2,0,0,Math.PI*2);g.fill();
-  const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;return t;
- })();
- const pondFish=['#548e91','#d97d62','#819d63'].map(color=>{
-  const mesh=new T.Mesh(fishGeometry,new T.MeshBasicMaterial({map:fishImage,color,side:T.DoubleSide,transparent:true,opacity:.64,depthWrite:false}));
-  mesh.visible=false;mesh.rotation.x=-Math.PI/2;mesh.renderOrder=4;scene.add(mesh);return mesh;
- });
  const rainGeometry=new T.PlaneGeometry(.46,8.3);
  const lowRain=new T.InstancedMesh(rainGeometry,new T.MeshBasicMaterial({color:'#e3eee3',transparent:true,opacity:.29,side:T.DoubleSide,depthWrite:false}),112);
  lowRain.visible=false;lowRain.frustumCulled=false;scene.add(lowRain);
  function updatePondLife(close,weather,t,motion){
   const rain=weather==='rain';
-  for(const [i,fish] of pondFish.entries()){
-   fish.visible=close;
-   if(!close)continue;
-   const a=(motion?t*.00017:0)+i*2.09;
-   fish.position.set(140+Math.sin(a)*67-W/2,2.21,464+Math.cos(a*.83+i)*42-H/2);
-   fish.rotation.z=Math.atan2(-.83*Math.sin(a*.83+i)*42,Math.cos(a)*67);
-   fish.scale.set(17+i*1.8,7+i*.6,1);
-   fish.material.opacity=.53+(rain?0:.12)*(1+Math.sin(a*2))*.5;
-  }
   lowRain.visible=close&&rain&&motion;
   for(let i=0;i<ripples.length;i++){
    const ripple=ripples[i];
@@ -1224,7 +1300,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
     sun.position.set(lamp.x,lamp.y,lamp.z);lastLight=lamp;
     renderer.shadowMap.needsUpdate=true;
    }
-   paintedWater.update(now,weather,lamp,motion);
+   paintedWater.update(now,weather,lamp,motion,close,clock,pondX,pondZ);
    updatePondLife(close,weather,clock,motion);
    swayCrowns(clock,weather,motion);
    // Wet the bevel itself, not just a flat sheet above it.

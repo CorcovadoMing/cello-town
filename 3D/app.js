@@ -1,5 +1,5 @@
 import {createWindowLandscape} from './window-landscape.js?v=exp3';
-import {decoratePerformanceRoom,installWestRoomDetail,createRoomRayMirror} from './room-polish.js?v=exp3-mirror-axis';
+import {decoratePerformanceRoom,installWestRoomDetail,createRoomRayMirror,traceRoomDaylight} from './room-polish.js?v=exp3-window-transport';
 import * as T from './vendor/three.module.js';
 import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,roomWalkPhase,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=exp3-walk31';
 const $=id=>document.getElementById(id),area=$('scene'),status=$('save-status');let state=defaults();try{state=normalize(JSON.parse(localStorage.getItem(KEY)));}catch{status.textContent='無法讀取本機設定，仍可自由試穿。';}
@@ -353,7 +353,7 @@ const apertureHole=new T.Path();apertureHole.moveTo(-.76,.1);apertureHole.lineTo
 const windowFrame=mesh(new T.ExtrudeGeometry(windowOuter,{depth:.08,bevelEnabled:false,curveSegments:32}),'#f4edcf',0,0,.04,windowGroup);
 windowFrame.name='window-continuous-frame';windowFrame.renderOrder=7;
 function windowLayer(shape,color,z,name){const o=new T.Mesh(new T.ShapeGeometry(shape,32),new T.MeshBasicMaterial({color,side:T.DoubleSide}));o.position.z=z;o.renderOrder=1+z*100;o.name=name;windowGroup.add(o);return o;}
-windowLayer(windowAperture,'#a5cfca',0,'window-sky');
+const directWindowSky=windowLayer(windowAperture,'#a5cfca',0,'window-sky');
 const windowSun=new T.Shape();windowSun.absarc(-.3,1.17,.16,0,Math.PI*2);const fixedWindowSun=windowLayer(windowSun,'#fff1bd',.05,'window-sun');
 // Both low hills remain wholly within the straight-sided bottom aperture.
 const farHill=new T.Shape();farHill.moveTo(-.76,.1);farHill.lineTo(.76,.1);farHill.lineTo(.76,.44);farHill.bezierCurveTo(.4,.65,.18,.43,-.05,.49);farHill.bezierCurveTo(-.32,.62,-.55,.4,-.76,.46);farHill.closePath();windowLayer(farHill,'#91b8a3',.02,'window-far-hill');
@@ -380,9 +380,11 @@ for(let i=0;i<ruralPos.count;i++)ruralUV.setXY(i,(ruralPos.getX(i)+.76)/1.52,(ru
 const livingLandscape=createWindowLandscape(T,previewLandscape);windowGroup.add(livingLandscape.group);livingLandscape.group.visible=false;
 new T.TextureLoader().load('./rural-window.webp?v=22',tex=>{tex.colorSpace=T.SRGBColorSpace;previewLandscape.material.map=tex;previewLandscape.material.needsUpdate=true;previewLandscape.userData.ready=true;},undefined,()=>{previewLandscape.userData.ready=false;});
 // Mullions are in front of every scenery layer, joined inside the same arch.
-box(0,.895,.085,.05,1.59,.045,'#f7eed7',windowGroup).renderOrder=8;
-box(0,.88,.085,1.52,.05,.045,'#f7eed7',windowGroup).renderOrder=8;
-box(0,.025,.13,1.94,.1,.36,'#e7d5b5',windowGroup).renderOrder=9;
+const daylightMullions=[
+ box(0,.895,.085,.05,1.59,.045,'#f7eed7',windowGroup),
+ box(0,.88,.085,1.52,.05,.045,'#f7eed7',windowGroup),
+ box(0,.025,.13,1.94,.1,.36,'#e7d5b5',windowGroup)
+];daylightMullions.forEach((o,i)=>{o.renderOrder=i===2?9:8;});
 const curtainTop=WINDOW_APERTURE.spring+WINDOW_APERTURE.outerHalf+.14,curtainBottom=WINDOW_APERTURE.sill+.07;
 const curtains=new T.Group();curtains.name='curtains-soft-tiebacks';windowGroup.add(curtains);
 const curtainOuter=WINDOW_APERTURE.outerHalf+.26,tieY=WINDOW_APERTURE.spring-.26;
@@ -1724,7 +1726,7 @@ if(mirrorRoom){
   let reflected=null;
   try{
    const roots=scene.children.filter(o=>o!==frame&&o!==avatar&&o!==targetMarker&&o!==doorCutaway&&o!==roomCat.group);
-   reflected=createRoomRayMirror(T,roots,avatar,renderer,{cat:roomCat.group});if(!reflected)return;
+   reflected=createRoomRayMirror(T,roots,avatar,renderer,{cat:roomCat.group,light:sun});if(!reflected)return;
    reflected.mesh.scale.set(1.275,1.13,1);reflected.mesh.position.z=.035;reflected.mesh.userData.station='mirror';paneMount.add(reflected.mesh);
    let shaderRejected=false;const prior=renderer.debug.onShaderError;
    renderer.debug.onShaderError=(...args)=>{shaderRejected=true;prior?.(...args);};
@@ -1734,6 +1736,33 @@ if(mirrorRoom){
   }catch{if(reflected){reflected.mesh.removeFromParent();reflected.dispose();}surface.visible=true;}
  },0));
 }
+// Let the ordinary room render first. The offline lighting map is optional
+// and computed once, from real window bars, without a new render pass.
+if(mirrorRoom&&!software&&new URLSearchParams(location.search).get('roomlight')!=='0')requestAnimationFrame(()=>setTimeout(()=>{
+ try{
+  const floors=scene.children.filter(o=>o.name==='handcrafted-oak-boards');
+  const receivers=[[rearWall,'rear'],[sideWall,'side'],[rug,'floor'],...floors.map(o=>[o,'floor'])];
+  const stats=traceRoomDaylight(T,{scene,opening:windowGroup,aperture:WINDOW_APERTURE,mullions:daylightMullions,receivers});
+  scene.userData.daylightStats=stats;
+  // The packaged town module exports its absolute-clock weather. No
+  // URL flag or cached "weather at entry" can leave this scene stale.
+  import('../garden.js?v=woodland-037').then(({weatherAt})=>{
+   let lastWeather=null;
+   const updateWeather=()=>{
+    const weather=weatherAt().key;if(weather===lastWeather)return;
+    lastWeather=weather;scene.userData.roomWeather=weather;
+    const rain=weather==='rain';stats.setRain(rain);
+    sun.intensity=rain?1.58:2.88;sun.color.set(rain?'#bdcfe7':'#ffefd0');
+    fixedWindowSun.visible=!rain;
+    directWindowSky.material.color.set(rain?'#9aafc2':'#a5cfca');
+    previewLandscape.material.color.set(rain?'#becada':'#ffffff');
+   };
+   updateWeather();
+   setInterval(()=>{if(!document.hidden)updateWeather();},1200);
+   document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateWeather();});
+  }).catch(()=>{ /* The room also works standalone with the authored sunny lighting. */ });
+ }catch{ /* Preserve the authored room lighting on devices without transport maps. */ }
+},50));
 requestAnimationFrame(frame);
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();release();$('scene-status').textContent='3D 畫面暫停，請重新整理恢復。';status.textContent='3D 顯示中斷，穿搭設定仍保留。請重新整理。';});
 
