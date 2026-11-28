@@ -82,7 +82,11 @@ transformed.z += air * stem*stem * 2.0;
 }
 
 /** A quiet horizon for the shoreline framing, outside the playable model. */
-export function makePondHorizon(T,weather){
+export function makePondHorizon(T,weather,seed=(Math.random()*4294967296)>>>0){
+ // Coordinates and cloud bodies vary on a fresh visit. The renderer
+ // caches this image during the visit, so it never jumps during movement.
+ const cloudRandom=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
+ const signed=()=>cloudRandom()*2-1;
  const rain=weather==='rain',breeze=weather==='breeze';
  const c=document.createElement('canvas');c.width=960;c.height=560;
  const g=c.getContext('2d');
@@ -117,6 +121,12 @@ export function makePondHorizon(T,weather){
  const fade=x=>{const t=clamp01(x);return t*t*(3-2*t);};
  function byteColor(h){return [1,3,5,7].map((i,k)=>h.length>i?parseInt(h.slice(i,i+2),16):k===3?255:0);}
  function cloud(x,y,w,h,shape,core,mid,edge){
+  const thick=shape===banks||shape===shelf||shape===rainCurtain;
+  x+=signed()*(thick?113:89);y+=signed()*(thick?23:31);
+  w*=.73+cloudRandom()*.55;h*=.72+cloudRandom()*.59;
+  // A sunlit gap leaves the sun itself legible even on a crowded roll.
+  if(!rain&&!breeze&&Math.abs(x-728)<198&&Math.abs(y-88)<53)
+   x=x<728?Math.min(x,728-111-w*.55):Math.max(x,728+107+w*.48);
   const width=Math.max(48,Math.min(202,Math.round(w*.94)));
   const height=Math.max(18,Math.min(73,Math.round(h*.88)));
   const layer=document.createElement('canvas');layer.width=width;layer.height=height;
@@ -125,7 +135,8 @@ export function makePondHorizon(T,weather){
   const heavy=shape===banks||shape===shelf||shape===rainCurtain;
   const fields=shape.map(([xx,yy,rx,ry],k)=>{
    const wobble=Math.sin(salt+k*2.41)*.055;
-   return [xx+wobble,yy+wobble*.64,1/rx,1/ry];
+   return [xx+wobble+signed()*.18,yy+wobble*.64+signed()*.17,
+    1/(rx*(.71+cloudRandom()*.57)),1/(ry*(.67+cloudRandom()*.67))];
   });
   for(let j=0;j<height;j++)for(let i=0;i<width;i++){
    const u=(i+.5)/width*2.50-1.25,v=(j+.5)/height*2.48-1.24;

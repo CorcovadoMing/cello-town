@@ -128,14 +128,33 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
    if(q)tint.lerp(meadowInks[paint],q*q*(3-2*q)*.78);
   }
  }
+ // A contiguous woodland frames the actual flower pasture. Keep
+ // flower centres and the winding path clear, with wooded bands over the
+ // far shoulder and down both sides rather than a distant wall.
+ function meadowWood(x,z){
+  const woods=[[618,-491,175,152],[765,-597,190,95],[1010,-671,237,98],
+   [1280,-675,204,105],[1430,-580,158,108],[1645,-494,229,119],[1960,-410,203,114],
+   [1072,-284,144,83]];
+  let cover=0;
+  for(const [cx,cz,rx,rz] of woods)
+   cover=Math.max(cover,1-Math.hypot((x-cx)/rx,(z-cz)/rz));
+  if(!cover)return 0;
+  for(const [cx,cz,rx,rz] of meadowPatches){
+   const d=Math.hypot((x-cx)/(rx*.87),(z-cz)/(rz*.74));
+   if(d<1)cover*=d*d*d;
+  }
+  return Math.max(0,Math.min(1,cover*(1.72+.52*Math.sin(x*.043+z*.068)+.29*Math.cos(x*.105-z*.037))));
+ }
  const ridgeGeo=new T.PlaneGeometry(2780,840,111,53);ridgeGeo.rotateX(-Math.PI/2);
  const ridgePoints=ridgeGeo.attributes.position,colors=new Float32Array(ridgePoints.count*3);
+ const woodlandFloor=new T.Color('#58784e');
  const olive=new T.Color('#819564'),dusk=new T.Color('#929b7e'),hay=new T.Color('#bac28e');
  for(let i=0;i<ridgePoints.count;i++){
   const x=ridgePoints.getX(i)+W/2+350,z=ridgePoints.getZ(i)-400;
   ridgePoints.setX(i,x-W/2);ridgePoints.setY(i,pastureHeight(x,z));ridgePoints.setZ(i,z-H/2);
   const b=.39+Math.sin(x*.016+z*.017)*.14+Math.cos(z*.03)*.10;
   const far=Math.min(.81,Math.max(0,-z*.0010)),t=olive.clone().lerp(hay,b).lerp(dusk,far);
+  t.lerp(woodlandFloor,meadowWood(x,z)*.86);
   blossomCover(x,z,t);
   colors[i*3]=t.r;colors[i*3+1]=t.g;colors[i*3+2]=t.b;
  }
@@ -220,6 +239,36 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
    });
    group.add(mesh);
   }
+ }
+ // A single existing-size atlas material and static instanced draw
+ // for visible crowns. Overlapping trees build a mass above the tinted
+ // forest floor; no extra shadows, overlap queries, collisions or wind.
+ {
+  let seedMeadowWood=72121;
+  const woodedRandom=()=>((seedMeadowWood=(Math.imul(seedMeadowWood,1664525)+1013904223)>>>0)/4294967296);
+  const trees=[];
+  for(let z=-760;z<-225;z+=12)for(let x=460;x<2170;x+=14){
+   const px=x+woodedRandom()*13,pz=z+woodedRandom()*11,wood=meadowWood(px,pz);
+   if(wood<.16||woodedRandom()>wood*.61)continue;
+   const height=8+wood*21+woodedRandom()*18;
+   trees.push([px,pz,height,(.54+woodedRandom()*.37)*height,woodedRandom()*TAU]);
+  }
+  const woods=new T.InstancedMesh(geometries[2],new T.MeshLambertMaterial({
+   map:leafMaps[0],alphaTest:.39,side:T.DoubleSide,emissive:'#68845e',emissiveIntensity:.44
+  }),trees.length*3);
+  const canopyPalette=['#5d8358','#739768','#6c8d5c','#87a374'].map(c=>new T.Color(c));
+  trees.forEach(([x,z,h,w,turn],i)=>{
+   const y=pastureHeight(x,z);
+   for(let layer=0;layer<3;layer++){
+    const a=turn+layer*2.399963;
+    obj.position.set(x-W/2+Math.cos(a)*w*.19,y+h*(.35+.23*layer),z-H/2+Math.sin(a)*w*.17);
+    obj.rotation.set(.17,a,.14*Math.sin(a));
+    obj.scale.set(w*(1.16-.19*layer),h*(.79-.10*layer),1);
+    obj.updateMatrix();woods.setMatrixAt(i*3+layer,obj.matrix);
+    woods.setColorAt(i*3+layer,canopyPalette[(i+layer)%4]);
+   }
+  });
+  group.add(woods);
  }
  // An abandoned drystone boundary gives the near pasture its own
  // depth without occluding the pale distant ridge. Batched once, outside
