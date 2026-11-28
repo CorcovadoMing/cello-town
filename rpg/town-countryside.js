@@ -13,7 +13,6 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
  const stones=['#a9a484','#8e9074','#b2a689','#989a81'];
  const dots=new T.BufferGeometry(),vertices=[],rgb=[];
  const shade=grasses.map(x=>new T.Color(x));
- const groundColor=new T.Color('#bec28b');
  for(let cluster=0;cluster<85;cluster++){
   const centerX=9+rand()*944,centerZ=8+rand()*58;
   const size=5+rand()*14,count=5+Math.floor(rand()*15);
@@ -31,15 +30,34 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
  dots.setAttribute('position',new T.Float32BufferAttribute(vertices,3));
  dots.setAttribute('color',new T.Float32BufferAttribute(rgb,3));dots.computeVertexNormals();
  const wild=new T.Mesh(dots,new T.MeshLambertMaterial({side:T.DoubleSide,vertexColors:true}));wild.receiveShadow=true;scene.add(wild);
- // Shallow countryside trail, continuous and never mistaken for a seam.
- const trail=new T.Shape();
- for(const direction of [1,-1])for(let i=0;i<=40;i++){
-  const x=(direction===1?i:40-i)*24,z=marginTrail(x)+direction*(3.0+.9*Math.sin(x*.033)+.65*Math.cos(x*.079));
-  if(direction===1&&i===0)trail.moveTo(x-W/2,H/2-z);else trail.lineTo(x-W/2,H/2-z);
+ // One static ribbon strip: softened turf edges and an uneven, warmer
+ // tread. This replaces the flat trail mesh, without another draw batch.
+ const step=8, bands=[-1,-.71,-.29,.17,.62,1];
+ const pos=[],tints=[];
+ const grassEdge=new T.Color('#a9b483'),paleGround=new T.Color('#c8b894'),
+  compactSoil=new T.Color('#b09d79'),quietMoss=new T.Color('#9eaa78'),trailColor=new T.Color();
+ const makeVertex=(x,k)=>{
+  const offset=bands[k],shoulder=3+.9*Math.sin(x*.033)+.65*Math.cos(x*.079);
+  const wobble=Math.sin(x*.071+k*.9)*(.66-.49*Math.abs(offset));
+  const z=marginTrail(x)+offset*shoulder+wobble;
+  const grit=.47+.20*Math.sin(x*.124+k*1.32)+.19*Math.cos(x*.041-k*1.84);
+  const wear=.31+.24*Math.sin(x*.021+k*.51)+.09*Math.cos(x*.087+k*2.34);
+  trailColor.copy(paleGround).lerp(compactSoil,grit).lerp(quietMoss,wear*.64);
+  trailColor.lerp(grassEdge,Math.abs(offset)**2.9);
+  return [[x-W/2,1.45,z-H/2],[trailColor.r,trailColor.g,trailColor.b]];
+ };
+ const write=(...vertices)=>{for(const [p,c] of vertices){pos.push(...p);tints.push(...c);}};
+ let prior=bands.map((_,i)=>makeVertex(0,i));
+ for(let x=step;x<=W;x+=step){
+  const next=bands.map((_,i)=>makeVertex(x,i));
+  for(let i=0;i<bands.length-1;i++)write(prior[i],prior[i+1],next[i],prior[i+1],next[i+1],next[i]);
+  prior=next;
  }
- trail.closePath();
- const gentlyWorn=new T.Mesh(new T.ShapeGeometry(trail),new T.MeshLambertMaterial({color:groundColor,transparent:true,opacity:.74,depthWrite:false}));
- gentlyWorn.rotation.x=-Math.PI/2;gentlyWorn.position.y=1.45;gentlyWorn.receiveShadow=true;scene.add(gentlyWorn);
+ const trail=new T.BufferGeometry();
+ trail.setAttribute('position',new T.Float32BufferAttribute(pos,3));
+ trail.setAttribute('color',new T.Float32BufferAttribute(tints,3));trail.computeVertexNormals();
+ const gentlyWorn=new T.Mesh(trail,new T.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:.75,depthWrite:false}));
+ gentlyWorn.receiveShadow=true;scene.add(gentlyWorn);
  for(const [centerX,centerZ,count] of [[67,44,8],[197,47,9],[331,36,7],[458,53,9],[613,44,10],[756,56,8],[903,41,9]]){
   for(let n=0;n<count;n++){
    const x=centerX+(n-count/2)*(3.2+rand()*1.1),z=centerZ+(rand()-.5)*8;

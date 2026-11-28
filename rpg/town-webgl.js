@@ -1,4 +1,4 @@
-import {makeCountryside} from './town-countryside.js?v=1';
+import {makeCountryside} from './town-countryside.js?v=2';
 import {addShoreCraft} from './town-shore.js?v=1';
 import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=2';
 import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './town-orchard.js?v=9';

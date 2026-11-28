@@ -150,6 +150,32 @@ function roomFinish(o,kind,repeatX=1,repeatY=1){
     const x=rand()*128,y=rand()*128;g.strokeStyle=i%3?'#a7967911':'#fffdf33b';g.lineWidth=.55;
     g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+9,y+(rand()-.5)*5,x+16+rand()*9,y-2);g.stroke();
    }
+  }else if(kind==='window-enamel'||kind==='joinery-oil'){
+   const painted=kind==='window-enamel',wash=g.createLinearGradient(0,0,128,0);
+   const shades=painted?['#e1d5bb','#f9f0da','#fff8e4','#f5ecd2','#dac8a9']:['#cdb292','#e2c5a3','#f0d7b7','#d7baa0','#c3a083'];
+   [0,.14,.52,.85,1].forEach((at,i)=>wash.addColorStop(at,shades[i]));
+   g.fillStyle=wash;g.fillRect(0,0,128,128);
+   const knotX=41,knotY=72;
+   for(let j=0;j<(painted?27:45);j++){
+    const x=rand()*128,phase=rand()*6,bend=.6+rand()*(painted?1:3.2),strength=.045+rand()*(painted?.11:.19);
+    g.strokeStyle='rgba(108,76,50,'+strength+')';g.lineWidth=.5+rand()*.77;
+    g.beginPath();
+    for(let y=0;y<=128;y+=4){
+     const curl=painted?0:Math.exp(-(((y-knotY)/19)**2)-Math.abs(x-knotX)/15)*Math.sign(x-knotX)*5;
+     const xx=x+bend*Math.sin(phase+y*Math.PI/64)+curl;
+     if(y===0)g.moveTo(xx,y);else g.lineTo(xx,y);
+    }
+    g.stroke();
+   }
+   if(!painted)for(let i=0;i<3;i++){
+    g.strokeStyle=i===0?'#805d4295':'#ad866d73';g.lineWidth=.8;
+    g.beginPath();g.ellipse(knotX,knotY,1.4+i*1.3,4+i*3,.18,i*.40,Math.PI*1.78);g.stroke();
+   }
+   // Local rubbed highlights, then tiny dry-brush interruptions at joinery.
+   for(let i=0;i<(painted?24:32);i++){
+    const at=rand(),x=6+at*115,y=rand()*117,w=.55+rand()*1.15,h=2+rand()*8;
+    g.fillStyle=i%4?'#fff9dd5c':'#8e755039';g.fillRect(x,y,w,h);
+   }
   }else if(kind==='rug-medallion'){
    // One authored textile for the whole ellipse. Ink-dyed yarn feels
    // softer than a repeated grid; keep the center quiet for the avatars.
@@ -1559,6 +1585,21 @@ const westRoomDetail=installWestRoomDetail(T,scene);
 if(!software){
  for(const board of scene.children.filter(mesh=>mesh.name==='handcrafted-oak-boards'))roomFinish(board,'boards',.74,1.34);
  roomFinish(rearWall,'limewash',3.4,1.9);roomFinish(sideWall,'limewash',2.1,1.4);
+ // Refinish existing meshes only: don't add draws, alter the arch opening,
+ // move the sill, obscure the panes, or change the furniture hit surfaces.
+ roomFinish(windowFrame,'window-enamel',.90,.72);
+ for(const trim of windowGroup.children.filter(o=>o.isMesh&&(o.renderOrder===8||o.renderOrder===9))){
+  const sill=trim.renderOrder===9;
+  roomFinish(trim,sill?'joinery-oil':'window-enamel',sill?.48:.76,sill?1.12:.94);
+ }
+ for(const part of scene.children.filter(o=>o.userData.station==='wardrobe'&&o.geometry?.type==='BoxGeometry')){
+  const {height,width}=part.geometry.parameters;
+  if(height>1.35&&width>.3)roomFinish(part,'joinery-oil',1,1.05);
+  else if(width>1.2)roomFinish(part,'joinery-oil',.73,.95);
+ }
+ const vanityTop=vanity.children.find(o=>o.geometry?.type==='BoxGeometry'&&o.position.y===.78);
+ if(vanityTop)roomFinish(vanityTop,'joinery-oil',.78,1.02);
+
  scoreTable.children.forEach((part,index)=>{
   if(part===manuscript)return;
   roomFinish(part,index===4?'soft-brass':'desk-oil',index===0?1.1:.77,index===0?.63:1.14);
