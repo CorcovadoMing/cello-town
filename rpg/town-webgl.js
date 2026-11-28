@@ -1,6 +1,6 @@
-import {makeCountryside} from './town-countryside.js?v=2';
-import {addShoreCraft} from './town-shore.js?v=1';
-import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=2';
+import {makeCountryside} from './town-countryside.js?v=3';
+import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=open-outlet-1';
+import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=valley-sky-1';
 import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './town-orchard.js?v=9';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
@@ -356,7 +356,8 @@ function pondSurface(T,map){
    float longWave = sin(uvPond.y*48. + uvPond.x*6.1 + sin(uvPond.x*12.-t*3.)*.67 -t*8.);
    float shortWave = sin(uvPond.y*95. - uvPond.x*16. +t*9. +sin(uvPond.x*19.+t*5.)*.60);
    float crossWave = sin(uvPond.y*35. + uvPond.x*28. -t*5.);
-   float edgeDistance = min(min(uvPond.x,1.-uvPond.x),min(uvPond.y,1.-uvPond.y));
+   // No shallow stripe across the open outlet at low v.
+   float edgeDistance = min(min(uvPond.x,1.-uvPond.x),1.-uvPond.y);
    float shallow = 1.-smoothstep(.008,.19,edgeDistance+shortWave*.009);
    float grazing = 1.-clamp(townWaterGrazing,0.,1.);
    float reflectedSky = .07 + .50*grazing*grazing;
@@ -373,7 +374,7 @@ function pondSurface(T,map){
    diffuseColor.rgb = mix(pool,vec3(.88,.91,.67),sparkle)*(1.+longWave*.018+shortWave*.011);
   `);
  };
- material.customProgramCacheKey=()=> 'town-pond-silt-sky-v1';
+ material.customProgramCacheKey=()=> 'town-pond-silt-sky-open-v1';
  let lastWeather;
  return {material,update(now,weather,lamp,motion){
   phase.value=motion?now%96000/96000*Math.PI*2:0;
@@ -690,12 +691,24 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    shape(kind,x,y,z,sx,sy,sz,tint,rx,ry,rz,flex);
   }},x,y+46*s,s*.88,i);
  }
- // Physical pond wall and a recessed, gently shaded water plane.
- box(146,-1,465,249,6,150,'#738773');
- box(146,-1.6,465,232,5.5,138,'#629d95');
+ // One connected surface runs to the south map edge. Its bank is
+ // carved by the same outline as the shore atlas; the southern mouth is open.
+ const {x:pondX,z:pondZ,w:pondW,h:pondD}=OPEN_POND_UV;
+ function pondShape(scale){
+  const q=new T.Shape();
+  for(const [i,[x,z]] of OPEN_POND_BANK.entries()){
+   const u=(x-pondX)*scale,v=(pondZ-z)*scale;
+   if(i)q.lineTo(u,v);else q.moveTo(u,v);
+  }
+  q.closePath();return paintTerrainUV(T,new T.ShapeGeometry(q),pondW,pondD);
+ }
+ const shelf=new T.Mesh(pondShape(1.035),new T.MeshLambertMaterial({color:'#727d66'}));
+ shelf.rotation.x=-Math.PI/2;shelf.position.set(pondX-W/2,.78,pondZ-H/2);
+ shelf.receiveShadow=true;scene.add(shelf);
  const paintedWater=pondSurface(T,pondPigment);
- const water=new T.Mesh(new T.PlaneGeometry(225,135),paintedWater.material);
- water.rotation.x=-Math.PI/2;water.position.set(...[146-W/2,2.15,465-H/2]);water.receiveShadow=true;scene.add(water);
+ const water=new T.Mesh(pondShape(1),paintedWater.material);
+ water.rotation.x=-Math.PI/2;water.position.set(pondX-W/2,2.15,pondZ-H/2);
+ water.receiveShadow=true;scene.add(water);
  const rippleGeometry=new T.RingGeometry(.93,1,44);
  const ripples=Array.from({length:12},(_,i)=>{
   const mesh=new T.Mesh(rippleGeometry,new T.MeshBasicMaterial({color:'#e4f0d6',side:T.DoubleSide,transparent:true,opacity:0,depthWrite:false}));
@@ -734,6 +747,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    if(!ripple.visible)continue;
    const duration=rain?1600:3400,shifted=t+(i*719),cycle=Math.floor(shifted/duration),u=shifted%duration/duration;
    const x=55+((i*49+cycle*83)%183),z=411+((i*31+cycle*23)%107),radius=1+u*(rain?9:18);
+   if(![[-radius,0],[radius,0],[0,-radius],[0,radius]].every(([dx,dz])=>insidePolygon(x+dx,z+dz,OPEN_POND_BANK))){ripple.visible=false;continue;}
    ripple.position.set(x-W/2,2.23+i*.001,z-H/2);
    ripple.scale.set(radius,radius,1);
    ripple.material.opacity=(rain?.39:.28)*Math.sin(u*Math.PI)*(.9-u*.45);
@@ -750,11 +764,16 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   }
  }
 
+ const outletStones=[[51,519],[64,529],[78,543],[87,554],[93,565],
+  [187,562],[194,550],[203,542],[219,530]];
  for(let i=0;i<17;i++){
-  const x=42+i*12.2,z=i%2?398:531;
+  const [x,z]=i%2?[42+i*12.2,399+Math.sin(i*1.32)*4]:outletStones[i>>1];
   sphere(x,1,z,6+rng()*6,3+rng()*3,5+rng()*3,i%3?'#a29e7d':'#bbb18d',0,rng());
  }
- for(let i=0;i<14;i++){const z=403+i*8.8;for(const x of [27,264])sphere(x,2,z,5,3+rng()*3,7,'#a6a788',0,rng());}
+ for(let i=0;i<14;i++){
+  const z=403+i*8.8,west=29+Math.max(0,Math.abs(z-467)-14)*.43,east=255-Math.max(0,Math.abs(z-467)-12)*.56;
+  for(const x of [west,east])sphere(x+Math.sin(i*2.17)*2.9,2,z,4.4,3+rng()*3,6,'#a6a788',0,rng());
+ }
  for(const [x,z,n] of [[56,426,9],[248,474,7],[81,530,8],[287,438,4],[562,427,5],[710,398,7],[906,528,7],[19,541,8],[934,548,8]]){
   for(let i=0;i<n;i++){
    const dx=x+(rng()-.5)*24,dz=z+(rng()-.5)*18,h=4+rng()*12;
@@ -1070,7 +1089,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    }
    updateGrass(clock,weather,motion);
    updateShore(weather,close);
-   updateCountryside(close);
+   updateCountryside(close,clock,motion);
    scene.background=close?horizons[weather==='rain'?1:0]:mapBackground;
    if(weather!==lastWeather){
     lastWeather=weather;

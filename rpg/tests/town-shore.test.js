@@ -12,3 +12,25 @@ test('pondside contact shades stay anchored under objects and preserve a translu
  assert.match(s,/hills\.visible=close;contact\.material\.opacity=weather==='sun'/);
  assert.match(s,/depthWrite:false/);
 });
+
+test('continuous south pond mouth crosses the canvas edge without entering walkable terrain',async()=>{
+ const {OPEN_POND_BANK}=await import('../town-shore.js');
+ const inside=(x,z)=>{
+  let hit=false;
+  for(let i=0,j=OPEN_POND_BANK.length-1;i<OPEN_POND_BANK.length;j=i++){
+   const [a,b]=OPEN_POND_BANK[i],[u,v]=OPEN_POND_BANK[j];
+   if((b>z)!==(v>z)&&x<(u-a)*(z-b)/(v-b)+a)hit=!hit;
+  }
+  return hit;
+ };
+ assert.ok(OPEN_POND_BANK.every(([x,z])=>x<275&&z>380));
+ for(let z=405;z<=566;z+=1)assert.ok(inside(140,z),'center stays connected at '+z);
+ assert.ok(inside(445,534)===false);
+ const edge=[];
+ for(let x=0;x<275;x++)if(inside(x,560))edge.push(x);
+ assert.ok(edge.length>=85 && edge.every((n,i)=>n===edge[0]+i));
+ const source=readFileSync(new URL('../town-shore.js',import.meta.url),'utf8');
+ assert.match(source,/OPEN_POND_BANK\.slice\(1\)/);
+ const renderer=readFileSync(new URL('../town-webgl.js',import.meta.url),'utf8');
+ assert.match(renderer,/OPEN_POND_BANK\.entries\(\)/);
+});

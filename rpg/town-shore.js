@@ -4,7 +4,7 @@ const TAU=Math.PI*2;
 const SHADOWS=Object.freeze([
  [221,224,55,22,.42],[490,238,41,17,.32],[440,230,18,12,.36],[540,230,18,12,.36],
  [250,462,24,15,.42],[249,449,10,6,.35],[246,473,11,6,.39],
- [48,425,14,12,.32],[256,521,17,11,.35],[110,530,19,8,.31],
+ [48,425,14,12,.32],[256,521,17,11,.35],[86,551,13,8,.31],
  [57,402,13,7,.34],[242,405,13,7,.34],[283,464,17,9,.25],[287,510,19,10,.28],
  [330,348,10,5,.15],[424,365,11,6,.15],[533,368,10,5,.16]
 ]);
@@ -30,17 +30,27 @@ function contactMap(T,W,H,seeds){
  }
  const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.anisotropy=2;return t;
 }
-// One stationary, local atlas straddles the water's rectangular mesh edge.
- // Its varied shelf, mineral flecks, roots and reed contact are not a second
- // water surface; the existing ripple shader, fish and rain rings stay live.
+// Clockwise visual perimeter in map coordinates. Last endpoint joins
+// the first beyond the playable south edge, where there is no painted dam.
+// All filled water remains inside the existing southwest non-walkable band.
+export const OPEN_POND_BANK=Object.freeze([
+ [96,572],[87,549],[74,534],[61,523],[46,515],[36,501],[31,485],
+ [29,467],[31,450],[38,433],[51,419],[66,411],[84,403],[106,400],
+ [126,402],[146,397],[169,398],[192,404],[211,407],[230,419],
+ [243,433],[251,450],[254,467],[253,481],[246,496],[235,510],
+ [218,522],[202,530],[187,543],[181,557],[181,572]
+].map(Object.freeze));
+export const OPEN_POND_UV=Object.freeze({x:145,z:481,w:242,h:184});
 function shorelineContact(T,scene,W,H){
- const cx=146,cz=465,w=244,h=151,halfW=112.5,halfH=67.5;
- const c=document.createElement('canvas');c.width=768;c.height=480;
+ const {x:cx,z:cz,w,h}=OPEN_POND_UV;
+ const c=document.createElement('canvas');c.width=768;c.height=584;
  const g=c.getContext('2d');g.scale(c.width/w,c.height/h);g.translate(w/2,h/2);
  let seed=81931;
  const rnd=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
- const edges=[[-halfW,-halfH,1,0,0,1,w-19],[halfW,-halfH,0,1,-1,0,h-16],
-  [halfW,halfH,-1,0,0,-1,w-19],[-halfW,halfH,0,-1,1,0,h-16]];
+ const edges=OPEN_POND_BANK.slice(1).map(([ax,az],i)=>{
+  const [x,z]=OPEN_POND_BANK[i],len=Math.hypot(ax-x,az-z),tx=(ax-x)/len,tz=(az-z)/len;
+  return [x-cx,z-cz,tx,tz,-tz,tx,len];
+ });
  function line(x,y,a,b,color,width){
   g.beginPath();g.moveTo(x,y);g.lineTo(a,b);g.strokeStyle=color;g.lineWidth=width;g.stroke();
  }
@@ -69,7 +79,7 @@ function shorelineContact(T,scene,W,H){
   }
  }
  // Actual reed clusters get irregular roots, plant shade and small litter.
- for(const [x,z,ang] of [[46,437,.16],[74,525,-1.12],[200,524,-1.7],[253,443,2.4],
+ for(const [x,z,ang] of [[46,437,.16],[74,533,-1.12],[204,528,-1.7],[253,443,2.4],
   [249,488,2.91],[252,510,3.42],[118,402,1.6]]){
   g.save();g.translate(x-cx,z-cz);g.rotate(ang);
   const shade=g.createRadialGradient(0,0,.1,0,0,1);shade.addColorStop(0,'#364b308b');shade.addColorStop(1,'#364b3000');
@@ -118,7 +128,7 @@ export function addShoreCraft({T,scene,W,H,trees,room,shape}){
  const leaf=['#647d54','#7c935a','#8d9f63','#adad69'];
  const rock=(x,z,h=1)=>shape('sphere',x,1.06+h*.35,z,1.7+rand()*5.4,h*(1+rand()*2.6),2.1+rand()*4,stone[Math.floor(rand()*stone.length)],rand()*.28,rand()*TAU,(rand()-.5)*.24);
  // Eroded pockets alternate stones, moss and earth instead of a straight curb.
- for(const [x,z,rx,rz,quantity] of [[64,526,21,5,7],[147,534,23,6,8],[202,532,20,10,9],[255,516,7,17,8],
+ for(const [x,z,rx,rz,quantity] of [[64,526,21,5,7],[185,551,5,13,8],[202,532,20,10,9],[255,516,7,17,8],
   [260,481,8,23,8],[256,433,9,18,10],[221,401,19,7,8],[130,399,24,9,8],
   [77,405,19,8,7],[40,430,9,14,6],[39,494,7,13,8]]){
   for(let i=0;i<quantity;i++){
@@ -140,7 +150,7 @@ export function addShoreCraft({T,scene,W,H,trees,room,shape}){
    ['#bea372','#a38b63','#b69969','#bfa67e'][i%4],(rand()-.5)*.045,(rand()-.5)*.05,(rand()-.5)*.048);
   for(const dz of [-5.9,6.2])shape('sphere',x,7.54,z+dz,.42,.16,.44,'#6d6c5e');
  }
- for(const [cx,cz,k] of [[46,437,4],[74,525,4],[200,524,3],[253,443,5],[249,488,5],[252,510,8],[118,402,4]]){
+ for(const [cx,cz,k] of [[46,437,4],[74,533,4],[204,528,3],[253,443,5],[249,488,5],[252,510,8],[118,402,4]]){
   for(let i=0;i<k;i++){
    const x=cx+(rand()-.5)*11,z=cz+(rand()-.5)*9,h=8+rand()*14;
    const lean=(rand()-.5)*.25;

@@ -3,7 +3,10 @@
 const TAU=2*Math.PI;
 const pastureHeight=(x,z)=>-9+Math.min(1,Math.max(0,-z/480))*
  (70+36*Math.sin(x*.0049-z*.0062)+14*Math.cos(x*.009+z*.0042))
- + Math.min(1,Math.max(0,-z/325))*31*Math.exp(-((x-1098)**2/224**2+(z+519)**2/201**2));
+ + Math.min(1,Math.max(0,-z/325))*31*Math.exp(-((x-1098)**2/224**2+(z+519)**2/201**2))
+ + Math.min(1,Math.max(0,(-z-190)/210))*118*Math.exp(-((x-1250)**2/375**2+(z+570)**2/270**2))
+ + Math.min(1,Math.max(0,(-z-240)/215))*73*Math.exp(-((x-1460)**2/240**2+(z+495)**2/178**2))
+ + Math.min(1,Math.max(0,(-z-82)/150))*184*Math.exp(-((x-1910)**2/352**2+(z+280)**2/186**2));
 export const FENCE_MARGIN=Object.freeze([0,68]);
 export function marginTrail(x){return 22+7*Math.sin(x*.009+.15)+4*Math.sin(x*.021);}
 export function makeCountryside({T,scene,W,H,shape,leafMaps}){
@@ -108,12 +111,12 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
  }
  // Actual sloped mesh outside the normal world. Its geometry fills the
  // low view behind the sky ridges, but never touches the walkable 2D plane.
- const ridgeGeo=new T.PlaneGeometry(1900,840,91,51);ridgeGeo.rotateX(-Math.PI/2);
+ const ridgeGeo=new T.PlaneGeometry(2780,840,111,53);ridgeGeo.rotateX(-Math.PI/2);
  const ridgePoints=ridgeGeo.attributes.position,colors=new Float32Array(ridgePoints.count*3);
  const olive=new T.Color('#819564'),dusk=new T.Color('#929b7e'),hay=new T.Color('#bac28e');
  for(let i=0;i<ridgePoints.count;i++){
-  const x=ridgePoints.getX(i)+W/2,z=ridgePoints.getZ(i)-400;
-  ridgePoints.setY(i,pastureHeight(x,z));ridgePoints.setZ(i,z-H/2);
+  const x=ridgePoints.getX(i)+W/2+350,z=ridgePoints.getZ(i)-400;
+  ridgePoints.setX(i,x-W/2);ridgePoints.setY(i,pastureHeight(x,z));ridgePoints.setZ(i,z-H/2);
   const b=.39+Math.sin(x*.016+z*.017)*.14+Math.cos(z*.03)*.10;
   const far=Math.min(.81,Math.max(0,-z*.0010)),t=olive.clone().lerp(hay,b).lerp(dusk,far);
   colors[i*3]=t.r;colors[i*3+1]=t.g;colors[i*3+2]=t.b;
@@ -244,5 +247,156 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
  stoneGeo.setAttribute('position',new T.Float32BufferAttribute(rock,3));
  stoneGeo.setAttribute('color',new T.Float32BufferAttribute(stoneTints,3));stoneGeo.computeVertexNormals();
  group.add(new T.Mesh(stoneGeo,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
- return close=>{ridge.visible=close;group.visible=close;};
+ // The valley has its own silhouette and colour rhythm, not more grass
+ // scatter. Only the low camera sees the non-walkable 3D background.
+ const relief=[],reliefColors=[];
+ const palette={
+  near:['#718b7b','#638075','#849784'],
+  mid:['#81959f','#718899','#98a3ad'],
+  far:['#b5c3ce','#9eafc4','#c2cbd6']
+ };
+ function triangle(output,paint,a,b,c,ink){
+  output.push(...a,...b,...c);
+  for(const f of [.99,1.025,.975])paint.push(ink.r*f,ink.g*f,ink.b*f);
+ }
+ const ridges=[
+  {z:-1230,depth:400,colors:palette.far,peaks:[[-310,132],[120,181],[349,232],[545,211],[750,380],[867,329],[1082,575],[1231,511],[1332,582],[1544,401],[1680,468],[1867,355],[1926,226],[2200,439],[2380,344],[2642,191]]},
+  {z:-1010,depth:370,colors:palette.mid,peaks:[[-230,93],[58,127],[232,204],[467,155],[641,277],[773,241],[955,361],[1055,280],[1185,389],[1290,279],[1413,326],[1570,246],[1710,269],[1860,180],[2100,89]]},
+  {z:-820,depth:280,colors:palette.near,peaks:[[-370,58],[-100,105],[75,167],[216,120],[417,175],[595,152],[744,222],[900,168],[1018,242],[1136,182],[1298,229],[1499,159],[1800,70]]}
+ ];
+ for(const [k,ridge] of ridges.entries()){
+  const inks=ridge.colors.map(c=>new T.Color(c));
+  const columns=[];
+  for(let i=1;i<ridge.peaks.length;i++){
+   const [x0,h0]=ridge.peaks[i-1],[x1,h1]=ridge.peaks[i];
+   for(let q=0;q<10;q++){
+    const u=q*.1,v=(1-Math.cos(Math.PI*u))*.5,x=x0+(x1-x0)*u;
+    const trim=Math.sin(Math.PI*u)*(7*Math.sin(x*.065+k)+8*Math.cos(x*.026+1.3*k)+4*Math.sin(x*.105));
+    columns.push([x,h0+(h1-h0)*v+trim]);
+   }
+  }
+  columns.push(ridge.peaks.at(-1));
+  const profile=columns.map(([x,height],i)=>{
+   const z=ridge.z+17*Math.sin(x*.012+k)+9*Math.cos(x*.023);
+   const steep=(columns[Math.min(i+1,columns.length-1)][1]-columns[Math.max(0,i-1)][1])*.042;
+   return Array.from({length:10},(_,j)=>{
+    const u=j/9,foothill=Math.sin(Math.PI*u)*Math.sin(x*.010+k)*17;
+    const y=5+(height-5)*(1-u)**1.52+foothill;
+    const dx=u*(20*Math.sin(x*.009+k)+30*Math.sin(x*.019)),dz=u*ridge.depth;
+    const cold=.49+.22*Math.sin(x*.023-u*4.5)+.12*Math.sin(x*.058+u*9);
+    const tint=inks[0].clone().lerp(inks[1],Math.max(.03,Math.min(.86,.33+steep*.24+(cold-.5)*.61)));
+    tint.lerp(inks[2],.15+.22*cold+(1-u)**4*.13);
+    tint.multiplyScalar(.93+.06*Math.sin(x*.103+u*22)+.028*Math.sin(x*.27-u*47));
+    return [[x+dx-W/2,y,z+dz-H/2],tint];
+   });
+  });
+  for(let i=1;i<profile.length;i++)for(let j=0;j<9;j++){
+   const a=profile[i-1],b=profile[i];
+   for(const [p,c] of [a[j],a[j+1],b[j],a[j+1],b[j+1],b[j]]){relief.push(...p);reliefColors.push(c.r,c.g,c.b);}
+  }
+ }
+ function paintedMesh(vertices,colors,material){
+  const geo=new T.BufferGeometry();
+  geo.setAttribute('position',new T.Float32BufferAttribute(vertices,3));
+  geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.computeVertexNormals();
+  const mesh=new T.Mesh(geo,material);group.add(mesh);return mesh;
+ }
+ paintedMesh(relief,reliefColors,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide}));
+ // Crooked patchwork flower fields follow the slope. A continuous carpet
+ // reads from afar; individual clumps break the edges at the near side.
+ const bloomVerts=[],bloomColors=[],flowerRandom=(()=>{let r=11407;return()=>((r=(Math.imul(r,1664525)+1013904223)>>>0)/4294967296);})();
+ const sunnyFlowers=['#de95b2','#e5cab7','#bfa4d9','#edcf8c','#c88baa','#e2bb9a'].map(c=>new T.Color(c));
+ const bedSoil=new T.Color('#a2a174');
+ function bedPoint(x,z,lift=2.9){return [x-W/2,pastureHeight(x,z)+lift,z-H/2];}
+ // The near tree line frames the middle rows rather than enclosing them.
+ for(const [plot,cx,cz,rx,rows] of [[0,721,-202,150,8],[1,1330,-415,251,10],[2,1080,-340,164,8],[3,1815,-198,255,9]]){
+  for(let row=0;row<rows;row++){
+   const lastWidth=rx*(.75+row*.043);
+   const samples=[];
+   for(let j=0;j<=27;j++){
+    const u=j/27,x=cx+(u-.5)*lastWidth*2+row*8;
+    const z=cz-row*18+Math.sin(u*3.1+plot*.64+row*.12)*(24+plot*4)+Math.cos(x*.027)*6+(u-.45)*32;
+    const width=2.7+5.5*Math.sin(Math.PI*u)**.44+flowerRandom()*1.8;
+    const ink=sunnyFlowers[(row+plot*2)%sunnyFlowers.length].clone()
+     .lerp(sunnyFlowers[(row+plot*2+1)%sunnyFlowers.length],.12+flowerRandom()*.32);
+    samples.push([bedPoint(x,z-width),bedPoint(x,z),bedPoint(x,z+width),ink]);
+    if(j>0&&j<27){
+     const n=4+Math.round(flowerRandom()*6);
+     for(let q=0;q<n;q++){
+      const xa=x+(flowerRandom()-.5)*9,za=z+(flowerRandom()-.5)*width*1.91;
+      const a=bedPoint(xa,za,2.9+flowerRandom()*3.7),r=.47+flowerRandom()*1.51;
+      const ink2=ink.clone().lerp(sunnyFlowers[(row+q)%sunnyFlowers.length],flowerRandom()*.43).multiplyScalar(.84+flowerRandom()*.29);
+      triangle(bloomVerts,bloomColors,[a[0]-r,a[1],a[2]+r*.22],[a[0]+r,a[1],a[2]-r*.44],[a[0]-.2,a[1]+r*.68,a[2]+r*.54],ink2);
+     }
+    }
+   }
+   for(let i=1;i<samples.length;i++){
+    const a=samples[i-1],b=samples[i];
+    for(let k=0;k<2;k++){
+     const ink=b[3].clone().lerp(bedSoil,.14+.12*(i%4));
+     triangle(bloomVerts,bloomColors,a[k],a[k+1],b[k],ink);
+     triangle(bloomVerts,bloomColors,a[k+1],b[k+1],b[k],ink);
+    }
+   }
+  }
+ }
+ paintedMesh(bloomVerts,bloomColors,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide}));
+ // A real volume and a moving overshot wheel, placed on a stream crossing
+ // outside the player field. Wheel + house use four small render batches.
+ const millX=1122,millZ=-374, millY=pastureHeight(millX,millZ);
+ const mill=new T.Group();mill.position.set(millX-W/2,millY,millZ-H/2);mill.rotation.y=-.45;mill.scale.setScalar(1.36);group.add(mill);
+ const blocks=[
+  [8,3.8,0,55,8,44,'#8b8173'],[8,22,-1,49,35,38,'#d2b298'],
+  [-15,20.5,18,4,31,3.7,'#6f5544'],[30,20.5,18,4,31,3.7,'#6f5544'],
+  [7,34,18,49,4,4,'#916b50'],[7,9,18,49,3,4,'#9d8c75'],
+  [-3,18.5,19,10,19,2.6,'#5c7668'],[21,25,19,10,11,3,'#74918d'],
+  [21,25,20.7,1,11,1,'#e8d1a9'],[21,25,20.7,10,1,1,'#e8d1a9'],
+  [8,53,-2,56,4.45,27,'#986b56',.46],[8,53,20,56,4.45,27,'#a2755b',-.46],
+  [8,58.7,9,56,3.1,5.2,'#86614b'],[-6,56,-10,9,19,9,'#ad8770'],[-6,65,-10,13,3.7,13,'#91735e'],
+  [31,6,10,47,5,7,'#a38766'],[39,19,13,16,2.6,8,'#78573e'],[47,12,13,2.8,17,3.1,'#81614c']
+ ];
+ const singleBox=new T.BoxGeometry(1,1,1), millMat=new T.MeshLambertMaterial({flatShading:true});
+ function boxes(parent,items){
+  const mesh=new T.InstancedMesh(singleBox,millMat,items.length);
+  items.forEach(([x,y,z,w,h,d,tint,rx=0,ry=0,rz=0],i)=>{
+   obj.position.set(x,y,z);obj.rotation.set(rx,ry,rz);obj.scale.set(w,h,d);obj.updateMatrix();
+   mesh.setMatrixAt(i,obj.matrix);mesh.setColorAt(i,color.set(tint));
+  });
+  parent.add(mesh);
+ }
+ boxes(mill,blocks);
+ const wheel=new T.Group();wheel.position.set(43,17,18);mill.add(wheel);
+ const ring=new T.TorusGeometry(14.25,1.38,6,30);
+ const hoops=new T.InstancedMesh(ring,millMat,2);
+ for(let i=0;i<2;i++){
+  obj.position.set(0,0,(i-.5)*4.6);obj.rotation.set(0,0,0);obj.scale.set(1,1,1);obj.updateMatrix();
+  hoops.setMatrixAt(i,obj.matrix);hoops.setColorAt(i,color.set(i?'#ad805d':'#7e583f'));
+ }
+ wheel.add(hoops);
+ const spokes=[[0,0,0,4.7,4.7,7.5,'#926042']];
+ for(let i=0;i<12;i++){
+  const a=i*TAU/12,x=Math.cos(a),y=Math.sin(a);
+  if(i%2===0)spokes.push([x*7.0,y*7.0,0,13,1.5,1.9,'#b18b65',0,0,a]);
+  spokes.push([x*14.7,y*14.7,0,2.2,4.13,6.7,i%3===0?'#b48a61':'#986b4c',0,0,a]);
+ }
+ boxes(wheel,spokes);
+ const creek=[], creekTint=[];
+ const course=[[1087,-463,10],[1120,-425,14],[1152,-396,12],[1165,-364,12],[1176,-329,8],[1187,-298,2]];
+ const streamInk=['#769d98','#9fb9a6','#72918d'].map(c=>new T.Color(c));
+ for(let i=1;i<course.length;i++){
+  const [x,z,w]=course[i-1],[nx,nz,nw]=course[i];
+  let old=[bedPoint(x-w,z,1.0),bedPoint(x,z,1.06),bedPoint(x+w,z,1.0)];
+  for(let k=1;k<=8;k++){
+   const t=k/8,x2=x+(nx-x)*t,z2=z+(nz-z)*t,wide=w+(nw-w)*t;
+   const next=[bedPoint(x2-wide,z2,1.0),bedPoint(x2,z2,1.06),bedPoint(x2+wide,z2,1.0)];
+   for(let lane=0;lane<2;lane++){
+    const c=streamInk[(lane+i+k)%3];
+    triangle(creek,creekTint,old[lane],old[lane+1],next[lane],c);
+    triangle(creek,creekTint,old[lane+1],next[lane+1],next[lane],streamInk[(lane+i+1)%3]);
+   }
+   old=next;
+  }
+ }
+ paintedMesh(creek,creekTint,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide}));
+ return (close,clock=0,motion=true)=>{ridge.visible=close;group.visible=close;if(close)wheel.rotation.z=motion?clock*-.00041:0;};
 }

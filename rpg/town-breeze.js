@@ -59,14 +59,54 @@ transformed.z += air * stem*stem * 2.0;
 export function makePondHorizon(T,rain){
  const c=document.createElement('canvas');c.width=960;c.height=560;
  const g=c.getContext('2d');
- const gradient=g.createLinearGradient(0,0,0,320);
- for(const [x,color] of (rain?[[0,'#aebdc2'],[.58,'#d1d9d3'],[1,'#eee6d3']]:[[0,'#b8d2ce'],[.52,'#d6e2d6'],[1,'#f4e9cd']]))gradient.addColorStop(x,color);
+ // Draw the sky before the horizon profiles. Each weather uses a different
+ // cloud silhouette and light source, not merely a different tint.
+ const gradient=g.createLinearGradient(0,0,0,325);
+ for(const [x,color] of (rain?[[0,'#647993'],[.41,'#8899ae'],[.71,'#b9c0c6'],[1,'#efe0cc']]
+   :[[0,'#7eafb9'],[.40,'#a9d0cc'],[.72,'#d7e9d7'],[1,'#f7ead1']]))gradient.addColorStop(x,color);
  g.fillStyle=gradient;g.fillRect(0,0,960,560);
- for(const [x,y,w,h] of [[65,114,204,29],[315,49,174,32],[643,109,222,35],[877,77,176,30]]){
+ function glow(x,y,w,h,stops){
   g.save();g.translate(x,y);g.scale(w,h);
-  const mist=g.createRadialGradient(-.13,.1,.04,0,0,1);
-  mist.addColorStop(0,rain?'#e7eae867':'#fffcdf9c');mist.addColorStop(1,'#faf5df00');
-  g.fillStyle=mist;g.fillRect(-1,-1,2,2);g.restore();
+  const ink=g.createRadialGradient(0,0,0,0,0,1);
+  for(const [at,color] of stops)ink.addColorStop(at,color);
+  g.fillStyle=ink;g.fillRect(-1,-1,2,2);g.restore();
+ }
+ // Different lobe sizes and vertical overlap keep even a still sky legible
+ // from the phone while leaving openings between its low banks.
+ function cloud(x,y,w,h,shape,core,mid,edge){
+  g.save();g.translate(x,y);g.scale(w,h);
+  const ink=g.createLinearGradient(0,-1,0,.75);
+  for(const [at,color] of [[0,edge],[.26,mid],[.58,core],[1,edge]])ink.addColorStop(at,color);
+  g.fillStyle=ink;g.beginPath();
+  g.moveTo(-1,.12);
+  shape.forEach(points=>g.bezierCurveTo(...points));
+  g.bezierCurveTo(.54,.53,-.52,.72,-1,.12);
+  g.fill();g.restore();
+ }
+ const wisps=[[-.85,-.08,-.64,.03,-.54,-.18],[-.38,-.40,-.14,-.37,-.02,-.20],[.19,-.37,.34,-.19,.45,-.22],[.67,-.20,.91,.03,1,.10]];
+ const banks=[[-.96,-.04,-.84,-.22,-.72,-.21],[-.64,-.68,-.35,-.76,-.24,-.46],[-.08,-.94,.21,-.84,.30,-.43],
+  [.47,-.69,.65,-.58,.72,-.28],[.85,-.21,.97,-.12,1,.10]];
+ if(!rain){
+  glow(728,88,172,112,[[0,'#fff5c8bc'],[.26,'#fff2cb72'],[1,'#fff1ca00']]);
+  glow(728,88,52,48,[[0,'#fff6baff'],[.38,'#fff3c38f'],[1,'#fff2c300']]);
+  const disc=g.createLinearGradient(720,73,735,103);
+  disc.addColorStop(0,'#fffad6');disc.addColorStop(1,'#ffdf94');
+  g.fillStyle=disc;g.beginPath();g.arc(728,88,15.6,0,Math.PI*2);g.fill();
+  cloud(158,107,193,27,wisps,'#fff7dfdc','#f8f2d99c','#f7fbf000');
+  cloud(233,124,168,19,wisps,'#f9ebd59b','#f9f8e67a','#f8f8ec00');
+  cloud(411,65,107,15,wisps,'#f7f5e9bc','#f8f8ea91','#f8f8ed00');
+  cloud(894,127,161,32,wisps,'#fff5dcda','#fcf5e498','#f5f6e900');
+  cloud(571,143,106,12,wisps,'#fffbeb9c','#fffbef67','#ffffff00');
+ }else{
+  glow(648,133,281,133,[[0,'#fff0d2c8'],[.32,'#efe2d08e'],[1,'#d7cbbb00']]);
+  cloud(275,43,382,84,banks,'#62758ecf','#768ba1bf','#9eacb800');
+  cloud(522,68,315,89,banks,'#77869ecf','#a3aebfa6','#a5b1c200');
+  cloud(856,66,319,101,banks,'#596c86cd','#8e9bb291','#9ba7bc00');
+  cloud(89,100,214,73,banks,'#70849ab9','#a9b4c191','#a9b4c100');
+  cloud(321,116,258,53,wisps,'#98a6b7d1','#c1c9ca85','#bdc5c800');
+  cloud(863,111,209,56,banks,'#8494a9c5','#adb6c09a','#c5ccd000');
+  cloud(615,150,236,20,wisps,'#d5c8c6a5','#f0e0cf79','#e0cdc600');
+  cloud(372,166,194,13,wisps,'#d0cbcc99','#e1d9d48d','#e0d9d200');
  }
  for(const [y,amp,phase,ink] of [[230,18,.4,rain?'#a5b4ad':'#aebfae'],[252,17,2.1,rain?'#a5b2a3':'#aabc9c']]){
   g.beginPath();
