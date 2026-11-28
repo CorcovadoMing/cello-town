@@ -19,6 +19,26 @@ export function makeVerge(T,scene,W,H){
   }
 
  }
+ // One low, spreading fan, subdued where gravel meets turf. The
+ // outer shoot lies almost flat; taller leaves face back into the bed.
+ function trailFan(x,z,angle,scale,seed,allows){
+  const inks=['#8e9c60','#9eaa6c','#88985b','#a6ac6c'];
+  const base=[x,1.53,z];
+  for(let j=0;j<3;j++){
+   const a=angle+(j-1)*.89+Math.sin(seed*1.8)*.24,u=Math.cos(a),v=Math.sin(a);
+   const len=(3.4+j*.72)*scale,w=(.83+j*.15)*scale;
+   const at=(r,g,h)=>[x+u*r-v*g,1.53+h,z+v*r+u*g];
+   const fold=at(len*.57,0,(.82+j*.30)*scale),tip=at(len,0,(.48+j*.39)*scale);
+   const under=at(len*.48,-w,.29*scale),over=at(len*.47,w*.89,.41*scale);
+   const trailing=at(len*.79,-w*.64,.48*scale),wax=at(len*.83,w*.56,.61*scale);
+   const ink=inks[(seed+j)%4];
+   for(const [a,b,c,sh] of [[base,under,fold,[.83,.87,1.03]],[base,fold,over,[.83,1.03,.98]],
+    [under,trailing,fold,[.87,.94,1.03]],[fold,wax,over,[1.03,1.10,.98]],
+    [trailing,tip,fold,[.94,1.07,1.03]],[fold,tip,wax,[1.03,1.07,1.10]]]){
+    if([a,b,c].every(([xx,,zz])=>allows(xx,zz)))tri(V(...a),V(...b),V(...c),ink,sh);
+   }
+  }
+ }
  function flower(x,y,z,tone,seed,scale=1){
   const petalCount=[5,6,5][seed%3],radius=(2.65+(seed%4)*.24)*scale;
   const face=seed*2.399963,tilt=.17+.08*(seed%3);
@@ -69,18 +89,19 @@ export function makeVerge(T,scene,W,H){
    const a=i*2.399963+seed*.19,t=(i+.5)/54,q=Math.sqrt(t),r=.28+.72*q;
    const cx=x+Math.cos(a)*rx*r,cz=z+Math.sin(a)*rz*r;
    const jitter=.8+.20*Math.sin(seed+i*2.43);
-   const y=1.66+(height-1.66)*(.28+.72*Math.sqrt(1-t))*jitter;
+   const tier=[.78,1,.91,.62][(i+seed)%4];
+   const y=1.66+(height-1.66)*(.22+.78*Math.sqrt(1-t))*jitter*tier;
    const dir=a+(i%5-2)*.13,ux=Math.cos(dir),uz=Math.sin(dir),w=1.5+(i*7+seed)%8*.145;
    const len=2.0+w*(.86+(i%4)*.10);
    const tip=.34+(.26*Math.sin(i*1.337)),edge=i%3===0?.60:.81;
    const f=(r,offset,h)=>V(cx+ux*r-uz*offset,y+h,cz+uz*r+ux*offset);
    const root=f(-len*.35,0,-.45),mid=f(len*.40,0,.89),end=f(len,0,tip);
-   const l=f(len*.04,-w*.72,.04),rgt=f(len*.10,w*.71,.10);
+   const l=f(len*.04,-w*.72,.13),rgt=f(len*.10,w*.63,-.04);
    const ll=f(len*edge,-w*.52,.45),rr=f(len*.75,w*.53,.40);
    const ink=palette[(i+seed)%palette.length];
    tri(root,l,mid,ink,[.76,.88,1.07]);tri(root,mid,rgt,ink,[.76,1.07,.94]);
-   tri(l,ll,mid,ink,[.88,1,1.07]);tri(mid,rr,rgt,ink,[1.07,1.02,.94]);
-   tri(ll,end,mid,ink,[1,1.12,1.07]);tri(mid,end,rr,ink,[1.07,1.12,1.02]);
+   tri(l,ll,mid,ink,[.86,1.03,1.13]);tri(mid,rr,rgt,ink,[1.13,.99,.87]);
+   tri(ll,end,mid,ink,[1.03,1.16,1.13]);tri(mid,end,rr,ink,[1.13,1.16,.99]);
   }
  }
  function finish(){
@@ -94,5 +115,5 @@ export function makeVerge(T,scene,W,H){
   scene.add(mesh);
   return mesh;
  }
- return {flower,tuft,cover,shrub,finish};
+ return {flower,tuft,cover,shrub,trailFan,finish};
 }

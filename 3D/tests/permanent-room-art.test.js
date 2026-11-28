@@ -23,7 +23,7 @@ test('permanent room art is batched and retains the original plant and table hit
  scene.updateMatrixWorld(true);
  assert.deepEqual([...plants,table,score].map(o=>o.position),positions);
  assert.deepEqual(rays.map(r=>r.intersectObjects(scene.children,true)[0]?.object),hits);
- assert.equal(art.children.length,3);
+ assert.equal(art.children.length,6);
  assert.equal(pots.every(m=>!m.visible),true);
  for(const [i,plant] of plants.entries()){
   const craft=plant.getObjectByName(i?'west-hand-thrown-plant':'east-hand-thrown-plant');
@@ -34,4 +34,22 @@ test('permanent room art is batched and retains the original plant and table hit
   for(const mesh of craft.children)for(const key of ['position','normal'])assert.ok(mesh.geometry.attributes[key].array.every(Number.isFinite));
  }
  assert.equal(table.children.length,6);
+});
+
+test('botanical wall studies face into the room and do not claim hits',()=>{
+ const orig=globalThis.document;
+ const op=()=>{};
+ globalThis.document={createElement:()=>({getContext:()=>new Proxy({
+  createLinearGradient:()=>({addColorStop:op}),
+ },{get:(o,k)=>o[k]??op})})};
+ try{
+  const scene=new T.Scene();const art=installRoomMaterialArt(T,scene);scene.updateMatrixWorld(true);
+  for(let j=0;j<2;j++){
+   const plane=art.getObjectByName('botanical-study-paper-'+j),box=new T.Box3().setFromObject(plane);
+   assert.ok(plane.material.map.isCanvasTexture);
+   assert.ok(plane.geometry.attributes.normal.getX(0)>.99);
+   assert.ok(box.min.x>-2.95&&box.max.x<-2.90&&box.min.y>1.09&&box.max.y<1.71);
+   assert.equal(new T.Raycaster(new T.Vector3(0,plane.position.y,plane.position.z),new T.Vector3(-1,0,0)).intersectObject(plane).length,0);
+  }
+ }finally{if(orig===undefined)delete globalThis.document;else globalThis.document=orig;}
 });

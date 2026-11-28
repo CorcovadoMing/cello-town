@@ -1,6 +1,6 @@
 import {GARDEN_SOIL,GARDEN_ROWS,ROW_SECTION,rowPoint} from './town-bed.js?v=1';
 import {makeGroundRain} from './town-ground-rain.js?v=1';
-import {makeVerge} from './town-verge.js?v=1';
+import {makeVerge} from './town-verge.js?v=2';
 import {drawLoungeBook,loungePageTurn} from './lounge-art.js?v=reader-041';
 import {makeCountryside} from './town-countryside.js?v=woodland-037';
 import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=woodland-037';
@@ -1225,6 +1225,22 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    const xx=x+Math.cos(a)*w*r,zz=z+Math.sin(a)*d*r;
    if(pathAt(xx,zz)||insidePolygon(xx,zz,GARDEN_SOIL))continue;
    verge.cover(xx,zz,x+z+i,.58+(i*7%10)*.093);
+  }
+ }
+ // Low, intermittent growth follows the HAND-AUTHORED gravel contour;
+ // within each drift the shoots turn back toward grass. The whole blade
+ // must stay off the beveled graveled corridor, including its tip.
+ const edgePlantable=(x,z)=>!insidePolygon(x,z,pathLoop)&&!insidePolygon(x,z,GARDEN_SOIL);
+ const vergeDrifts=[
+  [213,294,-1,8,4],[264,293,-1,10,5],[384,290,-1,11,5],
+  [546,294,-1,12,6],[580,293,-1,8,4],[741,290,-1,10,5],
+  [325,377,1,10,5],[378,375,1,9,4],[541,379,1,9,5],
+  [674,377,1,12,6],[754,377,1,10,5],
+ ];
+ for(const [x,z,side,spread,count] of vergeDrifts){
+  for(let i=0;i<count;i++){
+   const u=i/(count-1)*2-1,px=x+spread*u,pz=z+side*(3+4*u*u+.6*Math.sin(x+i*2));
+   verge.trailFan(px,pz,side*Math.PI/2+u*.40,.94+.32*(1-u*u),x+i,edgePlantable);
   }
  }
  verge.finish();

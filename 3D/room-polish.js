@@ -180,6 +180,52 @@ export function installRoomMaterialArt(T,scene,{plants=[],rug=null,table=null}={
  bake('olive-timber-wainscot-stiles',edge,finish('#9c9c7b'));
  bake('ivory-wainscot-cap-bead',face,finish('#e2d0aa',.70));
 
+ // A pair of small, painted botanical studies sits flush to the west wall.
+ // Existing room / performance cameras and walkable space never move.
+ const mount=[],moulding=[],lip=[];
+ const studies=[{z:-.02,y:1.42,w:.44,h:.53},{z:.48,y:1.32,w:.31,h:.40}];
+ for(const {z,y,w,h} of studies){
+  mount.push(box(-2.964,y,z,.018,h,w));
+  for(const side of [-1,1]){
+   moulding.push(box(-2.949,y+side*(h-.017)*.5,z,.026,.017,w));
+   moulding.push(box(-2.949,y,z+side*(w-.017)*.5,.026,h-.034,.017));
+   lip.push(box(-2.934,y+side*(h-.044)*.5,z,.007,.005,w-.036));
+   lip.push(box(-2.934,y,z+side*(w-.044)*.5,.007,h-.036,.005));
+  }
+ }
+ bake('botanical-wall-mounts',mount,finish('#423c31'));
+ bake('botanical-walnut-moulding',moulding,finish('#78543b',.70));
+ bake('botanical-faded-gilt-lip',lip,finish('#c19c60',.65));
+ if(typeof document!=='undefined')studies.forEach(({z,y,w,h},j)=>{
+  const paper=document.createElement('canvas');paper.width=144;paper.height=184;
+  const c=paper.getContext('2d');if(!c)return;
+  const wash=c.createLinearGradient(0,0,144,184);
+  wash.addColorStop(0,'#eee3ca');wash.addColorStop(.55,'#e1d0aa');wash.addColorStop(1,'#c3ab84');
+  c.fillStyle=wash;c.fillRect(0,0,144,184);
+  c.strokeStyle='#80614166';c.lineWidth=1;c.strokeRect(9,9,126,166);
+  for(let i=0;i<80;i++){
+   const u=(i*39.73)%144,v=(i*i*11.23)%184;
+   c.fillStyle=i%2?'#a78a6430':'#faf2df42';c.fillRect(u,v,2+i%8,1);
+  }
+  const col=j?'#71866b':'#74845c',hue=j?'#ba8159':'#7e8756';
+  c.lineCap='round';c.strokeStyle='#6d7550';c.lineWidth=2;
+  c.beginPath();c.moveTo(69,148);c.quadraticCurveTo(60,103,82,42);c.stroke();
+  for(let i=0;i<8;i++){
+   const t=i/7,x=66+t*t*16,y=140-11.9*i,b=j?13:22;
+   for(const side of [-1,1]){
+    const dx=b*side*(1-t*.47);
+    c.beginPath();c.moveTo(x,y);c.quadraticCurveTo(x+dx*.29,y-13,x+dx,y-15-side*2);
+    c.quadraticCurveTo(x+dx*.64,y-2,x,y);c.fillStyle=(i+side)%3===0?hue:col;c.fill();
+    c.strokeStyle='#ded4a864';c.lineWidth=.65;
+    c.beginPath();c.moveTo(x,y);c.lineTo(x+dx*.77,y-12);c.stroke();
+   }
+  }
+  for(let i=0;i<3;i++){const x=82+Math.cos(i*2.1)*5,y=41+Math.sin(i*2.1)*5;c.fillStyle=j?'#b67f57':'#998659';c.beginPath();c.ellipse(x,y,2.7,4.1,i*.9,0,Math.PI*2);c.fill();}
+  c.strokeStyle='#89664475';c.lineWidth=.9;c.beginPath();c.moveTo(55,161);c.lineTo(89,161);c.moveTo(65,166);c.lineTo(79,166);c.stroke();
+  const map=new T.CanvasTexture(paper);map.colorSpace=T.SRGBColorSpace;
+  const image=new T.BoxGeometry(.001,h-.046,w-.046);
+  put(fixed(image,finish('#fff7e6',.86,{map}),'botanical-study-paper-'+j),-2.931,y,z);
+ });
  // A gathered rosette of tapered, arcing leaves has real surface normals and
  // a raised ridge; no billboard, round leaf blobs, external maps or per-frame updates.
  const glaze=[finish('#bc8c70',.64),finish('#a77957',.68)];

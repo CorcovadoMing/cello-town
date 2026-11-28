@@ -1,5 +1,5 @@
 import {createWindowLandscape,createWindowMotes,createWindowRain} from './window-landscape.js?v=room-art-040';
-import {decoratePerformanceRoom,installWestRoomDetail,createRoomRayMirror,traceRoomDaylight,installRoomMaterialArt} from './room-polish.js?v=room-art-040';
+import {decoratePerformanceRoom,installWestRoomDetail,createRoomRayMirror,traceRoomDaylight,installRoomMaterialArt} from './room-polish.js?v=botanical-study-043';
 import * as T from './vendor/three.module.js';
 import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,roomWalkPhase,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=wardrobe-colors-041';
 const $=id=>document.getElementById(id),area=$('scene'),status=$('save-status');let state=defaults();try{state=normalize(JSON.parse(localStorage.getItem(KEY)));}catch{status.textContent='無法讀取本機設定，仍可自由試穿。';}
