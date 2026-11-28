@@ -2,7 +2,7 @@ import {GARDEN_SOIL,GARDEN_ROWS,ROW_SECTION,rowPoint} from './town-bed.js?v=1';
 import {makeGroundRain} from './town-ground-rain.js?v=1';
 import {makeVerge} from './town-verge.js?v=2';
 import {drawLoungeBook,loungePageTurn} from './lounge-art.js?v=reader-041';
-import {makeCountryside} from './town-countryside.js?v=canopy-044';
+import {makeCountryside} from './town-countryside.js?v=margin-leaves-046';
 import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=silt-shelf-045';
 import {breezeAt,TOWN_WIND,windLeafAt,windLeafFloatAt,makeLivingGrass,makePondHorizon,POND_SHOT,LAWN_DRIFTS,lawnAnchor} from './town-breeze.js?v=wind-040';
 import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './town-orchard.js?v=woodland-037';
@@ -1159,7 +1159,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  box(cx,96,fr+3,2,12,1.5,cream);box(cx,96,fr+3,12,2,1.5,cream);
  for(const [dy,w] of [[8,52],[16,46],[24,39]])box(cx,3,fr+dy,w,6,7,wood);
  markingHouse=false;
- plane(cx-25,fr+20,2.9,73,24,'#3e503e',.26);
+ // The chalet and porch cast real shadows; do not also stamp a fixed dark oval on the path.
  // Rural story clusters: firewood and a rain barrel by the cabin;
  // a patched bank fence and stepping-stone alcove at the pond; little
  // clover, shrubs and gravel at the garden. All lie off interaction routes.

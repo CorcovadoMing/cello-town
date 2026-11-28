@@ -53,3 +53,24 @@ test('botanical wall studies face into the room and do not claim hits',()=>{
   }
  }finally{if(orig===undefined)delete globalThis.document;else globalThis.document=orig;}
 });
+
+test('turned pots share one painted texture and map the motif at physical height',()=>{
+ const prior=globalThis.document,no=()=>{};
+ globalThis.document={createElement:()=>({getContext:()=>new Proxy({createLinearGradient:()=>({addColorStop:no})},{get:(o,k)=>o[k]??no})})};
+ try{
+  const scene=new T.Scene(),plants=[new T.Group(),new T.Group()];scene.add(...plants);
+  installRoomMaterialArt(T,scene,{plants});
+  const a=plants.map(p=>p.getObjectByName('ceramic-vessel-with-turned-foot'));
+  assert.ok(a[0].material.map.isCanvasTexture);
+  assert.equal(a[0].material.map,a[1].material.map);
+  for(const m of a){
+   const {position,uv}=m.geometry.attributes;
+   assert.equal(uv.count,position.count);
+   for(let i=0;i<uv.count;i++){
+    const v=Math.min(1,Math.max(0,(position.getY(i)-.047)/.478));
+    assert.ok(Math.abs(uv.getY(i)-v)<1e-5);
+    assert.ok(uv.getX(i)>=0 && uv.getX(i)<=1);
+   }
+  }
+ }finally{if(prior===undefined)delete globalThis.document;else globalThis.document=prior;}
+});

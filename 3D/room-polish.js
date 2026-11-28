@@ -228,7 +228,36 @@ export function installRoomMaterialArt(T,scene,{plants=[],rug=null,table=null}={
  });
  // A gathered rosette of tapered, arcing leaves has real surface normals and
  // a raised ridge; no billboard, round leaf blobs, external maps or per-frame updates.
- const glaze=[finish('#bc8c70',.64),finish('#a77957',.68)];
+ // Small shared ceramic atlas: a brushed slip band and iron-oxide
+ // leaf cuts wrap around both vessels at the same physical height.
+ // The single image also fits into the real mirror's material atlas.
+ let clayBand=null;
+ if(typeof document!=='undefined'){
+  const paper=document.createElement('canvas');paper.width=256;paper.height=160;
+  const g=paper.getContext('2d');
+  if(g){
+   const wash=g.createLinearGradient(0,0,0,160);
+   wash.addColorStop(0,'#eacda7');wash.addColorStop(.18,'#d2a37d');
+   wash.addColorStop(.67,'#b17754');wash.addColorStop(1,'#82523c');
+   g.fillStyle=wash;g.fillRect(0,0,256,160);
+   g.fillStyle='#8c644a';g.fillRect(0,25,256,5);g.fillRect(0,65,256,4);
+   g.fillStyle='#dcb992';g.fillRect(0,30,256,35);
+   g.fillStyle='#aa7857';g.fillRect(0,34,256,2);g.fillRect(0,60,256,2);
+   for(let i=0;i<12;i++){
+    const x=i*256/12;
+    g.beginPath();g.moveTo(x+3,56);g.quadraticCurveTo(x+4,39,x+16,40);
+    g.quadraticCurveTo(x+16,51,x+3,56);g.fillStyle=i%2?'#92724e':'#89755a';g.fill();
+    g.strokeStyle='#e2c7a2';g.lineWidth=.85;
+    g.beginPath();g.moveTo(x+5,54);g.lineTo(x+13,43);g.stroke();
+   }
+   for(let i=0;i<62;i++){
+    const x=i*37.37%256,y=i*17.31%160;
+    g.fillStyle=i%2?'#e7c29340':'#70544540';g.fillRect(x,y,1+(i%6),.55);
+   }
+   clayBand=new T.CanvasTexture(paper);clayBand.colorSpace=T.SRGBColorSpace;clayBand.wrapS=T.RepeatWrapping;
+  }
+ }
+ const glaze=clayBand?[finish('#ffeddd',.71,{map:clayBand}),finish('#ebd9bc',.76,{map:clayBand})]:[finish('#bc8c70',.64),finish('#a77957',.68)];
  const foliage=['#536b4e','#718459','#89965f'].map(color=>finish(color,.73,{side:T.DoubleSide}));
  const soil=finish('#766343'),vein=finish('#b0a170',.90);
  plants.forEach((plot,k)=>{
@@ -240,6 +269,15 @@ export function installRoomMaterialArt(T,scene,{plants=[],rug=null,table=null}={
   const ceramic=new T.LatheGeometry(profile.map(([x,y])=>new T.Vector2(x,y)),24);
   const rings=new T.TorusGeometry(r*.96,.008,5,24);rings.rotateX(-Math.PI/2);
   const lowerRing=new T.TorusGeometry(r*.80,.006,5,24);lowerRing.rotateX(-Math.PI/2);
+  // The lathe and both wheel-thrown rims get a physical-height UV.
+  // Use each source's seam-safe U, rather than atan2 across indexed faces.
+  if(clayBand)for(const geometry of [ceramic,rings,lowerRing]){
+   const {position,uv}=geometry.attributes,offset=geometry===rings?.499:geometry===lowerRing?.128:0;
+   for(let i=0;i<uv.count;i++){
+    const y=position.getY(i)+offset;
+    uv.setXY(i,geometry===ceramic?uv.getX(i):uv.getY(i),T.MathUtils.clamp((y-.047)/.478,0,1));
+   }
+  }
   bake('ceramic-vessel-with-turned-foot',[[ceramic,0,0,0],[rings,0,.499,0],[lowerRing,0,.128,0]],glaze[k],cover);
   put(fixed(new T.CylinderGeometry(r*.85,r*.83,.012,22),soil,'soil-inlaid-below-rim',cover),0,.481,0);
   const pos=[[],[],[]],index=[[],[],[]],stems=[];

@@ -9,6 +9,21 @@ const pastureHeight=(x,z)=>-9+Math.min(1,Math.max(0,-z/480))*
  + Math.min(1,Math.max(0,(-z-82)/150))*184*Math.exp(-((x-1910)**2/352**2+(z+280)**2/186**2));
 export const FENCE_MARGIN=Object.freeze([0,68]);
 export function marginTrail(x){return 22+7*Math.sin(x*.009+.15)+4*Math.sin(x*.021);}
+// Behind the fence use the same swaying silhouette at a cheaper distance:
+// a bent profile, with shoulders and a broad crown rather than a needle.
+export function marginLeaf(x,z,height,width,leanX,leanZ,base=1.54){
+ const d=Math.hypot(leanX,leanZ)||1, nx=-leanZ/d*width,nz=leanX/d*width;
+ const root=(k)=>[x+nx*k,base,z+nz*k];
+ const knee=(k)=>[x+leanX*.27+nx*k,base+height*.58,z+leanZ*.27+nz*k];
+ const crest=(k)=>[x+leanX*.85+nx*k,base+height*.91,z+leanZ*.85+nz*k];
+ return [
+  [[root(-.61),.0],[root(.61),.0],[knee(-1),.56]],
+  [[root(.61),.0],[knee(1),.56],[knee(-1),.56]],
+  [[knee(-1),.56],[knee(1),.56],[crest(-.46),.90]],
+  [[knee(1),.56],[crest(.46),.90],[crest(-.46),.90]],
+  [[crest(-.46),.90],[crest(.46),.90],[[x+leanX,base+height,z+leanZ],1]],
+ ];
+}
 export function makeCountryside({T,scene,W,H,shape,leafMaps}){
  let seed=72931;
  const rand=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
@@ -25,9 +40,10 @@ export function makeCountryside({T,scene,W,H,shape,leafMaps}){
    if(x<1||x>958||z<0||z>68||Math.abs(z-marginTrail(x))<6+rand()*3)continue;
    const p=(rand()-.5)*.99,h=1.25+rand()*3.9,w=.23+rand()*.5;
    const dx=(x-W/2),dz=(z-H/2);
-   vertices.push(dx-w,1.54,dz,dx+w,1.54,dz+.17,dx+p,1.54+h,dz-.28);
    const c=shade[(i+cluster)%shade.length];
-   rgb.push(c.r*.78,c.g*.8,c.b*.78,c.r*.84,c.g*.9,c.b*.84,c.r,c.g,c.b);
+   for(const triangle of marginLeaf(dx,dz,h*.91,w*.92,.5+p*1.75,-.50+Math.sin(i*2.399+cluster)*.75)){
+    for(const [point,t] of triangle){vertices.push(...point);rgb.push(c.r*(.78+t*.19),c.g*(.81+t*.18),c.b*(.77+t*.19));}
+   }
    if((i+cluster)%6===0&&h>3.25)shape('sphere',x+p,h+1.55,z-.26,.95,.37,.69,florets[(i+cluster)%florets.length]);
   }
  }
