@@ -772,7 +772,8 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  for(const [x,z,n] of [[56,407,9],[248,474,7],[202,538,8],[287,438,4],[562,427,5],[710,398,7],[906,528,7],[19,421,8],[934,548,8]]){
   for(let i=0;i<n;i++){
    const dx=x+(rng()-.5)*24,dz=z+(rng()-.5)*18,h=4+rng()*12;
-   shape('cone',dx,h*.44,dz,1.6,h,1.5,i%3?'#7c9c5f':'#9eae6b',.08,rng(),(rng()-.5)*.3,.35+h*.012);
+   const variation=rng();rng();
+   verge.tuft(dx,dz,h*.80,i%3?'#7c9c5f':'#9eae6b',i+Math.floor(variation*127));
    if(i%4===0&&!pathAt(dx,dz))verge.flower(dx,h,dz,['#f7d6ca','#fff0af','#edbdc7'][i%3],Math.floor(x+z)+i,.83);
   }
  }
@@ -953,7 +954,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  }
  for(const [x,z,green]of[[350,252,'#94a879'],[355,253,'#7e9c68'],[364,249,'#a2ae75'],[329,455,'#88a472'],[337,460,'#a1b179'],[698,479,'#8ea779'],[706,483,'#a6b47c'],[710,476,'#859d6a'],[912,511,'#91a573'],[920,516,'#859c6d']]){
   sphere(x,3.8,z,7+rng()*5,5+rng()*2,7,green,.16,rng());
-  for(let j=0;j<3;j++){const xx=x+j*4-3,zz=z+8+j%2;shape('cone',xx,2.2,zz,1.7,5.5,1.6,'#809f6b');if(j%2===0)sphere(xx,4.4,zz,1.6,1.4,1.4,'#ecdb9f');}
+  for(let j=0;j<3;j++){const xx=x+j*4-3,zz=z+8+j%2;verge.tuft(xx,zz,4.0,'#809f6b',x+z+j);if(j%2===0)verge.flower(xx,3.2,zz,'#ecdb9f',x+z+j,.54);}
  }
  // Fresh growth at the edges only; flowers, route and plot stay readable.
  for(const [x,z,hue,s] of [[35,381,0,1],[257,378,1,.83],[274,389,0,.74],[718,451,1,.90],

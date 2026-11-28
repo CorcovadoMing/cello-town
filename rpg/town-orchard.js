@@ -13,16 +13,20 @@ const firAt=new Set([2,4,9,12]);
 export const orchardFamily=i=>firAt.has(i)?'fir':'broadleaf';
 export const orchardProfile=i=>profiles[recipe[i]??i%profiles.length];
 // Painted compound leaves, not external art or opaque crown sprites.
-function leaflet(g,x,y,angle,len,wide,tone,season=0){
+function leaflet(g,x,y,angle,len,wide,tone,season=0,needle=false){
  g.save();g.translate(x,y);g.rotate(angle);
  const ink=g.createLinearGradient(0,1,wide,-len);
- ink.addColorStop(0,`rgb(${tone-39+season},${tone-33},${tone-39-season})`);
+ ink.addColorStop(0,`rgb(${tone-26+season},${tone-24},${tone-28-season})`);
  ink.addColorStop(.57,`rgb(${tone-3+season},${tone},${tone-9-season})`);
- ink.addColorStop(1,`rgb(${Math.min(255,tone+20+season)},${Math.min(255,tone+23)},${Math.min(255,tone+12-season)})`);
+ ink.addColorStop(1,`rgb(${Math.min(255,tone+13+season)},${Math.min(255,tone+14)},${Math.min(255,tone+12-season)})`);
+ // Rounded terminal lobes, a restrained midrib and a soft pigment gradient.
  g.fillStyle=ink;g.beginPath();g.moveTo(-.7,0);
- g.bezierCurveTo(-wide,-len*.23,-wide*.72,-len*.75,.43,-len);
- g.bezierCurveTo(wide*.65,-len*.87,wide,-len*.38,.6,0);g.closePath();g.fill();
- g.strokeStyle='rgba(248,248,236,.17)';g.lineWidth=.6;g.beginPath();g.moveTo(.5,-1);g.quadraticCurveTo(wide*.10,-len*.48,.61,-len*.86);g.stroke();
+ const crown=wide*(needle?.31:.45);
+ g.bezierCurveTo(-wide*.70,-len*.16,-wide*1.06,-len*.45,-wide*.63,-len*.74);
+ g.bezierCurveTo(-crown,-len*.93,-crown*.68,-len,.05,-len*.995);
+ g.bezierCurveTo(crown*.74,-len*.99,wide*.88,-len*.75,wide*.87,-len*.52);
+ g.bezierCurveTo(wide*.78,-len*.27,wide*.39,-len*.12,.7,0);g.closePath();g.fill();
+ g.strokeStyle='rgba(248,248,236,.12)';g.lineWidth=.53;g.beginPath();g.moveTo(.5,-1);g.quadraticCurveTo(wide*.10,-len*.48,.61,-len*.80);g.stroke();
  if(len>16){
   g.strokeStyle='rgba(248,245,218,.105)';g.lineWidth=.44;g.beginPath();
   for(const u of [.31,.48,.64]){g.moveTo(.4,-len*u);g.lineTo(-wide*.54,-len*(u+.15));g.moveTo(.4,-len*u);g.lineTo(wide*.50,-len*(u+.15));}
@@ -44,15 +48,15 @@ export function makeOrchardLeaf(T,needle=false){
    const ripple=1+.12*Math.cos(a*3-.63)+.075*Math.sin(a*7);
    const d=r*(.86+next()*.26)*ripple;
    const x=96+Math.sin(a)*d*64,y=98-Math.cos(a)*d*59;
-   const len=(needle?20:17)+next()*(needle?16:15),wide=len*(needle?.16+next()*.10:.35+next()*.13);
-   leaflet(g,x,y,a+(next()-.5)*1.32,len,wide,tone+Math.round(next()*27));
+   const len=(needle?18:16)+next()*(needle?15:13),wide=len*(needle?.18+next()*.10:.41+next()*.14);
+   leaflet(g,x,y,a+(next()-.5)*1.32,len,wide,tone+Math.round(next()*22),0,needle);
   }
  }
  for(let j=0;j<31;j++){
   const a=next()*tau,r=Math.sqrt(next())*.79;
   const x=97+Math.sin(a)*r*68,y=103-Math.cos(a)*r*62;
   const len=9+next()*13;
-  leaflet(g,x,y,a*1.20+.4,len,len*(needle?.19:.38),219+Math.round(next()*35));
+  leaflet(g,x,y,a*1.20+.4,len,len*(needle?.19:.38),219+Math.round(next()*30),0,needle);
  }
  if(!needle){
   // Individual branch tips break the smooth patch: small pale paired
@@ -77,7 +81,7 @@ export function makeOrchardLeaf(T,needle=false){
  const geometry=new T.PlaneGeometry(1,1);
  // MeshLambert's texture and alpha threshold are forwarded by Three's
  // directional depth material, giving fine perforated leaf shadows.
- const material=new T.MeshPhongMaterial({map:texture,bumpMap:texture,bumpScale:.26,shininess:8,specular:'#283a24',alphaTest:.38,side:T.DoubleSide,
+ const material=new T.MeshPhongMaterial({map:texture,bumpMap:texture,bumpScale:.14,shininess:4,specular:'#273221',alphaTest:.30,alphaToCoverage:true,side:T.DoubleSide,
   emissive:'#768950',emissiveIntensity:needle?.29:.20});
  material.shadowSide=T.DoubleSide;
  return {geometry,material};
@@ -242,7 +246,7 @@ export function addOrchardTree({shape},x,z,scale,index){
 
  for(let j=0;j<42;j++){
   const theta=j*2.399963+turn,ny=1-2*(j+.5)/42,ring=Math.sqrt(1-ny*ny);
-  const a=Math.sin(theta)*ring*w*.487,c=Math.cos(theta)*ring*d*.51;
+  const a=Math.sin(theta)*ring*w*.466,c=Math.cos(theta)*ring*d*.487;
   const shoulder=1+.15*ny;
   const b=cy+ny*h*.54+Math.cos(5*theta)*1.4;
   const width=12.5+next()*6;

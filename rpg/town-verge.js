@@ -1,3 +1,4 @@
+import {softBlade} from './town-plant-form.js?v=1';
 // Low, readable botanical silhouettes for the playable foreground. Static
 // vertex colours keep the whole planting in one lit batch.
 const TAU=Math.PI*2;
@@ -11,12 +12,12 @@ export function makeVerge(T,scene,W,H){
   for(const q of shades)color.push(ink.r*q,ink.g*q,ink.b*q);
  };
  function blade(x,z,a,h,w,ink){
-  const ux=Math.cos(a),uz=Math.sin(a),nx=-uz,nz=ux;
-  const v=(r,y,s)=>V(x+ux*r+nx*s,y,z+uz*r+nz*s);
-  const root=v(0,1.45,0),left=v(h*.28,h*.56+1.45,-w),right=v(h*.28,h*.56+1.45,w);
-  const ridge=v(h*.31,h*.67+1.45,0),tip=v(h*.84,h*.86+1.45,0);
-  tri(root,left,ridge,ink,[.68,.96,1.07]);tri(root,ridge,right,ink,[.68,1.07,.82]);
-  tri(left,tip,ridge,ink,[.96,1.14,1.07]);tri(ridge,tip,right,ink,[1.07,1.14,.82]);
+  const shape=softBlade(x,z,a,h*.82,w*1.16,h*.74,1.45);
+  for(const t of shape){
+   const v=t.map(({v})=>V(...v)),sh=t.map(({t,s})=>.86+.26*t-.032*s);
+   tri(...v,ink,sh);
+  }
+
  }
  function flower(x,y,z,tone,seed,scale=1){
   const petalCount=[5,6,5][seed%3],radius=(2.65+(seed%4)*.24)*scale;
@@ -51,7 +52,7 @@ export function makeVerge(T,scene,W,H){
   geo.setAttribute('position',new T.Float32BufferAttribute(position,3));
   geo.setAttribute('color',new T.Float32BufferAttribute(color,3));
   geo.computeVertexNormals();
-  const mesh=new T.Mesh(geo,new T.MeshStandardMaterial({side:T.DoubleSide,vertexColors:true,roughness:.91}));
+  const mesh=new T.Mesh(geo,new T.MeshStandardMaterial({side:T.DoubleSide,vertexColors:true,roughness:.91,emissive:'#4a5732',emissiveIntensity:.12}));
   mesh.name='Playable meadow: cupped petals and folded leaf blades';mesh.receiveShadow=true;
   scene.add(mesh);
   return mesh;

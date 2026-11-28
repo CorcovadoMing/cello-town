@@ -1,3 +1,4 @@
+import {softBlade} from './town-plant-form.js?v=1';
 const TAU=Math.PI*2;
 export const WATCH_VIEWS=Object.freeze(['play','pond']);
 export const POND_SHOT=Object.freeze({
@@ -26,19 +27,20 @@ export function makeLivingGrass(T,scene,W,H){
   const angle=rand()*TAU,r=Math.sqrt(rand()),x=gx+Math.cos(angle)*rx*r-W/2,z=gz+Math.sin(angle)*rz*r-H/2;
   const plant=.60+rand()*.8;
   for(let j=0;j<3;j++){
-   const a=rand()*TAU,h=(3.0+rand()*5.6)*plant,w=(.34+rand()*.48)*plant;
-   const xx=x+(rand()-.5)*5,zz=z+(rand()-.5)*5,dx=Math.cos(a)*w,dz=Math.sin(a)*w;
-   const lean=(.6+rand()*2.25),sx=-Math.sin(a)*lean,sz=Math.cos(a)*lean;
-   const A=[xx-dx,1.6,zz-dz],B=[xx+dx,1.6,zz+dz],C=[xx+sx*.48-dx*.73,1.6+h*.56,zz+sz*.48-dz*.73],D=[xx+sx*.48+dx*.73,1.6+h*.56,zz+sz*.48+dz*.73],E=[xx+sx,1.6+h,zz+sz];
-   p.push(...A,...B,...C,...B,...D,...C,...C,...D,...E);
-   const tint=colors[(i+j)%colors.length];
-   for(const l of [.84,.91,1,.91,1.03,1,1,1.03,1.14])rgb.push(tint.r*l,tint.g*l,tint.b*l);
+   const a=rand()*TAU,h=(2.3+rand()*4.15)*plant,w=(.48+rand()*.57)*plant;
+   const xx=x+(rand()-.5)*5,zz=z+(rand()-.5)*5;
+   const lean=(.85+rand()*2.10),tint=colors[(i+j)%colors.length];
+   for(const tri of softBlade(xx,zz,a,h,w,lean,1.6))for(const {v,t,s} of tri){
+    p.push(...v);const l=.86+t*.25-s*.027;
+    rgb.push(tint.r*l,tint.g*l,tint.b*l);
+   }
+
   }
  }
  geometry.setAttribute('position',new T.Float32BufferAttribute(p,3));
  geometry.setAttribute('color',new T.Float32BufferAttribute(rgb,3));
  geometry.computeVertexNormals();
- const material=new T.MeshLambertMaterial({side:T.DoubleSide,vertexColors:true});
+ const material=new T.MeshLambertMaterial({side:T.DoubleSide,vertexColors:true,emissive:'#52623a',emissiveIntensity:.22});
  const clock={value:0},strength={value:0};
  material.onBeforeCompile=shader=>{
   Object.assign(shader.uniforms,{townBreezeClock:clock,townBreezeStrength:strength});
