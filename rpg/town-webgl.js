@@ -400,7 +400,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const boardSkin=new T.MeshLambertMaterial({map:woodWearMap(T),flatShading:true});
  const leafyMaterial=leafy.material;
  const bark=makeOrchardBark(T);
- const barkMaterial=new T.MeshPhongMaterial({map:bark,bumpMap:bark,bumpScale:.38,shininess:6,specular:'#2b241b'});
+ const barkMaterial=new T.MeshPhongMaterial({...bark,bumpScale:.22,shininess:6,specular:'#272219'});
  const windowGlass=new T.MeshLambertMaterial({emissive:'#b88651',emissiveIntensity:.32});
  const batches=new Map(),houseInstances=new Map(),houseMesh=new Set();
  let markingHouse=false;

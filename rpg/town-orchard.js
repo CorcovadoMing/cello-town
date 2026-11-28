@@ -82,38 +82,86 @@ export function makeOrchardLeaf(T,needle=false){
  material.shadowSide=T.DoubleSide;
  return {geometry,material};
 }
+// Scaly furrows are composed in two registered textures. Height is kept
+// independent of colour: a pale lichen patch is not automatically a trench.
 export function makeOrchardBark(T){
- const c=document.createElement('canvas');c.width=256;c.height=512;
- const g=c.getContext('2d');g.scale(2,2);g.fillStyle='#d8c6a7';g.fillRect(0,0,128,256);
+ const make=()=>{const canvas=document.createElement('canvas');canvas.width=256;canvas.height=512;return canvas;};
+ const albedo=make(),relief=make(),g=albedo.getContext('2d'),n=relief.getContext('2d');
+ const w=128,h=256,wraps=[-w,0,w],tau=Math.PI*2;
+ [g,n].forEach(ctx=>ctx.scale(2,2));
+ g.fillStyle='#d3bea2';g.fillRect(0,0,w,h);n.fillStyle='#909090';n.fillRect(0,0,w,h);
  let seed=7463;const rnd=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
- // Broad sheltered furrows carry much of the contrast; thin split
- // fibres and flecks sit on their ridges, rather than a repeated stripe.
- for(let j=0;j<23;j++){
-  const x=j*128/23+(rnd()-.5)*4;
-  for(const wrap of [-128,0,128]){
-   const w=x+wrap;
-   g.fillStyle=j%5?'#856c4f64':'#7f806653';g.beginPath();g.moveTo(w,-4);
-   g.bezierCurveTo(w-5,85,w+6,176,w+.5,260);g.lineTo(w+4.1,260);
-   g.bezierCurveTo(w+9,158,w-1,98,w+3.6,-4);g.closePath();g.fill();
-   g.strokeStyle='#f1dbb37a';g.lineWidth=1.2;
-   g.beginPath();g.moveTo(w+4.5,-4);g.bezierCurveTo(w-.6,80,w+10,181,w+5.8,260);g.stroke();
+ function fillPlate(ctx,shape,color){
+  ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(...shape[0]);for(const pt of shape.slice(1))ctx.lineTo(...pt);ctx.closePath();ctx.fill();
+ }
+ function stroke(ctx,shape,color,width){
+  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(...shape[0]);for(const pt of shape.slice(1))ctx.lineTo(...pt);ctx.stroke();
+ }
+ function wash(x,y,rx,ry,color){
+  for(const dx of wraps){
+   g.save();g.translate(x+dx,y);g.scale(rx,ry);
+   const ink=g.createRadialGradient(0,0,0,0,0,1);ink.addColorStop(0,color);ink.addColorStop(1,color.slice(0,7)+'00');
+   g.fillStyle=ink;g.fillRect(-1,-1,2,2);g.restore();
   }
  }
- for(let j=0;j<176;j++){
-  const x=rnd()*128,y=rnd()*284-14,len=7+rnd()*61,w=(rnd()*.93+.25);
-  for(const wrap of [-128,0,128]){
-   const k=x+wrap;
-   g.strokeStyle=j%4===0?'#7967528a':j%3===0?'#fff6e18e':'#ac9a7b70';g.lineWidth=w;
-   g.beginPath();g.moveTo(k,y);g.bezierCurveTo(k-2.7,y+len*.28,k+3.4,y+len*.72,k-.7,y+len);g.stroke();
+ for(let i=0;i<35;i++)wash(rnd()*w,rnd()*h,5+rnd()*28,10+rnd()*33,
+  ['#7c65515d','#a0806270','#b1a38d48','#726e515a','#f0d7aa5b'][i%5]);
+
+ // Each family winds along the grain. The cracks between plates change
+ // neighbours partway up the trunk instead of painting full-height stripes.
+ const drift=(x,y,phase)=>x+Math.sin(y*.029+phase)*2.7+Math.sin(y*.071-phase*.6)*.82;
+ for(let col=0;col<19;col++){
+  const bx=(col+.6)*w/19+(rnd()-.5)*3.2,phase=rnd()*tau;
+  for(let y=-9;y<h+9;){
+   const len=6+rnd()*25,upper=y+len,yy=y+len*.52,width=2.6+rnd()*3.9;
+   const lean=(rnd()-.5)*2.4,fracture=.6+rnd()*1.6;
+   const x0=drift(bx,y,phase),xm=drift(bx,yy,phase),x1=drift(bx,upper,phase)+lean;
+   const face=col%7===0?'#a0836867':['#caae8c77','#b397796b','#e2c7a383','#9d816368'][Math.floor(rnd()*4)];
+   for(const dx of wraps){
+    const a=x0+dx,b=xm+dx,c=x1+dx;
+    const silhouette=[[a-.55,y+.6],[a+width*.75,y],[b+width,yy],[c+width*.64,upper-.75],[c+fracture,upper],[b-.61,yy+fracture]];
+    const cleft=[[a,y+.7],[b-.30,yy-fracture],[b+.2,yy+fracture],[c+fracture,upper]];
+    const lip=[[a+.83,y+1.4],[b+.47,yy-fracture],[b+.97,yy+fracture],[c+fracture+.62,upper-.5]];
+    fillPlate(g,silhouette,face);fillPlate(n,silhouette,'#a9a9a9');
+    stroke(g,cleft,'#5b4c417e',.75+width*.12);stroke(n,cleft,'#3b3b3b',.8+width*.12);
+    stroke(g,lip,'#ead7bb78',.49+width*.05);stroke(n,lip,'#c9c9c9',.55+width*.05);
+    if((col+Math.floor(y))%3===0){
+     const seam=[[b+.76,yy-1.4],[b+width*.68,yy+.3],[b+width*.84,yy+1.0]];
+     stroke(g,seam,'#75614b67',.57);stroke(n,seam,'#686868',.48);
+    }
+   }
+   y=upper+.5+rnd()*1.5;
   }
  }
- for(let i=0;i<710;i++){const x=rnd()*128,y=rnd()*256;g.fillStyle=i%3?'#8b704d58':'#f8e5b285';g.fillRect(x,y,.44+rnd()*.93,.32+rnd()*.95);}
- for(const [x,y,rz] of [[24,81,14],[82,165,18],[53,216,9],[112,53,11]]){
-  g.strokeStyle='#b09a77aa';
-  for(let i=0;i<3;i++){g.lineWidth=.75;g.beginPath();g.ellipse(x,y,2.0+i*1.4,rz+i*1.85,.23,0,2*Math.PI);g.stroke();}
-  g.fillStyle='#7d6957aa';g.fillRect(x-1,y-2,2,7);
+ for(const [x,y,sz,a] of [[22,69,5,.29],[82,168,7,-.38],[53,219,4,.44],[117,115,5.1,.31],[30,145,3.2,-.16]]){
+  for(const dx of wraps)for(const [ctx,base,crowns,heart] of [[g,'#d8bd9470','#81664a90','#605345aa'],[n,'#bcbcbc','#707070','#444444']]){
+   ctx.save();ctx.translate(x+dx,y);ctx.rotate(a);
+   ctx.fillStyle=base;ctx.beginPath();ctx.ellipse(0,0,sz*.87,sz*1.67,0,0,tau);ctx.fill();
+   for(let k=0;k<3;k++){
+    ctx.strokeStyle=crowns;ctx.lineWidth=.4+k*.12;ctx.beginPath();
+    ctx.ellipse(0,k*.68,sz*(.42+k*.21),sz*(.51+k*.36),k*.07,0,tau);ctx.stroke();
+   }
+   ctx.fillStyle=heart;ctx.beginPath();ctx.ellipse(.2,0,sz*.28,sz*.52,.13,0,tau);ctx.fill();ctx.restore();
+  }
  }
- const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.anisotropy=3;return t;
+ // Irregular mineral-grey and mossy pockets rather than an even film.
+ for(const [x,y,rx,ry] of [[14,43,11,13],[109,84,13,10],[41,105,6,11],[78,194,11,11],[120,234,12,18],[22,241,17,13],[72,248,11,10]]){
+  wash(x,y,rx,ry,y>200?'#7d8d557d':'#a3a18a75');
+  for(let j=0;j<32;j++){
+   const a=rnd()*tau,r=Math.sqrt(rnd()),xx=x+Math.cos(a)*rx*r,yy=y+Math.sin(a)*ry*r,s=.29+rnd()*1.02;
+   for(const dx of wraps){
+    g.fillStyle=['#b2ad917a','#7e846470','#89926564','#e3d7b76e'][j%4];
+    g.beginPath();g.ellipse(xx+dx,yy,s*1.26,s,(rnd()-.5)*.85,0,tau);g.fill();
+   }
+  }
+ }
+ for(let i=0;i<900;i++){
+  const x=rnd()*w,y=rnd()*h,s=.22+rnd()*.66,ry=.5+rnd()*1.5;
+  g.fillStyle=i%3?'#7f654657':'#f5e0bd70';g.fillRect(x,y,s,ry);
+ }
+ const map=new T.CanvasTexture(albedo),bumpMap=new T.CanvasTexture(relief);
+ map.colorSpace=T.SRGBColorSpace;map.anisotropy=3;bumpMap.anisotropy=2;
+ return {map,bumpMap};
 }
 export function addOrchardTree({shape},x,z,scale,index){
  const [bark,dark,light,trunk,w0,h0,d0]=orchardProfile(index);
