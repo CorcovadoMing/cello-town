@@ -1,7 +1,7 @@
 import {umbrellaShape} from './rain-geometry.js?v=35';
 // Original, ephemeral 8-bit scenery. No state, route, timing or storage ownership.
-import {drawPlayer,PLAYER_PALETTE} from './avatar.js?v=44';
-import {drawTeacher} from './teacher.js?v=50';
+import {drawPlayer,PLAYER_PALETTE} from './avatar.js?v=45';
+import {drawTeacher} from './teacher.js?v=49';
 const freeze=o=>Object.freeze(o);
 export const LOUNGE_LAYOUT=freeze({table:freeze({x:490,y:218,depth:245,solid:freeze({x:458,y:214,w:64,h:31})}),seats:freeze([
  freeze({id:'left',x:440,y:232,facing:'right',approach:freeze({x:423,y:250}),solid:freeze({x:430,y:225,w:20,h:12})}),

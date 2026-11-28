@@ -737,7 +737,9 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    if(!alive)return false;
    const close=view==='pond';
    camera=close?pondCamera:mapCamera;
-   for(const {sprite} of sprites.values())sprite.rotation.y=close?facingYaw:0;
+   for(const {sprite} of sprites.values()){
+    sprite.rotation.y=close?Math.atan2(pondCamera.position.x-sprite.position.x,pondCamera.position.z-sprite.position.z):0;
+   }
    updateGrass(clock,weather,motion);
    scene.background=close?horizons[weather==='rain'?1:0]:mapBackground;
    if(weather!==lastWeather){
