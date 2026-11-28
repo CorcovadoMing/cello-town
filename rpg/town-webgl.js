@@ -78,14 +78,14 @@ export function makeTownCamera(T){
 export const TOWN_PAINT_PALETTE=Object.freeze({
  meadow:Object.freeze(['#a3b783','#9cae7b','#adbd89','#b4c38f','#90a971']),
  soil:Object.freeze(['#d0c298','#beae83','#ded1ae','#c9bc92','#eee0bb']),
- pond:Object.freeze(['#81b1a5','#79a99f','#8cbbac','#719f99','#adcaba'])
+ pond:Object.freeze(['#6d9a8d','#3e796d','#34737f','#b4b482','#c9e0d5'])
 });
 function landscapePigment(T,kind){
  const c=document.createElement('canvas');c.width=1152;c.height=672;
  const ctx=c.getContext('2d');
  ctx.scale(c.width/W,c.height/H);
  const [base,shade,light,warm,cool]=TOWN_PAINT_PALETTE[kind];
- let seed={meadow:1891,soil:9833,pond:4889}[kind];
+ let seed={meadow:1891,soil:9833}[kind];
  const next=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
  ctx.fillStyle=base;ctx.fillRect(0,0,W,H);
  function glaze(x,y,w,h,angle,hue,alpha){
@@ -95,22 +95,21 @@ function landscapePigment(T,kind){
   ctx.globalAlpha=alpha;ctx.fillStyle=ink;ctx.fillRect(-1,-1,2,2);ctx.restore();
  }
  const values=kind==='meadow'?[[133,180,153,65,shade],[381,150,193,64,shade],[533,238,215,76,warm],[725,355,196,80,light],[341,434,140,66,light],[700,492,170,94,shade],[92,340,120,53,cool]]:
-  kind==='soil'?[[275,315,159,24,light],[494,354,179,24,shade],[683,326,110,29,light],[472,471,34,103,shade],[678,278,34,68,warm]]:
-  [[358,249,246,93,light],[456,310,246,75,warm],[674,355,198,77,shade],[272,395,181,57,cool]];
+  [[275,315,159,24,light],[494,354,179,24,shade],[683,326,110,29,light],[472,471,34,103,shade],[678,278,34,68,warm]];
  for(const [x,y,w,h,hue] of values)glaze(x,y,w,h,(next()-.5)*.3,hue,.68);
  const accents=[shade,light,warm,base,cool];
  for(let group=0;group<32;group++){
   const x=next()*W,y=next()*H,rank=next();
   for(let i=0;i<8;i++){
    const xx=x+(next()-.5)*94,yy=y+(next()-.5)*55;
-   const w=(kind==='pond'?12:7)+next()*23,h=1.7+next()*5;
+   const w=7+next()*23,h=1.7+next()*5;
    const angle=(next()-.5)*.54+(kind==='meadow'?-.21:0);
    glaze(xx,yy,w,h,angle,accents[(i+group)%accents.length],.13+rank*.25);
   }
  }
  // Fine, softly irregular pigment: tiny mineral flecks on the walking
  // surface, and overlapping grass grains where the meadow catches the light.
- if(kind!=='pond'){
+ {
   const meadow=kind==='meadow',dark=meadow?'#6e844e':'#9d8961',mid=meadow?'#8f9d65':'#b39d74',pale=meadow?'#c0c58f':'#efe2bf';
   // Mottled colour islands create medium-scale relief before fine grain
   // becomes visible, including in the lower perspective shot.
@@ -204,8 +203,6 @@ function landscapePigment(T,kind){
  const t=new T.CanvasTexture(c);
  t.colorSpace=T.SRGBColorSpace;t.anisotropy=4;return t;
 }
-// Water pigment varies with depth. Two drifting ripple bands bend the
-// lighter reflection across the actual pond mesh; nothing is painted over fish.
 function woodWearMap(T){
  const c=document.createElement('canvas');c.width=128;c.height=64;
  const g=c.getContext('2d');g.fillStyle='#ece6d5';g.fillRect(0,0,128,64);
@@ -222,43 +219,102 @@ function woodWearMap(T){
  }
  const texture=new T.CanvasTexture(c);texture.colorSpace=T.SRGBColorSpace;return texture;
 }
+// The pool bed is painted separately from the moving surface. Faded
+// sediment runs, patches of waterweed and buried grit are composited once.
+function pondBed(T){
+ const c=document.createElement('canvas');c.width=768;c.height=460;
+ const g=c.getContext('2d'),w=c.width,h=c.height;let seed=72819;
+ const rnd=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
+ const [bed,moss,deep,silt]=TOWN_PAINT_PALETTE.pond;
+ g.fillStyle=bed;g.fillRect(0,0,w,h);
+ function stain(x,y,rx,ry,turn,ink){
+  g.save();g.translate(x,y);g.rotate(turn);g.scale(rx,ry);
+  const hue=g.createRadialGradient(0,0,0,0,0,1);
+  hue.addColorStop(0,ink);hue.addColorStop(1,ink.slice(0,7)+'00');
+  g.fillStyle=hue;g.fillRect(-1,-1,2,2);g.restore();
+ }
+ for(const [x,y,rx,ry,angle,ink] of [
+  [.15,.23,154,96,-.24,moss+'be'],[.50,.55,236,154,.29,deep+'ad'],
+  [.77,.72,177,82,-.17,'#397d83af'],[.70,.28,148,68,.13,'#a9ae7360'],
+  [.30,.91,207,91,-.11,silt+'a0'],[.91,.36,128,127,.35,'#b9b58392']
+ ])stain(x*w,y*h,rx,ry,angle,ink);
+ for(let j=0;j<89;j++){
+  const x=rnd()*w,y=rnd()*h,scale=5+rnd()*27;
+  stain(x,y,scale*2.1,scale*.58,(rnd()-.5)*.9,
+   ['#366f681a','#c3c38c19','#40757525','#b2ae7f2a'][j%4]);
+  for(let i=0;i<20;i++){
+   const xx=x+(rnd()-.5)*scale*3.3,yy=y+(rnd()-.5)*scale*1.3;
+   const edge=Math.min(xx,w-xx,yy,h-yy),r=.4+rnd()*1.6;
+   g.fillStyle=i%3===0?(edge<90?'#ccd09e62':'#ccd09e28'):'#436e6149';
+   g.beginPath();g.ellipse(xx,yy,r*1.8,r,(rnd()-.5)*1.2,0,Math.PI*2);g.fill();
+  }
+ }
+ for(const [x,y,angle] of [[.08,.38,-.6],[.19,.84,.46],[.65,.86,-.44],[.88,.23,.62],[.90,.65,-.59]]){
+  g.save();g.translate(x*w,y*h);g.rotate(angle);
+  for(let i=0;i<25;i++){
+   const ax=(rnd()-.5)*71,ay=(rnd()-.5)*27,l=3+rnd()*29;
+   g.beginPath();g.moveTo(ax,ay);g.quadraticCurveTo(ax+l*.8,ay-4,ax+l,ay-3-rnd()*10);
+   g.lineWidth=.55+rnd()*1.6;g.strokeStyle=i%3===0?'#84996950':'#476e555e';g.stroke();
+  }
+  g.restore();
+ }
+ const texture=new T.CanvasTexture(c);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=4;
+ return texture;
+}
 function pondSurface(T,map){
  const material=new T.MeshLambertMaterial({map,color:'#eff8f4'});
  const phase={value:0},brightness={value:.9},lightX={value:.48};
+ const clearSky=TOWN_PAINT_PALETTE.pond[4],sky={value:new T.Color(clearSky)};
  material.onBeforeCompile=shader=>{
-  Object.assign(shader.uniforms,{townWaterPhase:phase,townWaterBrightness:brightness,townWaterLightX:lightX});
+  Object.assign(shader.uniforms,{townWaterPhase:phase,townWaterBrightness:brightness,townWaterLightX:lightX,townWaterSky:sky});
+  shader.vertexShader=shader.vertexShader.replace('#include <common>',`
+   #include <common>
+   varying float townWaterGrazing;
+  `).replace('#include <project_vertex>',`
+   #include <project_vertex>
+   vec3 surfaceToCamera = isOrthographic ? vec3(0.,0.,1.) : normalize(-mvPosition.xyz);
+   townWaterGrazing = abs(dot(normalize(normalMatrix * vec3(0.,0.,1.)), surfaceToCamera));
+  `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`
    #include <common>
    uniform float townWaterPhase;
    uniform float townWaterBrightness;
    uniform float townWaterLightX;
+   uniform vec3 townWaterSky;
+   varying float townWaterGrazing;
   `).replace('#include <map_fragment>',`
    #include <map_fragment>
    vec2 uvPond = vMapUv;
    float t = townWaterPhase;
-   float swell = sin(uvPond.y*62. + uvPond.x*5.3 + sin(uvPond.x*16.-t*3.)*.55 -t*11.);
-   float overlap = sin(uvPond.y*102. - uvPond.x*13. +t*7. +sin(uvPond.x*12.+t*5.)*.41);
-   float blade = smoothstep(.63,1.,swell) * smoothstep(.0,.91,overlap);
-   float knots = smoothstep(.17,.79,sin(uvPond.x*37.+sin(uvPond.y*19.-t*3.)*1.7+t*4.));
-   float band = (1.-smoothstep(.035,.44,abs(uvPond.x-townWaterLightX+.16*(uvPond.y-.48))));
-   float border = smoothstep(.01,.13,uvPond.y)*(1.-smoothstep(.74,.995,uvPond.y));
-   // A lighter shallow shelf follows the bank, while suspended colour
-   // and patches of open sky remain visible between reflected ripples.
+   float longWave = sin(uvPond.y*48. + uvPond.x*6.1 + sin(uvPond.x*12.-t*3.)*.67 -t*8.);
+   float shortWave = sin(uvPond.y*95. - uvPond.x*16. +t*9. +sin(uvPond.x*19.+t*5.)*.60);
+   float crossWave = sin(uvPond.y*35. + uvPond.x*28. -t*5.);
    float edgeDistance = min(min(uvPond.x,1.-uvPond.x),min(uvPond.y,1.-uvPond.y));
-   float shallow = 1.-smoothstep(.012,.18,edgeDistance+overlap*.014);
-   float skyTone = .42+.26*swell+.15*overlap;
-   vec3 pool = mix(diffuseColor.rgb*vec3(.79,.91,1.02),vec3(.28,.55,.43),shallow*.44);
-   pool = mix(pool,vec3(.47,.64,.68),skyTone*.19);
-   float daylight = (.023+.075*band*border)*townWaterBrightness;
-   float spark = .26*blade*knots*band*border*townWaterBrightness;
-   diffuseColor.rgb = mix(mix(pool,vec3(.60,.71,.50),daylight),vec3(.86,.90,.65),spark)
-      * (1.+swell*.043+overlap*.023);
+   float shallow = 1.-smoothstep(.008,.19,edgeDistance+shortWave*.009);
+   float grazing = 1.-clamp(townWaterGrazing,0.,1.);
+   float reflectedSky = .07 + .50*grazing*grazing;
+   // The canopy breaks up the reflected sky at the northern bank. These are
+   // painted shore colour bands, not a second render or a traced reflection.
+   float shade = smoothstep(.18,.86,uvPond.y) *
+      smoothstep(-.25,.82,sin(uvPond.x*15.+longWave*.10+crossWave*.14)+.34*sin(uvPond.x*36.));
+   vec3 sky = mix(townWaterSky,vec3(.12,.26,.20),shade*.78);
+   vec3 bed = mix(diffuseColor.rgb*.91,diffuseColor.rgb*vec3(1.12,1.08,.91),shallow);
+   vec3 pool = mix(bed,sky,reflectedSky*(.84+longWave*.10+shortWave*.06));
+   float sunLane = 1.-smoothstep(.04,.36,abs(uvPond.x-townWaterLightX+.16*(uvPond.y-.48)));
+   float blade = smoothstep(.72,1.,longWave)*smoothstep(.35,1.,shortWave)*smoothstep(-.10,.93,crossWave);
+   float sparkle = (.045+.24*grazing)*blade*sunLane*smoothstep(.005,.08,edgeDistance)*townWaterBrightness;
+   diffuseColor.rgb = mix(pool,vec3(.88,.91,.67),sparkle)*(1.+longWave*.018+shortWave*.011);
   `);
  };
- material.customProgramCacheKey=()=> 'town-pond-ripple-2';
+ material.customProgramCacheKey=()=> 'town-pond-silt-sky-v1';
+ let lastWeather;
  return {material,update(now,weather,lamp,motion){
   phase.value=motion?now%96000/96000*Math.PI*2:0;
-  brightness.value=weather==='rain'?.24:weather==='breeze'?.72:.97;
+  if(lastWeather!==weather){
+   lastWeather=weather;
+   brightness.value=weather==='rain'?.09:weather==='breeze'?.60:.94;
+   sky.value.set(weather==='rain'?'#a5b8b4':weather==='breeze'?'#c2d4cd':clearSky);
+  }
   lightX.value=.46+Math.max(-1,Math.min(1,(lamp.x-45)/270))*.21;
  }};
 }
@@ -334,7 +390,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  porchFill.position.set(70,260,610);
  scene.add(sun,fill,porchFill);
  const leafy=makeOrchardLeaf(T),needles=makeOrchardLeaf(T,true);
- const meadowPigment=landscapePigment(T,'meadow'),soilPigment=landscapePigment(T,'soil'),pondPigment=landscapePigment(T,'pond');
+ const meadowPigment=landscapePigment(T,'meadow'),soilPigment=landscapePigment(T,'soil'),pondPigment=pondBed(T);
  const geometry={
   box:new T.BoxGeometry(1,1,1),'weathered-board':new T.BoxGeometry(1,1,1), sphere:new T.IcosahedronGeometry(1,1),
   trunk:new T.CylinderGeometry(.36,.51,1,11,2), cone:new T.ConeGeometry(1,1,5),

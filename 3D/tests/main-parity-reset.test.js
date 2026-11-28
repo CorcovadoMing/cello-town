@@ -27,7 +27,7 @@ const reviewedExperimentalHashes={
  'rpg/index.html':'bf319dcb233437c19653bbc8e9aa9a19c07cab1286cca03b4517a8342d25dd59',
  'rpg/town-depth.js':'3b082ca07119d517e0b747dd8ba8433c3aed0aa14bd18d07b2df6451c8efc7af',
  'rpg/music-room-art.js':'3292e702170bf184ab5f20403991b6e4395131184591b346463e5812f91e5a09',
- 'rpg/town-webgl.js':'4023ed32888978ea529cebd39371baefcd6fbb978918bf1bd75a123d2c123e85',
+ 'rpg/town-webgl.js':'0240bfeffcdeb42dafc6e88074e4f8b61cda52600ae3573edb1853fd730c31c0',
  'rpg/town-orchard.js':'45bd755b9a9196f2fc5e2fd9bc311ed5103d77c0e750cc107ea9198fa18dbff0',
  'rpg/town-craft.js':'6c0ce1ff762a438bd93996e9aeb0b60f718fd58c0f23585827704d421aebba02',
  'rpg/rain-system.js':'7c06e4903209151f74401f093f22bd7e830435d1c434e20fd23ed655e49e6e4a',

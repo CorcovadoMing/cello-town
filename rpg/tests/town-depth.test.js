@@ -57,7 +57,7 @@ test('bench cat stays seated during stretch and follows its real support through
 test('ground uses the formal palette as paint on geometry, not a veil over actors or rain',()=>{
  assert.equal(TOWN_PAINT_PALETTE.meadow[0],'#a3b783');
  assert.equal(TOWN_PAINT_PALETTE.soil[0],'#d0c298');
- assert.equal(TOWN_PAINT_PALETTE.pond[0],'#81b1a5');
+ assert.deepEqual(TOWN_PAINT_PALETTE.pond,['#6d9a8d','#3e796d','#34737f','#b4b482','#c9e0d5']);
  const renderer=readFileSync(new URL('../town-webgl.js',import.meta.url),'utf8');
  assert.match(renderer,/paintTerrainUV\(T,geo,w,d\)/);
  assert.match(renderer,/map:soilPigment/);
