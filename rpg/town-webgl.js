@@ -6,17 +6,17 @@ const W=ROOM_WIDTH,H=ROOM_HEIGHT;
 const local=(x,z)=>[x-W/2,z-H/2];
 
 // The art remains 3D, but every ground vertex follows the former Canvas
-// identity projection. Elevation alone projects left/up; no yaw across the
+// identity projection. Elevation projects only upward; no yaw across the
 // map, perspective scaling, camera tracking or touch offsets are introduced.
-const VIEW_X=.17,VIEW_Z=.88;
+const VIEW_Z=.88;
 export function makeTownCamera(T){
  const camera=new T.OrthographicCamera(-W/2,W/2,H/2,-H/2,2,4200);
- camera.position.set(1000*VIEW_X,1000,1000*VIEW_Z);camera.lookAt(0,0,0);camera.updateMatrixWorld();
+ camera.position.set(0,1000,1000*VIEW_Z);camera.lookAt(0,0,0);camera.updateMatrixWorld();
  // Keep the orthographic clipping-depth row from Three.js; use exact screen
  // coefficients for the first two rows of the combined world-to-clip matrix.
  const worldToClip=new T.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
  const m=worldToClip.elements;
- m[0]=2/W;m[4]=-2*VIEW_X/W;m[8]=0;m[12]=0;
+ m[0]=2/W;m[4]=0;m[8]=0;m[12]=0;
  m[1]=0;m[5]=2*VIEW_Z/H;m[9]=-2/H;m[13]=0;
  camera.projectionMatrix.multiplyMatrices(worldToClip,camera.matrixWorld);
  camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
@@ -317,8 +317,8 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   // True depth-tested billboards, with geometry chosen so the pixel
   // silhouettes stay vertical even under the oblique view.
   const mat=new T.MeshBasicMaterial({map:texture,alphaTest:.22,depthWrite:true,transparent:false,fog:false,side:T.DoubleSide});
-  const quad=new T.BufferGeometry(),h3=h/VIEW_Z,slant=VIEW_X*h3;
-  quad.setAttribute('position',new T.Float32BufferAttribute([-w/2,0,0,w/2,0,0,w/2+slant,h3,0,-w/2+slant,h3,0],3));
+  const quad=new T.BufferGeometry(),h3=h/VIEW_Z;
+  quad.setAttribute('position',new T.Float32BufferAttribute([-w/2,0,0,w/2,0,0,w/2,h3,0,-w/2,h3,0],3));
   quad.setAttribute('uv',new T.Float32BufferAttribute([0,0,1,0,1,1,0,1],2));
   quad.setIndex([0,1,2,0,2,3]);
   const sprite=new T.Mesh(quad,mat);
