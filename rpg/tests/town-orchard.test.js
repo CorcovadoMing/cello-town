@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {addOrchardTree,townSunVector} from '../town-orchard.js';
+import {addOrchardTree,orchardFamily,townSunVector} from '../town-orchard.js';
 function capture(i){
  const branches=[],crown=[];
  addOrchardTree({shape:(...a)=>(a[0]==='trunk'?branches:crown).push(a)},100,200,1.25,i);
@@ -13,15 +13,20 @@ test('fourteen individual silhouettes have reproducible crown and tapered trunk 
  assert.ok(new Set(trees.map(t=>Math.max(...t.crown.map(row=>row[2]+row[5])))).size>5);
  for(const [i,t] of trees.entries()){
   assert.deepEqual(t,capture(i));
-  assert.equal(t.branches.length,35);
-  assert.equal(t.crown.length,87);
-  const fill=t.crown.slice(45);
-  assert.ok(fill.every(f=>f[2]>65&&f[4]>=38.75));
-  const interior=fill.filter(f=>Math.abs(f[1]-100)<21);
-  assert.ok(interior.length>=5,'leafy rail across the middle but not at the roots');
-  assert.equal(t.branches[0][3],200);
-  assert.ok(t.branches[1][4]<t.branches[0][4]);
-  assert.ok(t.crown.every(f=>f[0]==='orchard-leaf'&&f.slice(1,7).every(Number.isFinite)&&f[2]>44));
+  const trunks=t.branches.slice(0,2);
+  assert.ok(trunks.every(row=>row[1]===100&&row[3]===200&&row[8]===0&&row[10]===0));
+  assert.ok(trunks[1][4]<trunks[0][4]);
+  const core=t.crown.filter(row=>row[0]!=='orchard-leaf');
+  if(orchardFamily(i)==='fir'){
+   assert.equal(core.length,4);
+   assert.ok(core.every((row,j)=>row[0]==='orchard-fir'&&row[1]===100&&row[3]===200&&
+    (j===0||row[2]>core[j-1][2]&&row[4]<core[j-1][4])));
+  }else{
+   assert.equal(core.length,1);
+   assert.ok(core[0][4]>core[0][5],'upright broadleaf wider than tall');
+   assert.equal(t.branches.length,14);
+  }
+  assert.ok(t.crown.every(f=>f.slice(1,7).every(Number.isFinite)&&f[2]>36));
  }
 });
 test('same 12-minute clock swings and returns continuously, and projected sun shadows reverse',()=>{

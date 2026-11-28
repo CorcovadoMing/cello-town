@@ -1,4 +1,4 @@
-import {addOrchardTree,makeOrchardLeaf,townSunVector} from './town-orchard.js?v=5';
+import {addOrchardTree,makeOrchardLeaf,makeOrchardSkin,makeOrchardVolumes,townSunVector} from './town-orchard.js?v=6';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
@@ -102,15 +102,17 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const porchFill=new T.DirectionalLight('#fff0db',.43);
  porchFill.position.set(70,260,610);
  scene.add(sun,fill,porchFill);
- const leafy=makeOrchardLeaf(T);
+ const leafy=makeOrchardLeaf(T),crowns=makeOrchardVolumes(T);
  const meadowPigment=landscapePigment(T,'meadow'),soilPigment=landscapePigment(T,'soil'),pondPigment=landscapePigment(T,'pond');
  const geometry={
   box:new T.BoxGeometry(1,1,1), sphere:new T.IcosahedronGeometry(1,1),
   trunk:new T.CylinderGeometry(.36,.51,1,7), cone:new T.ConeGeometry(1,1,5),
-  circle:new T.CircleGeometry(1,18), 'orchard-leaf':leafy.geometry, 'window-glass':new T.BoxGeometry(1,1,1)
+  circle:new T.CircleGeometry(1,18), 'orchard-leaf':leafy.geometry,'orchard-wide':crowns.wide,'orchard-round':crowns.round,'orchard-fir':crowns.fir, 'window-glass':new T.BoxGeometry(1,1,1)
  };
  const material=new T.MeshLambertMaterial({flatShading:true});
  const leafyMaterial=leafy.material;
+ const crownMaterial=new T.MeshLambertMaterial({map:makeOrchardSkin(T),vertexColors:true,emissive:'#8eaa72',emissiveIntensity:.24});
+ const firMaterial=new T.MeshLambertMaterial({map:makeOrchardSkin(T,true),vertexColors:true,emissive:'#76917a',emissiveIntensity:.20});
  const windowGlass=new T.MeshLambertMaterial({emissive:'#b88651',emissiveIntensity:.32});
  const batches=new Map();
  const model=new T.Object3D(),sample=new T.Vector3();
@@ -410,7 +412,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  for(const x of [-9,9])box(stand.x+x,43,stand.y+2.5,16,17,1.5,'#f1deb1',-.19);
  for(let i=0;i<4;i++)for(const dx of [-9,9])box(stand.x+dx,40+i*3,stand.y+3.5,12,.5,1,'#af9a6e',-.19);
  for(const [kind,items] of batches){
-  const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='window-glass'?windowGlass:material,items.length);
+  const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='window-glass'?windowGlass:kind==='orchard-fir'?firMaterial:kind.startsWith('orchard-')?crownMaterial:material,items.length);
   items.forEach(([matrix,tint],i)=>{batch.setMatrixAt(i,matrix);batch.setColorAt(i,color.set(tint));});
   batch.instanceMatrix.needsUpdate=true;batch.instanceColor.needsUpdate=true;batch.castShadow=true;batch.receiveShadow=true;scene.add(batch);
  }

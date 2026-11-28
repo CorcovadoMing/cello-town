@@ -1,15 +1,17 @@
-// Handmade branch systems: blossom sprays grow on individual twigs with overlapping, uneven boughs
-// rather than a stack of solid crown volumes. Each primary is [x,height,z,span].
+// Upright boughs hold an irregular solid silhouette; actual leaf clusters
+// follow the surface, so an orchard crown is neither a ball nor a curtain.
 const profiles=[
- {bark:'#78624d',leaf:['#496e3f','#608949','#82aa58','#9bbd63'],height:49,limbs:[[-27,64,1,15],[-14,79,-9,16],[4,91,-2,15],[24,71,11,17],[32,60,3,13]]},
- {bark:'#827055',leaf:['#547344','#6b8b4b','#88a760','#a3bd67'],height:64,limbs:[[-15,67,-2,12],[-11,83,7,12],[-4,98,-8,14],[6,112,-1,11],[16,88,5,12]]},
- {bark:'#70614b',leaf:['#466849','#5e8454','#79a060','#92b16c'],height:49,limbs:[[-31,67,1,19],[-22,84,-5,15],[-9,94,0,12],[15,85,-7,16],[29,68,8,19]]},
- {bark:'#80654a',leaf:['#517238','#719245','#8eb05c','#a8c16b'],height:44,limbs:[[-34,56,8,18],[-22,72,-5,17],[-2,81,-8,17],[20,68,3,20],[36,55,10,14]]},
- {bark:'#716650',leaf:['#49683d','#658647','#7e9e53','#95b45f'],height:58,limbs:[[-18,58,11,19],[21,64,0,18],[-13,81,-5,15],[12,94,-9,15],[-3,109,0,11]]},
- {bark:'#816d56',leaf:['#54744a','#709650','#8aab61','#a4bd71'],height:46,limbs:[[-33,60,4,17],[-20,81,-8,13],[-8,96,-3,12],[21,84,-2,15],[30,64,8,18]]}
+ ['#78624d','#6f964f','#9db969',44,67,43,61],
+ ['#7d6950','#759853','#a4bf72',45,57,49,57],
+ ['#78634c','#669055','#91b270',42,71,49,64],
+ ['#80654a','#789d4e','#b2c67b',44,74,50,61],
+ ['#79654d','#628949','#92b367',46,59,47,59],
+ ['#816d56','#729751','#a3ba71',42,70,41,63]
 ];
-const recipe=[[0,-.12],[3,.08],[1,-.06],[2,.10],[4,.03],[5,-.20],[1,.13],[3,-.10],[2,.06],[5,.12],[0,.15],[2,-.13],[4,-.09],[1,.05]];
-export function orchardProfile(index){return profiles[(recipe[index]?.[0]??index%profiles.length)];}
+const recipe=[0,3,1,2,4,5,1,3,2,5,0,2,4,1];
+const firAt=new Set([2,4,9,12]);
+export const orchardFamily=i=>firAt.has(i)?'fir':'broadleaf';
+export const orchardProfile=i=>profiles[recipe[i]??i%profiles.length];
 // Painted compound leaves, not external art or opaque crown sprites.
 function leaflet(g,x,y,angle,len,wide,tone){
  g.save();g.translate(x,y);g.rotate(angle);
@@ -56,64 +58,117 @@ export function makeOrchardLeaf(T){
  material.shadowSide=T.DoubleSide;
  return {geometry,material};
 }
-export function addOrchardTree({shape},x,z,scale,index){
- const p=orchardProfile(index),bias=recipe[index]?.[1]??0,shift=bias*21;
- let seed=137+(index+1)*719;
+export function makeOrchardSkin(T,needle=false){
+ const c=document.createElement('canvas');c.width=c.height=256;
+ const g=c.getContext('2d');g.fillStyle='#d5d7cc';g.fillRect(0,0,256,256);
+ let seed=needle?7211:4913;
  const next=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
- const branch=(a,b,thickness,tint)=>{
+ const patches=needle?42:48;
+ for(let j=0;j<patches;j++){
+  const x=next()*256,y=next()*256,d=9+next()*37,angle=needle?2.7+next()*.94:next()*6.283;
+  const tone=149+Math.round(next()*88);
+  // Wrap paint across the single UV seam rather than repeating a grid.
+  for(const offset of [-256,0,256]){
+   if(x+offset+d*1.8<0||x+offset-d*1.8>256)continue;
+   g.save();g.translate(x+offset,y);g.rotate(angle);g.scale(1.35,1);
+   const ink=g.createRadialGradient(0,0,1,0,0,d);
+   ink.addColorStop(0,`rgba(${tone},${tone+5},${tone-2},.88)`);ink.addColorStop(1,`rgba(${tone},${tone+5},${tone-2},0)`);
+   g.fillStyle=ink;g.fillRect(-d,-d,d*2,d*2);g.restore();
+  }
+  for(let k=0;k<12;k++){
+   const a=next()*6.283,r=next()*d*.80,xx=x+Math.cos(a)*r,yy=y+Math.sin(a)*r;
+   const len=(needle?4:6)+next()*(needle?8:9),wide=len*(needle?.17:.43);
+   const shade=Math.min(251,tone+Math.round(next()*31));
+   for(const offset of [-256,0,256])if(xx+offset>-15&&xx+offset<271)
+    leaflet(g,xx+offset,yy,angle+(next()-.5)*(needle?1.30:3.4),len,wide,shade);
+  }
+ }
+ const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.anisotropy=2;return t;
+}
+// A crown is one continuous surface with several shallow rises, much like
+// painted overlapping foliage. Surface colours follow crown height and
+// sculpting; leaves add a separate fine silhouette and real cutout shadow.
+export function makeOrchardVolumes(T){
+ const circle=Math.PI*2;
+ function painted(geometry){
+  const vs=geometry.attributes.position,colors=new Float32Array(vs.count*3);
+  for(let i=0;i<vs.count;i++){
+   const x=vs.getX(i),y=vs.getY(i),z=vs.getZ(i);
+   const blend=.86+.12*(y+.5)+.045*Math.sin(x*15+y*17+z*19);
+   colors.set([blend*.98,blend,blend*.96],i*3);
+  }
+  geometry.setAttribute('color',new T.BufferAttribute(colors,3));
+  geometry.computeVertexNormals();return geometry;
+ }
+ function broad(seed){
+  const g=new T.SphereGeometry(.5,31,20),v=g.attributes.position;
+  for(let i=0;i<v.count;i++){
+   const x=v.getX(i),y=v.getY(i),z=v.getZ(i),a=Math.atan2(z,x)+seed;
+   const mask=1-Math.min(1,Math.abs(y)*2)**5;
+   const shoulder=1+.30*y-.10*Math.max(0,-y*2);
+   const ripple=shoulder+(.165*Math.sin(a*5+.5)+.076*Math.sin(a*9+2*y)+.036*Math.cos(a*13-y*9))*mask;
+   const lobe=.037*Math.cos(4*a+8*y)*mask+.021*Math.sin(7*a+15*y)*mask;
+   // There is no axis slant. Asymmetry comes from small bough bumps.
+   v.setXYZ(i,x*ripple,y+lobe,z*ripple);
+  }
+  return painted(g);
+ }
+ const tier=new T.CylinderGeometry(.055,.5,1,26,6,false),v=tier.attributes.position;
+ for(let i=0;i<v.count;i++){
+  const x=v.getX(i),y=v.getY(i),z=v.getZ(i),a=Math.atan2(z,x);
+  const skirt=(.5-y),fringe=Math.cos(a*7)*.09+Math.sin(a*11)*.047;
+  v.setXYZ(i,x*(1+fringe*skirt),y+(.052*Math.cos(a*7)+.022*Math.cos(a*13))*skirt,z*(1+fringe*skirt));
+ }
+ return {wide:broad(.4),round:broad(1.02),fir:painted(tier)};
+}
+export function addOrchardTree({shape},x,z,scale,index){
+ const [bark,dark,light,trunk,w0,h0,d0]=orchardProfile(index);
+ const w=w0*(1.05+index%5*.018),h=h0*(.80+index%4*.018),d=d0*(.81+index%3*.035);
+ const fir=orchardFamily(index)==='fir';
+ let seed=179+(index+1)*1097;
+ const next=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+ const emit=(k,a,b,c,w,h,d,t,rx=0,ry=0,rz=0)=>shape(k,x+a*scale,b*scale,z+c*scale,w*scale,h*scale,d*scale,t,rx,ry,rz);
+ const branch=(a,b,thick)=>{
   const [ax,ay,az]=a,[bx,by,bz]=b,dx=bx-ax,dy=by-ay,dz=bz-az;
-  shape('trunk',x+(ax+bx)*scale/2,(ay+by)*scale/2,z+(az+bz)*scale/2,thickness*scale,Math.hypot(dx,dy,dz)*scale,thickness*scale,tint,
-   Math.atan2(dz,dy),0,-Math.atan2(dx,Math.hypot(dy,dz)));
+  emit('trunk',(ax+bx)/2,(ay+by)/2,(az+bz)/2,thick,Math.hypot(dx,dy,dz),thick,bark,Math.atan2(dz,dy),0,-Math.atan2(dx,Math.hypot(dy,dz)));
  };
- const near=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
- const foot=[0,-1,0],bend=[shift*.6,27,0],top=[shift,p.height,-1];
- branch(foot,bend,8.6+(index%3),p.bark);
- branch(bend,top,6.6+(index%3)*.55,p.bark);
- // Side bark edges and roots give structure without masking the small trunk.
- for(const [j,root] of [[0,[-8,0,2]],[1,[7,0,3]],[2,[1,0,-6]]])branch(root,[0,10,0],3.5-j*.24,p.bark);
- for(const [j,[tx,th,tz,span]] of p.limbs.entries()){
-  const side=Math.sign(tx||1),tip=[tx+shift,th+(next()-.5)*6,tz],fork=near(bend,top,.30+j*.13),elbow=near(fork,tip,.55);
-  elbow[0]+=side*5;elbow[1]-=2;
-  branch(fork,elbow,3.8-j*.30,p.bark);branch(elbow,tip,2.55-j*.23,p.bark);
+ branch([0,-1,0],[0,trunk-13,0],8.3+index%3*.44);
+ branch([0,trunk-13,0],[0,fir?trunk+20:trunk+12,0],6.6);
+ for(const side of [-1,1])branch([side*6,0,2],[0,8,0],2.8);
+ if(fir){
+  const firPalette=['#557b58','#628963','#6d956b','#7a9e70'];
+  const height=trunk+50+(index%3)*3;
   for(let k=0;k<4;k++){
-   const anchor=near(elbow,tip,.27+k*.19),phi=(k/4)*Math.PI*2+bias*7+j*.46;
-   const end=[anchor[0]+Math.cos(phi)*span*.64,anchor[1]+4.8+(k%3)*1.3,anchor[2]+Math.sin(phi)*span*.58];
-   branch(anchor,end,.82,p.bark);
-   for(let m=0;m<2;m++){
-    const v=near(anchor,end,.54+m*.40),side=m?1:-1,wide=22+next()*9;
-    v[0]+=side*Math.sin(phi)*3;v[1]+=4+m*2;v[2]+=side*Math.cos(phi)*4;
-    shape('orchard-leaf',x+v[0]*scale,v[1]*scale,z+v[2]*scale,wide*scale,(wide*.77+next()*5)*scale,1,
-     p.leaf[1+((j+k+m)%3)],-.29+(next()-.5)*.78,phi*.59+side*.69,-.63+next()*1.28);
+   const width=(56+index%3*4)*(1-k*.202);
+   const tierH=k===3?31:32;
+   const y=height-54+k*13+(k===3?4:0);
+   const turn=index*.61+k*.73;
+   emit('orchard-fir',0,y,0,width,tierH,width*.90,firPalette[k],0,turn);
+   for(let j=0;j<9;j++){
+    const theta=j*Math.PI*2/9+turn,rad=width*(.33+next()*.054);
+    emit('orchard-leaf',Math.sin(theta)*rad,y-8+next()*4,Math.cos(theta)*rad,11+next()*7,10+next()*6,1,
+     firPalette[Math.min(3,k+(j%3===0?1:0))],.56+next()*.32,Math.sin(theta)*.49,.11*Math.sin(theta));
    }
   }
-  const light=near(elbow,tip,.77),w=22+next()*6;
-  shape('orchard-leaf',x+light[0]*scale,(light[1]+9)*scale,z+(light[2]-2)*scale,w*scale,w*.81*scale,1,
-   p.leaf[3],-.26,bias+j*.49,side*.37);
+  return;
  }
- // Front, middle and upper boughs overlap in depth, so the whole crown
- // reads at town scale. Local tops retain the six profiles' silhouettes.
- const tips=p.limbs.map(([tx,y,tz])=>[tx+shift,y,tz]);
- const fill=(v,w,h,col,rx,ry,rz)=>shape('orchard-leaf',x+v[0]*scale,v[1]*scale,z+v[2]*scale,w*scale,h*scale,1,col,rx,ry,rz);
- const sorted=tips.slice().sort((a,b)=>a[0]-b[0]);
- const avg=tips.reduce((sum,v)=>sum+v[1],0)/tips.length;
- for(const [j,tip] of sorted.entries()){
-  const a=sorted[Math.max(0,j-1)],b=sorted[Math.min(j+1,sorted.length-1)];
-  const arc=near(near(a,b,.5),tip,.64);
-  for(let k=0;k<6;k++){
-   const angle=(k+.35)*Math.PI/3+j*.78+bias*3;
-   const radial=k<3?1:.62;
-   const spread=radial*(8+next()*8);
-   const width=31+next()*13;
-   const v=[arc[0]+Math.sin(angle)*spread,arc[1]+5.5+(k%3)*6+(next()-.5)*5,
-    arc[2]+Math.cos(angle)*spread*1.41+(k<3?10:-8)];
-   fill(v,width,width*(.79+next()*.18),p.leaf[k<2?1:k<5?2:3],-.34+(next()-.5)*1.39,angle,-.75+next()*1.5);
-  }
+ for(let j=0;j<5;j++){
+  const theta=j*2.39996+index*.61,t=.58+next()*.12;
+  const ox=Math.sin(theta)*w*.32,oz=Math.cos(theta)*d*.32;
+  branch([0,trunk-15+j*.9,0],[ox*t,trunk+3+j*.5,oz*t],3.8-j*.27);
+  branch([ox*t,trunk+3+j*.5,oz*t],[ox,trunk+23+j*.75,oz],2.2-j*.14);
  }
- for(let j=0;j<12;j++){
-  const a=j*2.399963+bias*7,r=Math.sqrt((j+.3)/12);
-  const width=32+next()*10;
-  fill([shift+Math.sin(a)*r*23,avg+12+(1-r)*10+(next()-.5)*8,Math.cos(a)*r*17],width,width*.94,
-   p.leaf[2+(j%3===0?1:0)],-.40+(next()-.5)*1.14,a,(next()-.5)*1.24);
+ const cy=trunk+25,turn=index*.63;
+ const kind=w>=67?'orchard-wide':'orchard-round';
+ emit(kind,0,cy,0,w,h,d,dark,0,turn);
+ for(let j=0;j<42;j++){
+  const theta=j*2.399963+turn,ny=1-2*(j+.5)/42,ring=Math.sqrt(1-ny*ny);
+  const a=Math.sin(theta)*ring*w*.487,c=Math.cos(theta)*ring*d*.51;
+  const shoulder=1+.15*ny;
+  const b=cy+ny*h*.54+Math.cos(5*theta)*1.4;
+  const width=12.5+next()*6;
+  emit('orchard-leaf',a*shoulder,b,c*shoulder,width,width*(.72+next()*.22),1,j%5===0||ny>.32?light:dark,
+   .30+(next()-.5)*.40,Math.sin(theta)*.52,(next()-.5)*.58);
  }
 }
 // Same wall clock and 12-minute loop already used by the weather selector;
