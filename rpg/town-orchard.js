@@ -1,12 +1,12 @@
 // Upright boughs hold an irregular solid silhouette; actual leaf clusters
 // follow the surface, so an orchard crown is neither a ball nor a curtain.
 const profiles=[
- ['#78624d','#6f964f','#9db969',44,67,43,61],
- ['#7d6950','#759853','#a4bf72',45,57,49,57],
- ['#78634c','#669055','#91b270',42,71,49,64],
- ['#80654a','#789d4e','#b2c67b',44,74,50,61],
- ['#79654d','#628949','#92b367',46,59,47,59],
- ['#816d56','#729751','#a3ba71',42,70,41,63]
+ ['#78624d','#719947','#a9c967',44,67,43,61],
+ ['#7d6950','#78a352','#b6d377',45,57,49,57],
+ ['#78634c','#679451','#9dbd6b',42,71,49,64],
+ ['#80654a','#80a849','#c0d47e',44,74,50,61],
+ ['#79654d','#659446','#9ac362',46,59,47,59],
+ ['#816d56','#789f4a','#afca72',42,70,41,63]
 ];
 const recipe=[0,3,1,2,4,5,1,3,2,5,0,2,4,1];
 const firAt=new Set([2,4,9,12]);
@@ -16,9 +16,9 @@ export const orchardProfile=i=>profiles[recipe[i]??i%profiles.length];
 function leaflet(g,x,y,angle,len,wide,tone,season=0,needle=false){
  g.save();g.translate(x,y);g.rotate(angle);
  const ink=g.createLinearGradient(0,1,wide,-len);
- ink.addColorStop(0,`rgb(${tone-26+season},${tone-24},${tone-28-season})`);
+ ink.addColorStop(0,`rgb(${tone-27+season},${tone-24},${tone-28-season})`);
  ink.addColorStop(.57,`rgb(${tone-3+season},${tone},${tone-9-season})`);
- ink.addColorStop(1,`rgb(${Math.min(255,tone+13+season)},${Math.min(255,tone+14)},${Math.min(255,tone+12-season)})`);
+ ink.addColorStop(1,`rgb(${Math.min(255,tone+13+season)},${Math.min(255,tone+20)},${Math.min(255,tone+12-season)})`);
  // Rounded terminal lobes, a restrained midrib and a soft pigment gradient.
  g.fillStyle=ink;g.beginPath();g.moveTo(-.7,0);
  const crown=wide*(needle?.31:.45);
@@ -82,7 +82,7 @@ export function makeOrchardLeaf(T,needle=false){
  // MeshLambert's texture and alpha threshold are forwarded by Three's
  // directional depth material, giving fine perforated leaf shadows.
  const material=new T.MeshPhongMaterial({map:texture,bumpMap:texture,bumpScale:.14,shininess:4,specular:'#273221',alphaTest:.30,alphaToCoverage:true,side:T.DoubleSide,
-  emissive:'#768950',emissiveIntensity:needle?.29:.20});
+  emissive:'#668d4a',emissiveIntensity:needle?.25:.25});
  material.shadowSide=T.DoubleSide;
  return {geometry,material};
 }
@@ -182,7 +182,7 @@ export function addOrchardTree({shape},x,z,scale,index){
  branch([0,trunk-13,0],[0,fir?trunk+20:trunk+12,0],6.6);
  for(const side of [-1,1])branch([side*6,0,2],[0,8,0],2.8);
  if(fir){
-  const firPalette=['#557b58','#628963','#6d956b','#7a9e70'];
+  const firPalette=['#577f54','#65915d','#78a36a','#89ad77'];
   const height=trunk+50+(index%3)*3;
   for(let k=0;k<4;k++){
    const width=(56+index%3*4)*(1-k*.202);
@@ -228,7 +228,7 @@ export function addOrchardTree({shape},x,z,scale,index){
 
  // The interior is also leaves. Darker occluded fans at a range of depths
  // block holes; outer light leaves keep the silhouette luminous, never solid.
- const inner=[dark,'#668651','#5e7948','#728d51',light];
+ const inner=[dark,'#658845','#507637','#739452',light];
  for(let lobe=0;lobe<9;lobe++){
   const phase=lobe*2.399963+turn,spread=lobe===0?0:(.20+next()*.13);
   const centerX=Math.sin(phase)*w*spread,centerZ=Math.cos(phase)*d*spread;
@@ -262,7 +262,7 @@ export function addOrchardTree({shape},x,z,scale,index){
   const fy=cy+ny*h*.44,fx=nx*w*.49,fz=surface*d*.47+4.2;
   const width=9+next()*10;
   const exposed=.53*ny-.36*nx+.24*Math.sin(a*3.1);
-  const tint=exposed>.29?light:exposed<-.17?'#668348':ny>.06?'#91ac59':dark;
+  const tint=exposed>.29?light:exposed<-.17?'#5f8a40':ny>.06?'#95b958':dark;
   emit('orchard-leaf',fx,fy,fz,width,width*(.68+next()*.23),1,tint,
    .34-ny*.29+(next()-.5)*.18,-nx*.58+(next()-.5)*.29,(next()-.5)*.85);
  }
@@ -285,7 +285,7 @@ export function addOrchardTree({shape},x,z,scale,index){
   const fy=cy+ny*h*.47,fx=nx*w*.49,fz=depth*d*.51+6.0;
   const width=6.7+next()*7.4;
   const glow=.61*ny-.24*nx+.30*Math.cos(phase*2.8);
-  const ink=glow>.33?light:glow>.07?'#a2b66c':glow<-.20?'#627d49':dark;
+  const ink=glow>.28?light:glow>.02?'#aac373':glow<-.20?'#618540':dark;
   emit('orchard-leaf',fx,fy,fz,width,width*(.70+next()*.41),1,ink,
    .16+(next()-.5)*.30,nx*.30+(next()-.5)*.42,phase*.14);
  }

@@ -10,13 +10,26 @@ export const GRASS_PATCHES=Object.freeze([
  [35,410,16,18,13],[252,405,11,19,16],[256,475,13,24,17],[218,534,18,12,12],
  [908,481,12,20,13],[933,530,14,15,10]
 ].map(Object.freeze));
+// The edge of the grass reads as a continuous, softly feathered ribbon,
+// not individual widely spaced seedlings. Same site for paint and geometry.
+export const LAWN_DRIFTS=Object.freeze([
+ [350,392,76,9,-.08,83],[596,384,72,8,.04,73],
+ [519,282,67,12,-.03,89],[572,237,30,14,.27,78],
+ [776,258,33,9,-.22,83],[818,434,74,12,.08,75],
+ [450,144,113,10,.01,78],[112,374,40,10,-.24,62]
+].map(Object.freeze));
+export function lawnAnchor(x,z,w,d,rot,i,n){
+ const angle=i*2.399963,r=Math.sqrt((i+.6)/n)*(.86+.125*Math.sin(i*2.43));
+ const u=Math.cos(angle)*w*r,v=Math.sin(angle)*d*r;
+ return [x+u*Math.cos(rot)-v*Math.sin(rot),z+u*Math.sin(rot)+v*Math.cos(rot)];
+}
 // Neighbouring clumps share a slow passing gust, not one synchronous wobble.
 export function breezeAt(ms,x,z,weather,motion=true){
  if(!motion)return 0;
  const t=ms*.001,strength=weather==='breeze'?1.1:weather==='rain'?.82:.64;
  return strength*(.40+.29*Math.sin(t*1.45-x*.024-z*.014)+.17*Math.sin(t*2.4-x*.048+z*.009));
 }
-export function makeLivingGrass(T,scene,W,H){
+export function makeLivingGrass(T,scene,W,H,clear=()=>true){
  const geometry=new T.BufferGeometry(),p=[],rgb=[];
  const seed={v:82021};
  const rand=()=>((seed.v=(Math.imul(seed.v,1664525)+1013904223)>>>0)/4294967296);
@@ -35,10 +48,23 @@ export function makeLivingGrass(T,scene,W,H){
 
   }
  }
+ const bright=['#9fbd62','#a7c46d','#89ac50','#b0c978','#94b65e'].map(c=>new T.Color(c));
+ for(const [cx,cz,w,d,rot,count] of LAWN_DRIFTS)for(let i=0;i<count;i++){
+  const [x,z]=lawnAnchor(cx,cz,w,d,rot,i,count);
+  if(!clear(x,z))continue;
+  for(let j=0;j<2;j++){
+   const theta=i*2.399963+j*2.17+cx*.1,h=2.4+rand()*3.8,width=.60+rand()*.63;
+   const tint=bright[(i+j)%bright.length];
+   for(const fan of softBlade(x-W/2+(j-.5)*1.1,z-H/2,theta,h,width,2+rand()*1.7,1.45))for(const {v,t,s} of fan){
+    p.push(...v);const tone=.86+t*.27-s*.019;
+    rgb.push(tint.r*tone,tint.g*tone,tint.b*tone);
+   }
+  }
+ }
  geometry.setAttribute('position',new T.Float32BufferAttribute(p,3));
  geometry.setAttribute('color',new T.Float32BufferAttribute(rgb,3));
  geometry.computeVertexNormals();
- const material=new T.MeshLambertMaterial({side:T.DoubleSide,vertexColors:true,emissive:'#52623a',emissiveIntensity:.22});
+ const material=new T.MeshLambertMaterial({side:T.DoubleSide,vertexColors:true,emissive:'#687e3b',emissiveIntensity:.26});
  const clock={value:0},strength={value:0};
  material.onBeforeCompile=shader=>{
   Object.assign(shader.uniforms,{townBreezeClock:clock,townBreezeStrength:strength});

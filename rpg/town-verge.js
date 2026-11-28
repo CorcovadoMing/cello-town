@@ -62,6 +62,27 @@ export function makeVerge(T,scene,W,H){
    tri(c,end,mid,color,[1.02,1.07,1.08]);tri(mid,end,d,color,[1.08,1.07,.98]);
   }
  }
+ // Local 3D leaves for the cottage borders. One continuous vertex batch,
+ // with open negative space near the ground rather than solid green lumps.
+ function shrub(x,z,rx,rz,height,seed,palette){
+  for(let i=0;i<54;i++){
+   const a=i*2.399963+seed*.19,t=(i+.5)/54,q=Math.sqrt(t),r=.28+.72*q;
+   const cx=x+Math.cos(a)*rx*r,cz=z+Math.sin(a)*rz*r;
+   const jitter=.8+.20*Math.sin(seed+i*2.43);
+   const y=1.66+(height-1.66)*(.28+.72*Math.sqrt(1-t))*jitter;
+   const dir=a+(i%5-2)*.13,ux=Math.cos(dir),uz=Math.sin(dir),w=1.5+(i*7+seed)%8*.145;
+   const len=2.0+w*(.86+(i%4)*.10);
+   const tip=.34+(.26*Math.sin(i*1.337)),edge=i%3===0?.60:.81;
+   const f=(r,offset,h)=>V(cx+ux*r-uz*offset,y+h,cz+uz*r+ux*offset);
+   const root=f(-len*.35,0,-.45),mid=f(len*.40,0,.89),end=f(len,0,tip);
+   const l=f(len*.04,-w*.72,.04),rgt=f(len*.10,w*.71,.10);
+   const ll=f(len*edge,-w*.52,.45),rr=f(len*.75,w*.53,.40);
+   const ink=palette[(i+seed)%palette.length];
+   tri(root,l,mid,ink,[.76,.88,1.07]);tri(root,mid,rgt,ink,[.76,1.07,.94]);
+   tri(l,ll,mid,ink,[.88,1,1.07]);tri(mid,rr,rgt,ink,[1.07,1.02,.94]);
+   tri(ll,end,mid,ink,[1,1.12,1.07]);tri(mid,end,rr,ink,[1.07,1.12,1.02]);
+  }
+ }
  function finish(){
   if(!position.length)return null;
   const geo=new T.BufferGeometry();
@@ -73,5 +94,5 @@ export function makeVerge(T,scene,W,H){
   scene.add(mesh);
   return mesh;
  }
- return {flower,tuft,cover,finish};
+ return {flower,tuft,cover,shrub,finish};
 }

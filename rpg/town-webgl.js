@@ -3,7 +3,7 @@ import {makeGroundRain} from './town-ground-rain.js?v=1';
 import {makeVerge} from './town-verge.js?v=1';
 import {makeCountryside} from './town-countryside.js?v=4';
 import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=greens-036';
-import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=greens-036';
+import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT,LAWN_DRIFTS,lawnAnchor} from './town-breeze.js?v=greens-036';
 import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './town-orchard.js?v=greens-036';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
@@ -90,7 +90,7 @@ function landscapePigment(T,kind){
  const [base,shade,light,warm,cool]=TOWN_PAINT_PALETTE[kind];
  let seed={meadow:1891,soil:9833}[kind];
  const next=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
- ctx.fillStyle=base;ctx.fillRect(0,0,W,H);
+ ctx.fillStyle=kind==='meadow'?'#a0bc74':base;ctx.fillRect(0,0,W,H);
  function glaze(x,y,w,h,angle,hue,alpha){
   ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(w,h);
   const ink=ctx.createRadialGradient(-.09,-.08,.05,0,0,1);
@@ -108,6 +108,19 @@ function landscapePigment(T,kind){
    const w=7+next()*23,h=1.7+next()*5;
    const angle=(next()-.5)*.54+(kind==='meadow'?-.21:0);
    glaze(xx,yy,w,h,angle,accents[(i+group)%accents.length],.13+rank*.25);
+  }
+ }
+ if(kind==='meadow'){
+  for(const [x,z,w,d,rot,n] of LAWN_DRIFTS){
+   glaze(x,z,w*1.22,d*2.9,rot,'#83aa54',.68);
+   glaze(x-1,z-2,w*.88,d*1.2,rot,'#a8c76b',.76);
+   for(let i=0;i<n*5;i++){
+    const [xx,zz]=lawnAnchor(x,z,w,d*1.15,rot,i,n*5);
+    const theta=i*1.37,dx=Math.cos(theta)*(1.0+i%4*.38),dy=Math.sin(theta)*(1.2+i%3*.31);
+    ctx.globalAlpha=.27+(i%4)*.035;ctx.strokeStyle=['#b7cf82','#7f9f54','#a2be6c','#adc676'][i%4];
+    ctx.lineWidth=.68+(i%3)*.16;ctx.beginPath();ctx.moveTo(xx,zz);ctx.quadraticCurveTo(xx+dx*.66,zz+dy*.81,xx+dx,zz+dy);ctx.stroke();
+   }
+   ctx.globalAlpha=1;
   }
  }
  // Fine, softly irregular pigment: tiny mineral flecks on the walking
@@ -432,7 +445,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  pondCamera.position.set(ex-W/2,ey,ez-H/2);pondCamera.lookAt(lx-W/2,ly,lz-H/2);pondCamera.updateMatrixWorld();
  const facingYaw=Math.atan2(ex-lx,ez-lz);
  let camera=mapCamera;
- const updateGrass=makeLivingGrass(T,scene,W,H);
+
  const verge=makeVerge(T,scene,W,H);
 
  const sun=new T.DirectionalLight('#ffe7b0',2.05);
@@ -544,6 +557,11 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   }
  }
  const pathAt=(x,z)=>(x>161&&x<800&&z>292&&z<380)||(x>417&&x<510&&z>369)||(x>617&&x<727&&z>242&&z<314);
+ const clearTurf=(x,z)=>!pathAt(x,z)&&!insidePolygon(x,z,GARDEN_SOIL)
+  &&!(x>=room.x-3&&x<=room.x+room.w+3&&z>=room.y-2&&z<=room.depth+3)
+  &&!(x>184&&x<320&&z>194&&z<226)
+  &&!(x>377&&x<497&&z>189&&z<242);
+ const updateGrass=makeLivingGrass(T,scene,W,H,clearTurf);
  // Advance the established art seed without its former scattered lawn
  // chips; paths, props and their seeded material details remain identical.
  for(let i=0;i<240;i++){
@@ -778,12 +796,14 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  // Three related border types. Each patch stays near a bank, tree, fence or
  // tended edge. Quiet open turf gives the little flower heads room to read.
  const beds=[
-  {x:351,z:263,w:24,d:10,n:33,hue:['#f1c7bb','#ecd3b1','#fff1d3'],angle:-.16},
-  {x:268,z:416,w:11,d:15,n:19,hue:['#fff1c9','#e8d7b6','#f1c5bb'],angle:.31},
+  {x:181,z:287,w:24,d:7,n:29,hue:['#fff2db','#f0ca6d','#e99cb2'],angle:-.08},
+  {x:548,z:278,w:30,d:8,n:31,hue:['#f6e8bd','#edafbf','#f7d57c'],angle:.16},
+  {x:351,z:263,w:24,d:10,n:33,hue:['#e7a5b5','#efd471','#fff2d4'],angle:-.16},
+  {x:268,z:416,w:11,d:15,n:19,hue:['#fff5db','#f2d977','#ecb3c0'],angle:.31},
   {x:250,z:497,w:10,d:20,n:24,hue:['#f0e7c0','#e9d7a8','#f8dec7'],angle:-.38},
   {x:40,z:412,w:14,d:9,n:14,hue:['#eee0ba','#f2d0be','#e5cdc0'],angle:.18},
-  {x:867,z:296,w:19,d:9,n:19,hue:['#edc4c2','#dcc9df','#f0d9cd'],angle:.42},
-  {x:724,z:456,w:10,d:20,n:24,hue:['#edc8b8','#efdbc0','#cac7dd'],angle:-.28},
+  {x:867,z:296,w:19,d:9,n:19,hue:['#e7a1b6','#c9bfdc','#fff0c9'],angle:.42},
+  {x:724,z:456,w:10,d:20,n:24,hue:['#eba4b5','#f1d185','#d8c7e4'],angle:-.28},
   {x:919,z:494,w:9,d:15,n:18,hue:['#efc9b7','#f2e2bf','#e5c5d2'],angle:.25}
  ];
  for(const {x,z,w,d,n,hue,angle} of beds){
@@ -796,7 +816,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    const h=2.8+(i*7%13)*.20,seed=x+z+i;
    if(i%3!==0){
     shape('trunk',a,h*.50+.46,b,.59,h*.93,.59,'#8caa68',0,0,.11*Math.cos(phase));
-    verge.flower(a,h+.63,b,hue[(i*5)%3],seed,.77+(i%4)*.08);
+    verge.flower(a,h+.63,b,hue[(i*5)%3],seed,.99+(i%4)*.13);
    }else verge.tuft(a,b,h+.56,i%2?'#8fa86c':'#9aaf74',seed);
   }
  }
@@ -809,11 +829,11 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  GARDEN_SOIL.forEach(([x,z],i)=>i?gardenOutline.lineTo(x-821,460-z):gardenOutline.moveTo(x-821,460-z));
  gardenOutline.closePath();
  const gardenPatch=new T.Mesh(paintTerrainUV(T,new T.ShapeGeometry(gardenOutline),179,108),
-  new T.MeshPhongMaterial({map:soilPigment,bumpMap:soilPigment,bumpScale:.43,shininess:2,specular:'#46382a',color:'#b59879'}));
+  new T.MeshPhongMaterial({map:soilPigment,bumpMap:soilPigment,bumpScale:.43,shininess:2,specular:'#46382a',color:'#bda083'}));
  gardenPatch.rotation.x=-Math.PI/2;gardenPatch.position.set(821-W/2,1.19,460-H/2);
  gardenPatch.receiveShadow=true;scene.add(gardenPatch);
  const soilVert=[],soilColor=[],soilUV=[],soilIndices=[],sections=ROW_SECTION.length,count=20;
- const clayTint=new T.Color('#d1b591');
+ const clayTint=new T.Color('#dcc099');
  for(const row of GARDEN_ROWS){
   const start=soilVert.length/3;
   for(let i=0;i<=count;i++)for(const [offset,lift,shade] of ROW_SECTION){
@@ -832,6 +852,15 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  rows.setAttribute('uv',new T.Float32BufferAttribute(soilUV,2));rows.setIndex(soilIndices);rows.computeVertexNormals();
  const rowMesh=new T.Mesh(rows,new T.MeshPhongMaterial({map:soilPigment,bumpMap:soilPigment,bumpScale:.33,
   shininess:2,specular:'#443420',vertexColors:true}));rowMesh.receiveShadow=true;scene.add(rowMesh);
+ // Narrow rake traces and little places where the warm surface dries first.
+ // The six actual flower positions remain independent of the border art.
+ for(const {center:y,start:x,end,seed} of GARDEN_ROWS){
+  for(let i=0;i<27;i++){
+   const xx=x+6+i*(end-x-12)/26,zz=y+Math.sin(i*.89+seed)*2;
+   sphere(xx,1.62,zz,1.22+(i*7%5)*.24,.027+(i%3)*.024,1.65,
+    ['#b39367','#a1855f','#c9a77a','#ad916b'][i%4],0,i*.21);
+  }
+ }
  // Weathered stones are worked into the hem in a few places, not stacked
  // as a rigid frame around each planting slot.
  for(const [i,[x,z]] of [[745,426],[741,440],[739,451],[739,472],[747,491],
@@ -954,10 +983,29 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  shape('trunk',770,7,221,10,16,10,'#9a774e');
  box(770,14.5,221,9.6,1.2,8.1,'#ad9064');
  for(const yy of [4.5,11.5])box(770,yy,225,7,1.1,1.1,'#706957');
- for(const [x,z,h] of [[581,217,14],[590,212,16],[602,205,10],[765,248,9],[773,242,14]]){
-  sphere(x,h*.52,z,9+h*.25,h,8+h*.12,'#789b62',.12,rng());
-  sphere(x+4,h*.82,z-4,5+h*.17,h*.45,5,'#a0af71',.08,rng());
-  if(h>12)sphere(x+4,h*1.04,z,2,1.6,2,'#e5d1a4');
+ // Tended cottage planting: overlapping lower broad-leaf plants and a
+ // cushion of small foliage, with a clean gap at every part of the doorstep.
+ for(let i=0;i<10;i++)rng(); // preserve unrelated deterministic scenery
+ const cottageBeds=[
+  {x:cx-90,z:fr-15,w:18,d:10,a:-.35,seed:21},
+  {x:cx-79,z:fr+6,w:13,d:8,a:.25,seed:32},
+  {x:cx+97,z:fr-8,w:17,d:9,a:.33,seed:43},
+  {x:cx+90,z:fr+11,w:10,d:7,a:-.19,seed:56}
+ ];
+ for(const {x,z,w,d,a,seed} of cottageBeds){
+  const west=x<cx,deep=west?['#749059','#839f60','#9eb676','#68874d','#8ca66a']:['#74955d','#88a768','#a8bd7e','#648651','#94ac72'];
+  verge.shrub(x,z,w*.57,d*.62,west?13:10,seed,deep);
+  verge.shrub(x+w*.52,z+d*.13,w*.40,d*.54,west?9:8,seed+8,deep);
+  const c=Math.cos(a),s=Math.sin(a);
+  for(let i=0;i<29;i++){
+   const angle=i*2.399963+seed*.2,k=Math.sqrt((i+.5)/29);
+   const u=w*k*Math.cos(angle),v=d*k*Math.sin(angle);
+   const xx=x+u*c-v*s,zz=z+u*s+v*c;
+   if(pathAt(xx,zz)||Math.abs(xx-cx)<56)continue;
+   verge.cover(xx,zz,seed+i,1.08+(i*7%11)*.085);
+   if(i%5===0)verge.tuft(xx,zz,3.2+(i%4)*.28,deep[i%deep.length],seed+i);
+   if(i%8===3)verge.flower(xx,3.0,zz,west?'#f0d8bf':'#e8c3c4',seed+i,.66);
+  }
  }
  for(const [x,z,len]of[[14,382,27],[17,360,24],[22,413,24]]){
   for(const dx of [-9,9])box(x+dx,8,z,2.6,17,3,'#9d8159');
@@ -972,7 +1020,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  }
  // Fresh growth at the edges only; flowers, route and plot stay readable.
  for(const [x,z,hue,s] of [[35,381,0,1],[257,378,1,.83],[274,389,0,.74],[718,451,1,.90],
-  [711,466,2,.79],[908,443,0,.72],[922,467,1,1],[764,253,2,.88],[786,238,0,.70]]){
+  [711,466,2,.79],[908,443,0,.72],[922,467,1,1]]){
   const colours=['#638344','#77974e','#87a958'];
   for(let j=0;j<4;j++){
    const theta=j*1.73+z*.05,width=(10+j%2*3)*s;
