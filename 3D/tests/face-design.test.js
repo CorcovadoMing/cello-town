@@ -13,3 +13,14 @@ test('avatar uses shared subtle finishes while preserving face and articulation 
  for(const name of ['polished-eye','sleeve-topstitch','shoe-toe-topstitch','fitted-scalp','face-motion-eye','leg-foot','avatar-upper-posture'])assert.ok(art.includes(name),name);
  assert.doesNotMatch(art,/localStorage|requestAnimationFrame|getUserMedia/);
 });
+
+test('closet colors are independent and old shoes keep the original style color',async()=>{
+ const {OPTIONS,update}=await import('../state.js');
+ const palette={color:3,lowerColor:2,shoes:7};
+ const old=normalize(palette);assert.equal(old.shoeColor,0);
+ const live=update(old,'shoeColor',6);
+ assert.equal(live.shoeColor,6);assert.equal(live.shoes,7);
+ assert.equal(live.color,3);assert.equal(live.lowerColor,2);
+ assert.deepEqual(normalize(JSON.parse(JSON.stringify(live))),live);
+ assert.equal(new Set(OPTIONS.shoeColor).size,8);
+});

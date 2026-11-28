@@ -14,7 +14,7 @@ test('near-water glints use the existing shadow map and reduced motion stops fis
  assert.match(s,/sunlit=getShadowMask\(\)/);
  assert.match(s,/sunlit\*sunlit\*pow\(townWaterBrightness/);
  assert.match(s,/time\.value=motion\?clock\/1000:0/);
- assert.match(s,/motion\?clock\*\.00017:0/);
+ assert.match(s,/pondSwimmer\(i,time.value,u\)/);
  assert.doesNotMatch(s,/sunLane/);
 });
 test('near-shore mud and actual refracted bed texture are clearer than deep water',()=>{
@@ -28,4 +28,11 @@ test('glints are compact, irregular point pulses rather than long wave blades',(
  assert.match(s,/crest\*nearLight\*bankLight/);
  assert.doesNotMatch(s,/townWaterTime\*\(1\.9\+4\.\*b\)/);
  assert.match(s,/pow\(townWaterBrightness,3\.\)/);
+});
+
+test('wind crosses irregular local waves while refractive floor remains visible',()=>{
+ assert.match(s,/drift=along-townWaterTime\*10\.8/);
+ assert.match(s,/ripplet=\(\.45\*primary\+\.36\*oblique\+\.19\*riffle\)\*packet/);
+ assert.match(s,/\.019\*ripplet/);
+ assert.doesNotMatch(s,/windWave\*gust/);
 });

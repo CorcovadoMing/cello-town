@@ -1,6 +1,7 @@
 import {GARDEN_SOIL,GARDEN_ROWS,ROW_SECTION,rowPoint} from './town-bed.js?v=1';
 import {makeGroundRain} from './town-ground-rain.js?v=1';
 import {makeVerge} from './town-verge.js?v=1';
+import {drawLoungeBook,loungePageTurn} from './lounge-art.js?v=reader-041';
 import {makeCountryside} from './town-countryside.js?v=woodland-037';
 import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=woodland-037';
 import {breezeAt,TOWN_WIND,windLeafAt,windLeafFloatAt,makeLivingGrass,makePondHorizon,POND_SHOT,LAWN_DRIFTS,lawnAnchor} from './town-breeze.js?v=wind-040';
@@ -8,7 +9,7 @@ import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './to
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
-import {drawWetSoil} from './wet-soil.js?v=gait-033';
+import {drawWetSoil} from './wet-soil.js?v=pet-gait-041';
 
 // Keep phase on high-refresh displays without repeatedly rounding from the
 // last paint. Allow jitter on a 60 Hz display; never queue a catch-up paint.
@@ -383,6 +384,22 @@ function pondBed(T){
  const texture=new T.CanvasTexture(c);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=4;
  return texture;
 }
+// Three continuous submerged tracks in world space. Heading follows the
+// exact derivative (Y in the shader is -world-Z), not an independent spin.
+const SWIM_LINES=[
+ {cx:119,cz:465,rx:56,rz:39,phase:1.4,rate:.138,depth:6.7,lift:1.35},
+ {cx:164,cz:470,rx:61,rz:38,phase:2.1,rate:.169,depth:5.7,lift:1.15},
+ {cx:171,cz:462,rx:46,rz:36,phase:4.8,rate:.122,depth:9.7,lift:1.38}
+];
+export function pondSwimmer(index,seconds,out){
+ const f=SWIM_LINES[index],p=f.phase+seconds*f.rate;
+ const a=p+.135*Math.sin(p*2+index),ax=Math.cos(a),sz=Math.sin(a);
+ const x=f.cx+f.rx*sz+5*Math.sin(a*2),z=f.cz+f.rz*ax;
+ const heading=Math.atan2(f.rz*sz,f.rx*ax+10*Math.cos(a*2));
+ const depth=f.depth-f.lift*ax+.82*Math.sin(a*2+index);
+ out?.set(x,z,depth,heading);
+ if(!out)return [x,z,depth,heading];
+}
 function pondSurface(T,map,spanX,spanZ){
  const material=new T.MeshLambertMaterial({map,color:'#eff8f4'});
  const phase={value:0},brightness={value:.9},detail={value:0},time={value:0},wind={value:0};
@@ -432,6 +449,20 @@ function pondSurface(T,map,spanX,spanZ){
    float longWave = sin(uvPond.y*48. + uvPond.x*6.1 + sin(uvPond.x*12.-t*3.)*.67 -t*8.);
    float shortWave = sin(uvPond.y*95. - uvPond.x*16. +t*9. +sin(uvPond.x*19.+t*5.)*.60);
    float crossWave = sin(uvPond.y*35. + uvPond.x*28. -t*5.);
+   // Short, crossing wavelets share the downwind flow but don't form
+   // uniformly spaced ribbons. Sheltered patches carry less surface chop.
+   float ripplet=0.;
+   if(townBreezeRipple>.0){
+    vec2 p=(uvPond-.5)*townWaterSpan;
+    float along=dot(p,vec2(.9015,-.4327)),across=dot(p,vec2(.4327,.9015));
+    float drift=along-townWaterTime*10.8;
+    float warp=sin(across*.133+drift*.036)+.54*sin(across*.208-drift*.079);
+    float packet=.44+.56*smoothstep(-.73,.86,sin(across*.054+drift*.033)+.58*sin(across*.091-drift*.073));
+    float primary=sin(drift*.39+1.04*warp);
+    float oblique=sin(drift*.61+across*.313-.43*warp);
+    float riffle=sin(drift*.93-across*.402+.33*warp);
+    ripplet=(.45*primary+.36*oblique+.19*riffle)*packet;
+   }
    // No shallow stripe across the open outlet at low v.
    float edgeDistance = min(1.-uvPond.x,1.-uvPond.y);
    float shallow = 1.-smoothstep(.008,.19,edgeDistance+shortWave*.009);
@@ -447,7 +478,7 @@ function pondSurface(T,map,spanX,spanZ){
    if(townWaterDetail>0.5){
     // Snell-law ray from the water surface to each fish's depth plane.
     vec3 eye=normalize(townWaterView);
-    vec3 N=normalize(vec3(.10*shortWave+.06*crossWave,1.,.105*longWave));
+    vec3 N=normalize(vec3(.10*shortWave+.06*crossWave+.019*ripplet,1.,.105*longWave+.014*ripplet));
     vec3 rq=refract(-eye,N,1./1.333);
     float fresnel=.021+.979*pow(1.-max(0.,dot(N,eye)),5.);
     float depth=mix(5.6,20.0,smoothstep(.018,.51,edgeDistance));
@@ -462,18 +493,40 @@ function pondSurface(T,map,spanX,spanZ){
      vec4 f=townFish[j];
      float dist=f.z/max(.14,-rq.y);
      vec2 hit=(uvPond-f.xy)*townWaterSpan+vec2(rq.x,-rq.z)*dist;
+     // Distant fragments retain exactly the existing water, with no fish
+     // SDF/pattern cost outside a tight physical neighborhood of the ray.
+     if(dot(hit,hit)>705.)continue;
      float c=cos(f.w),q=sin(f.w);
      vec2 P=vec2(c*hit.x+q*hit.y,-q*hit.x+c*hit.y);
-     float k=float(j), swish=sin(townWaterTime*9.+k*1.7+P.x*.20);
-     float body=townEllipse(P-vec2(1.1,0.),vec2(8.5+k*.65,3.35+k*.25));
-     float stem=townEllipse(P+vec2(6.4,0.),vec2(4.8,1.30));
-     float tail=townEllipse(vec2(P.x+10.7,P.y-swish*1.35),vec2(3.4,2.6));
-     float fins=townEllipse(vec2(P.x+.4,P.y+P.x*.30+1.85),vec2(3.1,1.7));
-     float fishAlpha=max(body,max(stem*.80,max(tail*.72,fins*.58)));
-     vec3 tint=mix(townFishDye[j]*.56,townFishDye[j]*1.22,
-       min(1.,smoothstep(-2.6,1.7,-P.y)+.18*townEllipse(P-vec2(3.,-1.2),vec2(2.8,1.))));
-     float eyeMark=body*townEllipse(P-vec2(5.2,-.45),vec2(.92,.82));
-     tint=mix(tint,vec3(.025,.040,.031),eyeMark*.84);
+     float k=float(j),sleek=1.-step(.5,abs(k-1.));
+     float bodyWidth=mix(3.08+k*.21,4.14,sleek);
+     float flex=smoothstep(1.,17.,-P.x)*sin(townWaterTime*(5.5+k*1.03)+k*1.71-P.x*.19);
+     vec2 F=vec2(P.x,P.y-flex*(1.65+k*.21));
+     float belly=townEllipse(F-vec2(1.2,.25),vec2(9.4-k*.27,bodyWidth));
+     float muzzle=townEllipse(F-vec2(6.8,.12),vec2(3.7,bodyWidth*.72));
+     float stalk=townEllipse(F+vec2(8.9,0.),vec2(4.8,1.47));
+     float flare=clamp((-F.x-10.2)/7.,0.,1.);
+     float tailProfile=1.-smoothstep(.86,1.11,abs(F.y)/(.69+3.48*flare));
+     float tail=tailProfile*smoothstep(9.4,11.8,-F.x)*(1.-smoothstep(14.5,18.6-.65*k-2.4*(1.-smoothstep(0.,3.,abs(F.y))),-F.x));
+     float fins=townEllipse(vec2(F.x+.8,F.y+F.x*.38+bodyWidth*.82),vec2(3.9,1.29));
+     float body=max(belly,max(stalk*.97,muzzle));
+     float fishAlpha=max(body,max(tail*.88,fins*.67));
+     float flank=smoothstep(-bodyWidth,bodyWidth,-F.y);
+     vec3 pigment=townFishDye[j];
+     vec3 tint=mix(pigment*.47,pigment*1.22,flank);
+     // Dorsal saddles on the olive fish; pale patches on the orange carp.
+     // Distinction stays readable at phone size, not a per-scale noise layer.
+     float patches=townEllipse(F+vec2(1.,1.35),vec2(3.5,1.8))+
+                    townEllipse(F-vec2(5.,.33),vec2(2.8,2.07))+
+                    townEllipse(F+vec2(6.46,-.55),vec2(2.2,1.77));
+     tint=mix(tint,vec3(.92,.72,.45),min(.7,patches*.53)*sleek*body);
+     float saddle=(.45+.55*smoothstep(.4,.9,sin(F.x*1.55+F.y*.36)))*smoothstep(-.18,2.65,-F.y);
+     tint*=1.-.40*saddle*step(1.5,k)*body;
+     float dorsal=townEllipse(F-vec2(1.8,-bodyWidth*.58),vec2(6.32,.96));
+     tint+=pigment*dorsal*body*.25;
+     float eyeMark=body*townEllipse(F-vec2(7.1,-.72),vec2(.90,.83));
+     tint=mix(tint,vec3(.017,.027,.024),eyeMark*.90);
+     tint+=vec3(.72,.75,.66)*townEllipse(F-vec2(7.27,-.98),vec2(.33,.28))*eyeMark*.61;
      pool=mix(pool,tint,fishAlpha*transmission*exp(-dist*.018));
     }
     // The current sun map includes the moving, alpha-tested leaves.
@@ -497,28 +550,19 @@ function pondSurface(T,map,spanX,spanZ){
       *facing*sunlit*sunlit*pow(townWaterBrightness,3.);
     pool=mix(pool,vec3(.97,.94,.79),min(.55,.88*glint));
    }
-   // Windward wave fronts advect in world units; only a subtle band of
-   // water colour moves, not highlights, stars, or an opaque blue layer.
-   float dr=dot((uvPond-.5)*townWaterSpan,vec2(.9015,-.4327));
-   float ct=dot((uvPond-.5)*townWaterSpan,vec2(.4327,.9015));
-   float windTime=townWaterTime;
-   float windWave=sin(dr*.39-windTime*5.2+.42*sin(ct*.088-windTime*.6));
-   float gust=.59+.23*sin(dr*.034-windTime*.9)+.18*sin(ct*.054+windTime*.44);
-   diffuseColor.rgb = pool*(1.+longWave*.013+shortWave*.010+windWave*gust*townBreezeRipple*.145);
+   diffuseColor.rgb = pool*(1.+longWave*.013+shortWave*.010+ripplet*.073);
   `);
  };
- material.customProgramCacheKey=()=> 'town-pond-shallow-bottom-v2';
+ material.customProgramCacheKey=()=> 'town-pond-angular-ripples-v4';
  let lastWeather;
  return {material,update(now,weather,lamp,motion,close,clock,cx,cz){
   detail.value=close?1:0;time.value=motion?clock/1000:0;wind.value=motion&&weather==='breeze'?1:0;
   phase.value=motion?(clock%96000)/96000*Math.PI*2:0;
   light.value.set(lamp.x,lamp.y,lamp.z).normalize();
-  if(close)for(let i=0;i<3;i++){
-   const a=(motion?clock*.00017:0)+i*2.09;
-   const x=140+Math.sin(a)*67,z=464+Math.cos(a*.83+i)*42;
-   const heading=Math.atan2(.83*Math.sin(a*.83+i)*42,Math.cos(a)*67);
-   const depth=7+i*2.5+1.8*Math.sin(a*1.6+i);
-   fish.value[i].set(.5+(x-cx)/spanX,.5+(cz-z)/spanZ,depth,heading);
+  if(close)for(let i=0;i<fish.value.length;i++){
+   const u=fish.value[i];
+   pondSwimmer(i,time.value,u);
+   u.x=.5+(u.x-cx)/spanX;u.y=.5+(cz-u.y)/spanZ;
   }
   if(lastWeather!==weather){
    lastWeather=weather;
@@ -816,6 +860,29 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   for(let dz=-depth/2+3;dz<depth/2;dz+=6)box(x,30,z+dz,width-1,.6,4.8,warm);
  }
  table(490,230);
+ // One pixel-art page texture on the tabletop; scene depth owns its occlusion
+ // in both the playing camera and the scenic camera. Never a screen overlay.
+ const bookCanvas=document.createElement('canvas');bookCanvas.width=80;bookCanvas.height=72;
+ const bookPaint=bookCanvas.getContext('2d'),bookMap=new T.CanvasTexture(bookCanvas);
+ bookMap.colorSpace=T.SRGBColorSpace;bookMap.generateMipmaps=false;
+ bookMap.minFilter=bookMap.magFilter=T.NearestFilter;
+ // Reserve the tabletop rear strip for the permanent pocket notebook.
+ const loungeBook=new T.Mesh(new T.PlaneGeometry(20,30.6),new T.MeshLambertMaterial({map:bookMap,alphaTest:.15}));
+ loungeBook.name='seated-teacher-open-book';loungeBook.rotation.x=-Math.PI/2;
+ loungeBook.visible=false;loungeBook.receiveShadow=true;loungeBook.raycast=()=>{};scene.add(loungeBook);
+ let pageStep=-1;
+ function readingProp(side,t,reduced){
+  const reading=side==='left'||side==='right';loungeBook.visible=reading&&!!bookPaint;
+  if(!loungeBook.visible)return;
+  const left=side==='left',x=490+(left?-17:17);
+  loungeBook.position.set(x-W/2,30.42,238-H/2);
+  loungeBook.rotation.z=left?-Math.PI/2:Math.PI/2;
+  const step=Math.floor(loungePageTurn(t,reduced)*8);
+  if(step===pageStep)return;
+  pageStep=step;bookPaint.setTransform(1,0,0,1,0,0);bookPaint.clearRect(0,0,80,72);
+  bookPaint.setTransform(2,0,0,2,40,36);drawLoungeBook(bookPaint,step/8);
+  bookMap.needsUpdate=true;
+ }
  for(const c of chairs){
   box(c.x,LOUNGE_SEAT_CENTER,c.y,16,LOUNGE_SEAT_DEPTH,13,wood);for(const x of [-5,5])for(const z of [-4,4])box(c.x+x,7,c.y+z,2.6,14,2.5,edge);
   const side=c.id==='left'?-1:1;box(c.x+side*7,24,c.y,3,20,13,wood);
@@ -1341,7 +1408,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   renderer.dispose();onLoss?.();
  }
  output.addEventListener('webglcontextlost',e=>{e.preventDefault();discard();},{once:true});
- return Object.freeze({output,project,inverse,houseHit,drawSprite,footmarks,
+ return Object.freeze({output,project,inverse,houseHit,drawSprite,footmarks,readingProp,
   hideSprites(){for(const s of sprites.values())s.sprite.visible=false;},
   render(weather,moisture=dryMoisture,now=Date.now(),motion=true,view='play',clock=0){
    if(!alive)return false;

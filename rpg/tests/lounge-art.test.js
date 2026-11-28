@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella,drawUmbrellaResident} from '../lounge-art.js';
+import {loungePageTurn,LOUNGE_LAYOUT,drawLoungeTable,drawLoungeChair,drawSeatedResident,drawRainUmbrella,drawUmbrellaResident} from '../lounge-art.js';
 test('lounge art is finite and balanced, with seated identity and fixed layout',()=>{
  const before=JSON.stringify(LOUNGE_LAYOUT);let depth=0,rects=0;
  const g={save(){depth++;},restore(){depth--;assert.ok(depth>=0);},translate(...v){assert.ok(v.every(Number.isFinite));},scale(...v){assert.ok(v.every(Number.isFinite));},beginPath(){},clip(){},rect(...v){assert.ok(v.every(Number.isFinite));},fillRect(...v){rects++;assert.ok(v.every(Number.isFinite));assert.ok(v[2]>=0&&v[3]>=0);}};
@@ -27,5 +27,26 @@ test('teacher umbrella is white-grey with a distinct round scalloped silhouette'
 test('rear grip paints behind the moving body; front and sides stay in front',()=>{
  for(const [facing,order] of [['back',['gear','body']],['front',['body','gear']],['left',['body','gear']],['right',['body','gear']]]){
   const calls=[];drawUmbrellaResident(facing,()=>calls.push('body'),()=>calls.push('gear'));assert.deepEqual(calls,order);
+ }
+});
+
+test('natural page turn and seated hand reach are visible only while reading; wet and reduced controls',()=>{
+ const isBook=c=>c==='fill:#48695a';
+ const sample=(paint,p)=>{const out=[];const g=new Proxy({},{
+  get:(o,k)=>k in o?o[k]:(...a)=>{if(!['save','restore'].includes(k))out.push([k,...a]);},
+  set:(o,k,v)=>{if(k==='fillStyle')out.push(['fill:'+v]);o[k]=v;return true;}
+ });paint(g,p);return out;};
+ assert.equal(loungePageTurn(4000),0);assert.equal(loungePageTurn(6750),.5);assert.equal(loungePageTurn(7100),0);
+ assert.equal(loungePageTurn(6750,true),0);
+ for(const side of ['left','right']){
+  const page=sample(drawLoungeTable,{readingSide:side,t:4000}),turn=sample(drawLoungeTable,{readingSide:side,t:6750});
+  assert.ok(page.some(([c])=>isBook(c)));assert.notDeepEqual(turn,page);
+  assert.deepEqual(sample(drawLoungeTable,{readingSide:side,t:6750,reduced:true}),page);
+  assert.ok(!sample(drawLoungeTable,{readingSide:side,t:6750,rain:true}).some(([c])=>isBook(c)));
+  const who={x:450,y:232,facing:side,kind:'teacher',reading:true};
+  const reach=sample(drawSeatedResident,{...who,t:6750});
+  assert.ok(reach.some(([k,x,y,w,h])=>k==='fillRect'&&x===18&&y===-22&&w===4&&h===3));
+  assert.ok(!sample(drawSeatedResident,{...who,t:6750,reading:false}).some(([k,x,y,w,h])=>k==='fillRect'&&x===18&&y===-22&&w===4&&h===3));
+  assert.ok(!sample(drawSeatedResident,{...who,t:6750,holdingUmbrella:true}).some(([k,x,y,w,h])=>k==='fillRect'&&x===18&&y===-22&&w===4&&h===3));
  }
 });

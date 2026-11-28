@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import{petGaitCycle,createRainPets,advancePetGait,drawGardenCat,drawRainBenchCat,dogPosePixels,pondLife,gardenLife}from'../ambience.js';
+import{petGaitCycle,createRainPets,advancePetGait,drawGardenCat,drawRainBenchCat,drawRainDog,dogPosePixels,pondLife,gardenLife}from'../ambience.js';
 const navigation={findPath:(p,q)=>[{...q}],isWalkable:()=>true,lineClear:()=>true};
 const raster=(draw,c)=>{const pixels=[];const g=new Proxy({}, {get:(o,k)=>k in o?o[k]:(...a)=>{if(k==='fillRect')pixels.push([o.fillStyle,...a]);},set:(o,k,v)=>(o[k]=v,true)});draw(g,c);return JSON.stringify(pixels);};
 test('actual umbrella-follow path advances phase by travelled distance, not clock; holds and reduced motion freeze',()=>{
@@ -44,4 +44,26 @@ test('side-facing dog sweeps its planted paw against ground travel at trot and r
   });
   assert.ok(Math.max(...track.map(x=>Math.abs(x-track[0])))<(speed===37?1:6),facing+' '+speed);
  }
+});
+
+test('walking pets preserve their fractional world position instead of reversing terrace pixel snaps',()=>{
+ for(const render of [drawGardenCat,drawRainBenchCat,drawRainDog]){
+  const anchors=[],g=new Proxy({}, {get:(o,k)=>k in o?o[k]:(...a)=>{if(k==='translate')anchors.push(a);},set:(o,k,v)=>(o[k]=v,true)});
+  for(let i=0;i<60;i++){
+   const x=208.12+i*.61,y=408.33+i*.41;anchors.length=0;
+   render(g,{x,y,groundY:y,facing:'down',moving:true,gaitPhase:i*.29,mode:'dryStroll'});
+   assert.deepEqual(anchors[0],[x,y]);
+  }
+ }
+});
+test('front-facing dog has symmetrical separated forepaw anchors and neither paw breaks the ground line',()=>{
+ const sole=[];
+ for(let i=0;i<48;i++){
+  const {h,pixels}=dogPosePixels('down',true,0,false,i*Math.PI/24);
+  const pairs=[5,10].map(x=>[...pixels].filter(([id,k])=>k==='L'&&id.startsWith(x+',')).map(([id])=>Number(id.split(',')[1])).filter(y=>y>=h-5).at(-1));
+  assert.ok(pairs.every(y=>y>=h-5&&y<h));
+  assert.ok([...pixels.keys()].every(id=>Number(id.split(',')[1])<h));
+  sole.push(pairs);
+ }
+ assert.ok(sole.some(([l,r])=>l<r)&&sole.some(([l,r])=>r<l));
 });

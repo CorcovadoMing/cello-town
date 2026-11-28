@@ -7,7 +7,25 @@ export const LOUNGE_LAYOUT=freeze({table:freeze({x:490,y:218,depth:245,solid:fre
  freeze({id:'left',x:440,y:232,facing:'right',approach:freeze({x:423,y:250}),solid:freeze({x:430,y:225,w:20,h:12})}),
  freeze({id:'right',x:540,y:232,facing:'left',approach:freeze({x:557,y:250}),solid:freeze({x:530,y:225,w:20,h:12})})])});
 const rect=(g,x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h);};
-export function drawLoungeTable(g,{rain=false,readingSide=null}={}){
+// One unhurried, finite page turn shared by the reader's hands and book.
+export function loungePageTurn(t,reduced=false){
+ if(reduced||!Number.isFinite(t))return 0;
+ const f=((t%7800)+7800)%7800;
+ return f>=6400&&f<7100?(f-6400)/700:0;
+}
+export function drawLoungeBook(g,phase=0){
+ rect(g,-16,-13,32,26,'#48695a');rect(g,-15,-12,14,23,'#f1e3bb');rect(g,1,-11,14,22,'#e4d5ae');
+ rect(g,-1,-11,2,23,'#af9875');rect(g,-14,-12,12,2,'#fff4d4');rect(g,2,-11,12,2,'#fff0cc');
+ for(const y of[-6,-2,2,6]){rect(g,-12,y,8,1,'#bca98a');rect(g,3,y+1,8-(y===6?3:0),1,'#c0aa87');}
+ rect(g,10,9,2,5,'#b97b77');
+ if(phase>0&&phase<1){
+  const edge=Math.round(Math.cos(Math.PI*phase)*13),lift=Math.round(Math.sin(Math.PI*phase)*4);
+  g.fillStyle=edge>0?'#fff1cb':'#e9d6a8';g.beginPath();
+  g.moveTo(0,-11);g.lineTo(edge,-11-lift);g.lineTo(edge,11-lift);g.lineTo(0,11);g.closePath();g.fill();
+  if(edge)rect(g,edge,-9-lift,1,16,'#d2b88c');
+ }
+}
+export function drawLoungeTable(g,{rain=false,readingSide=null,t=0,reduced=false}={}){
  g.save();g.translate(490,218);
  // The low screen-space top and slender legs leave the meadow visible around it.
  rect(g,-32,23,67,5,'#415d3c22');rect(g,-28,11,6,16,'#78624b');rect(g,23,11,6,16,'#78624b');
@@ -20,10 +38,7 @@ export function drawLoungeTable(g,{rain=false,readingSide=null}={}){
  if(!rain&&(readingSide==='left'||readingSide==='right')){
   const left=readingSide==='left';g.save();g.translate(left?-17:17,-5);
   g.scale(1,.52);g.rotate(left?Math.PI/2:-Math.PI/2);
-  rect(g,-16,-13,32,26,'#48695a');rect(g,-15,-12,14,23,'#f1e3bb');rect(g,1,-11,14,22,'#e4d5ae');
-  rect(g,-1,-11,2,23,'#af9875');rect(g,-14,-12,12,2,'#fff4d4');rect(g,2,-11,12,2,'#fff0cc');
-  for(const yy of[-6,-2,2,6]){rect(g,-12,yy,8,1,'#bca98a');rect(g,3,yy+1,8-(yy===6?3:0),1,'#c0aa87');}
-  rect(g,10,9,2,5,'#b97b77');g.restore();
+  drawLoungeBook(g,loungePageTurn(t,reduced));g.restore();
  }
  g.restore();
 }
@@ -38,10 +53,12 @@ export function drawLoungeChair(g,seat){
 }
 export function drawSeatedResident(g,{x,y,kind='player',facing='right',t=0,reduced=false,reading=false,holdingUmbrella=false}){
  const teacher=kind==='teacher',side=facing==='left'?'left':'right';
+ const turn=teacher&&reading&&!holdingUmbrella?Math.sin(Math.PI*loungePageTurn(t,reduced)):0;
  g.save();g.translate(x,y);
  // Keep the existing face/upper body identity, clipped only at the seat line.
  // Sitting is not a scaled standing sprite: bent knees and grounded shoes follow.
  g.save();g.beginPath();g.rect(-30,-65,60,57);g.clip();
+ if(turn)g.translate(Math.round(turn)*(side==='left'?-1:1),Math.round(turn*2));
  (teacher?drawTeacher:drawPlayer)(g,{x:0,y:teacher?1:3,t,walking:false,facing:side,reduced,holdingUmbrella});g.restore();
  if(side==='left')g.scale(-1,1);
  const cloth=teacher?'#b7809e':PLAYER_PALETTE.coat,dark=teacher?'#936681':PLAYER_PALETTE.shade;
@@ -51,7 +68,8 @@ export function drawSeatedResident(g,{x,y,kind='player',facing='right',t=0,reduc
  if(teacher){rect(g,-5,-6,10,2,'#f6dfcd');rect(g,-3,-8,3,2,'#e3bf97');}
  if(teacher&&reading&&!holdingUmbrella){
   // Hands reach toward the table; the book is drawn once on the tabletop.
-  rect(g,6,-18,9,3,'#b7809e');rect(g,13,-18,4,3,'#f5cfa7');
+  const reach=Math.round(turn*5),lift=Math.round(turn*4);
+  rect(g,6,-18-lift,9+reach,3,'#b7809e');rect(g,13+reach,-18-lift,4,3,'#f5cfa7');
   rect(g,4,-14,11,3,'#936681');rect(g,14,-14,4,3,'#f5cfa7');
  }
  g.restore();

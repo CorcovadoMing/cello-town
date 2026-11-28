@@ -1,18 +1,20 @@
 import {createWindowLandscape,createWindowMotes,createWindowRain} from './window-landscape.js?v=room-art-040';
 import {decoratePerformanceRoom,installWestRoomDetail,createRoomRayMirror,traceRoomDaylight,installRoomMaterialArt} from './room-polish.js?v=room-art-040';
 import * as T from './vendor/three.module.js';
-import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,roomWalkPhase,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=exp3-walk31';
+import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,roomWalkPhase,FACE_SHAPES,faceWidth,sampleFaceMotion,installPullToRefreshGuard} from './state.js?v=wardrobe-colors-041';
 const $=id=>document.getElementById(id),area=$('scene'),status=$('save-status');let state=defaults();try{state=normalize(JSON.parse(localStorage.getItem(KEY)));}catch{status.textContent='無法讀取本機設定，仍可自由試穿。';}
 installPullToRefreshGuard();
 const HAIR_ACCESSORY={bow:'#c88f83',beret:'#718f83',tie:'#d9b77d'};
-const labels={faceShape:'臉型',face:'神情',hair:'髮型',skin:'膚色',hairColor:'髮色',outfit:'衣服',upper:'上身',lower:'下身',shoes:'鞋子',lowerColor:'下身顏色',color:'上身顏色',hat:'頭飾',accessory:'小配件'},colorNames={skin:['奶油蜜桃','溫暖杏色','焦糖棕','可可棕'],hairColor:['栗子棕','蜂蜜金','午夜黑','紅茶棕'],color:['森林綠','珊瑚粉','丁香紫','暖陽黃'],lowerColor:['森林綠','珊瑚粉','丁香紫','暖陽黃','鼠尾草灰','燕麥棕','暖石灰','奶油米']};
+const labels={faceShape:'臉型',face:'神情',hair:'髮型',skin:'膚色',hairColor:'髮色',outfit:'衣服',upper:'上身',lower:'下身',shoes:'鞋子',shoeColor:'鞋子顏色',lowerColor:'下身顏色',color:'上身顏色',hat:'頭飾',accessory:'小配件'},colorNames={skin:['奶油蜜桃','溫暖杏色','焦糖棕','可可棕'],hairColor:['栗子棕','蜂蜜金','午夜黑','紅茶棕'],color:['森林綠','珊瑚粉','丁香紫','暖陽黃'],lowerColor:['森林綠','珊瑚粉','丁香紫','暖陽黃','鼠尾草灰','燕麥棕','暖石灰','奶油米'],shoeColor:['款式原色','栗棕','墨黑','奶油米','暖粉','苔綠','深靛','赭紅']};
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));status.textContent='穿搭已自動保存在這個瀏覽器。';}catch{status.textContent='這次穿搭尚未儲存；瀏覽器不允許本機儲存。';}}
-const categories=[['faceShape','skin'],['face'],['hair','hairColor'],['upper','color'],['lower','lowerColor'],['shoes'],['hat'],['accessory']];
+const categories=[['faceShape','skin'],['face'],['hair','hairColor'],['upper','color'],['lower','lowerColor'],['shoes','shoeColor'],['hat'],['accessory']];
 let celloPerformance=null,rayMirrorFrame=null,mirrorCollider=null;
 const mirrorSetting=new URLSearchParams(location.search).get('raymirror');
 const mirrorRoom=/\/experimental(?:\/|$)/.test(location.pathname)||mirrorSetting==='1';
-const MIRROR_APPROACH={x:.65,z:-.79};
-const MIRROR_TILT=-.07;
+// With the room's unchanged oblique view, the mirror sees a slightly
+// leftward standing point. The frame remains parallel to the wardrobe.
+const MIRROR_WALL_X=.65,MIRROR_APPROACH={x:.025,z:-.79};
+const MIRROR_TILT=-.17453;
 let activeCategory=0,previewMode=null,previewYaw=0,roomSnapshot=null;
 const visibleCategories=()=>previewMode==='wardrobe'?[3,4,5,6,7]:[0,1,2];
 // Original flat silhouettes: only the room avatar uses the 3D renderer.
@@ -81,7 +83,9 @@ function controls(focusKey=null){
  const tabs=document.createElement('div');tabs.className='category-tabs';tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','外觀分類');
  categories.forEach(([k],i)=>{if(!visibleCategories().includes(i))return;const tab=document.createElement('button');tab.type='button';tab.id='category-'+k;tab.className='category-tab';tab.dataset.category=k;tab.setAttribute('role','tab');tab.setAttribute('aria-label',labels[k]);tab.setAttribute('aria-selected',String(i===activeCategory));tab.setAttribute('aria-controls','appearance-options');tab.tabIndex=i===activeCategory?0:-1;tab.innerHTML=choiceIcon(k,k==='hat'?2:k==='accessory'?1:0);tab.onclick=()=>{activeCategory=i;controls('category:'+k);};tab.onkeydown=e=>{const ids=visibleCategories(),at=ids.indexOf(i);let next=i;if(e.key==='ArrowRight')next=ids[(at+1)%ids.length];else if(e.key==='ArrowLeft')next=ids[(at+ids.length-1)%ids.length];else if(e.key==='Home')next=ids[0];else if(e.key==='End')next=ids.at(-1);else return;e.preventDefault();activeCategory=next;controls('category:'+categories[next][0]);};tabs.append(tab);});wrap.append(tabs);
  const panel=document.createElement('div');panel.id='appearance-options';panel.className='appearance-options';panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby','category-'+categories[activeCategory][0]);
- for(const k of categories[activeCategory]){const box=document.createElement('fieldset');box.className='control';const legend=document.createElement('legend');legend.textContent=labels[k];box.append(legend);const row=document.createElement('div');row.className='choices'+(colorNames[k]?' swatches':' silhouettes');OPTIONS[k].forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-pressed',String(state[k]===i));b.setAttribute('aria-label',colorNames[k]?.[i]||v);if(colorNames[k])b.style.setProperty('--swatch',v);else b.innerHTML=choiceIcon(k,i);if((k==='hat'||k==='accessory')&&i===0)b.classList.add('neutral-choice');b.title=colorNames[k]?.[i]||v;b.dataset.option=k+':'+i;b.onclick=()=>{state=update(state,k,i);persist();rebuild();controls(k+':'+i);$('scene-status').textContent='已換成'+(colorNames[k]?.[i]||v);};row.append(b);});box.append(row);panel.append(box);}wrap.append(panel);
+ // Show wardrobe swatches first so they remain visible in compact panels.
+ const optionGroups=categories[activeCategory];
+ for(const k of (previewMode==='wardrobe'&&optionGroups.length===2?[optionGroups[1],optionGroups[0]]:optionGroups)){const box=document.createElement('fieldset');box.className='control';const legend=document.createElement('legend');legend.textContent=labels[k];box.append(legend);const row=document.createElement('div');row.className='choices'+(colorNames[k]?' swatches':' silhouettes');OPTIONS[k].forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-pressed',String(state[k]===i));b.setAttribute('aria-label',colorNames[k]?.[i]||v);if(colorNames[k])b.style.setProperty('--swatch',v);else b.innerHTML=choiceIcon(k,i);if((k==='hat'||k==='accessory')&&i===0)b.classList.add('neutral-choice');b.title=colorNames[k]?.[i]||v;b.dataset.option=k+':'+i;b.onclick=()=>{state=update(state,k,i);persist();rebuild();controls(k+':'+i);$('scene-status').textContent='已換成'+(colorNames[k]?.[i]||v);};row.append(b);});box.append(row);panel.append(box);}wrap.append(panel);
  if(focusKey){const target=focusKey.startsWith('category:')?'[data-category="'+focusKey.slice(9)+'"]':'[data-option="'+focusKey+'"]';wrap.querySelector(target)?.focus({preventScroll:true});}
 }
 let renderer,software=false;try{renderer=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});}catch{const{SVGRenderer}=await import('./vendor/SVGRenderer.js');renderer=new SVGRenderer();renderer.setQuality('high');software=true;status.textContent='簡化 3D 模式（此瀏覽器未啟用 WebGL）；穿搭仍可儲存。';const note=document.createElement('span');note.className='render-mode sr-only';note.textContent='簡化 3D · SVG';area.append(note);}
@@ -961,7 +965,7 @@ cylinder(0,-.0975,0,width,width*.96,.195,legColor,p);cylinder(0,-.0975,0,width*.
 if(lower===7)cylinder(0,-.055,0,.09,.094,.145,lowerCloth,p);
 if(lower===6)cylinder(0,-.145,0,.094,.094,.06,'#d6c9ad',knee);
 // Every shoe shares the same sole datum (-.09) and articulated ankle.
-const shoeColors=['#735d4c','#6b4c40','#80614a','#eee4cc','#b88c7e','#59473b','#785b3d','#718b80'],sc=shoeColors[shoe];
+const shoeColors=['#735d4c','#6b4c40','#80614a','#eee4cc','#b88c7e','#59473b','#785b3d','#718b80'],sc=state.shoeColor>0?(OPTIONS.shoeColor[state.shoeColor]??shoeColors[shoe]):shoeColors[shoe];
 const modernShoe=legacy<0;const sole=legacy>=0?ball(0,0,.065,.11,.09,.17,sc,foot):ball(0,-.026,.065,.111,.064,.171,shoe===0?sc:'#6d5b48',foot);sole.name='shoe-sole';
 if(modernShoe){const shoeBody=ball(0,.004,.066,[.105,.108,.106,.112,.098,.112,.117,.119][shoe],[.060,.068,.075,.070,.049,.065,.078,.080][shoe],[.162,.164,.16,.181,.155,.172,.18,.192][shoe],sc,foot);shoeBody.name='designer-shoe-'+shoe;avatarFinish(shoeBody,'shoe',sc);}
 if(shoe===0)cylinder(0,.11,0,.077,.078,.12,'#fff1d4',foot);
@@ -1295,7 +1299,7 @@ function anchorEditor(){if(!previewMode||previewMode==='records'||previewMode===
  const project=(x,y,z)=>{const v=new T.Vector3(x,y,z).project(camera);return{x:r.left+(v.x+1)*r.width/2,y:r.top+(1-v.y)*r.height/2}};
  const points=[];for(const x of[-.52,.52])for(const y of[.02,2.05])for(const z of[-.35,.35])points.push(project(pos.x+x,y,pos.z+z));
  const left=Math.min(...points.map(v=>v.x)),right=Math.max(...points.map(v=>v.x)),top=Math.min(...points.map(v=>v.y)),bottom=Math.max(...points.map(v=>v.y));
- let x=right+14,y=top+22;if(r.width<600){x=(left+right-panel.offsetWidth)/2;y=bottom+14;}else if(x+panel.offsetWidth>r.right-12)x=left-panel.offsetWidth-14;
+ let x=right+14,y=top+22;if(r.width<600){x=(left+right-panel.offsetWidth)/2;y=bottom+14;}else if(roomSnapshot?.station==='mirror'||x+panel.offsetWidth>r.right-12)x=left-panel.offsetWidth-14;
  x=Math.max(r.left+10,Math.min(r.right-panel.offsetWidth-10,x));y=Math.max(r.top+76,Math.min(r.bottom-panel.offsetHeight-10,y));
  Object.assign(panel.style,{left:(x-m.left)+'px',top:(y-m.top)+'px',right:'auto',bottom:'auto'});
 }
@@ -1322,16 +1326,21 @@ function endCatView(){
  if(!watchingCat)return;watchingCat=false;setCatPose(0,1000);$('cat-watch-access').hidden=false;$('cat-view-back').hidden=true;const old=catSnapshot;catSnapshot=null;if(old)animateRoomCamera(old.position,old.zoom,true,old.quaternion,450);area.focus({preventScroll:true});$('scene-status').textContent='回到房間視角';
 }
 function enterPreview(station){
- const mode=station==='mirror'?'wardrobe':station;
+ const mode=station==='mirror'?'vanity':station;
  if(mode==='exit'){leaveRoom();return;}
  if(mode==='cat'){beginCatView();return;}
  if(mode==='cello'){seatPerformance();return;}
  if(previewMode)exitPreview();
- roomSnapshot={rotation:avatar.rotation.clone(),heading,cameraPosition:cameraMotion?.restoring?cameraMotion.to.clone():camera.position.clone(),cameraQuaternion:camera.quaternion.clone(),cameraZoom:cameraMotion?.restoring?cameraMotion.toZoom:camera.zoom,focus:area};
- release();tap=null;previewMode=mode;previewYaw=Math.atan2(camera.position.x-pos.x,camera.position.z-pos.z);activeCategory=mode==='wardrobe'?3:0;
- area.setAttribute('aria-label','房間內角色試穿，左右拖曳或方向鍵轉動');document.body.classList.add('preview-open');document.body.dataset.editor=mode;const panel=document.querySelector('aside');panel.setAttribute('role','region');panel.setAttribute('aria-label',mode==='wardrobe'?(station==='mirror'?'全身鏡試穿':'衣櫃試穿'):(mirrorRoom?'全身鏡外觀':'梳妝台'));panel.hidden=false;$('preview-close').hidden=false;controls();const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);anchorEditor();$('preview-close').focus({preventScroll:true});
+ // The performer faces the physical glass; the existing wardrobe and
+ // fitting camera still handles focus, zoom and rotation exactly as before.
+ const mirrorFacing=station==='mirror'&&rayMirrorFrame
+  ?Math.atan2(rayMirrorFrame.position.x-pos.x,rayMirrorFrame.position.z-pos.z):null;
+ if(mirrorFacing!==null){heading=mirrorFacing;avatar.rotation.y=mirrorFacing;}
+ roomSnapshot={station,rotation:avatar.rotation.clone(),heading,cameraPosition:cameraMotion?.restoring?cameraMotion.to.clone():camera.position.clone(),cameraQuaternion:camera.quaternion.clone(),cameraZoom:cameraMotion?.restoring?cameraMotion.toZoom:camera.zoom,focus:area};
+ release();tap=null;previewMode=mode;previewYaw=mirrorFacing??Math.atan2(camera.position.x-pos.x,camera.position.z-pos.z);activeCategory=mode==='wardrobe'?3:0;
+ area.setAttribute('aria-label',mode==='wardrobe'?'房間內角色試穿，左右拖曳或方向鍵轉動':'房間內人物造型，左右拖曳或方向鍵轉動');document.body.classList.add('preview-open');document.body.dataset.editor=mode;const panel=document.querySelector('aside');panel.setAttribute('role','region');panel.setAttribute('aria-label',mode==='wardrobe'?'衣櫃試穿':(mirrorRoom?'全身鏡造型':'梳妝台'));panel.hidden=false;$('preview-close').hidden=false;controls();const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);anchorEditor();$('preview-close').focus({preventScroll:true});
 }
-function exitPreview(){if(celloPerformance)return;if(!previewMode)return;const old=roomSnapshot;release();if(tap&&area.hasPointerCapture(tap.id))area.releasePointerCapture(tap.id);tap=null;previewMode=null;heading=old.heading;avatar.rotation.copy(old.rotation);camera.quaternion.copy(old.cameraQuaternion);animateRoomCamera(old.cameraPosition,old.cameraZoom,true);area.setAttribute('aria-label',mirrorRoom?'3D房間，點衣櫃或全身鏡走近試穿，點地板行走':'3D房間，點衣櫃或梳妝台走近更換外觀，點地板行走');document.body.classList.remove('preview-open');delete document.body.dataset.editor;const panel=document.querySelector('aside');panel.removeAttribute('role');panel.removeAttribute('aria-label');panel.removeAttribute('style');panel.hidden=true;$('preview-close').hidden=true;old.focus?.focus({preventScroll:true});roomSnapshot=null;}
+function exitPreview(){if(celloPerformance)return;if(!previewMode)return;const old=roomSnapshot;release();if(tap&&area.hasPointerCapture(tap.id))area.releasePointerCapture(tap.id);tap=null;previewMode=null;heading=old.heading;avatar.rotation.copy(old.rotation);camera.quaternion.copy(old.cameraQuaternion);animateRoomCamera(old.cameraPosition,old.cameraZoom,true);area.setAttribute('aria-label',mirrorRoom?'3D房間，衣櫃可試穿，全身鏡可換造型，點地板行走':'3D房間，點衣櫃或梳妝台走近更換外觀，點地板行走');document.body.classList.remove('preview-open');delete document.body.dataset.editor;const panel=document.querySelector('aside');panel.removeAttribute('role');panel.removeAttribute('aria-label');panel.removeAttribute('style');panel.hidden=true;$('preview-close').hidden=true;old.focus?.focus({preventScroll:true});roomSnapshot=null;}
 $('cat-watch-access').onclick=()=>approachStation('cat');
 $('cat-view-back').onclick=endCatView;
 $('wardrobe-open').onclick=()=>approachStation('wardrobe');$('vanity-open').onclick=()=>approachStation(mirrorRoom?'mirror':'vanity');$('preview-close').onclick=exitPreview;
@@ -1738,19 +1747,19 @@ const realRoomPolish=software?null:decoratePerformanceRoom(T,scene);const realSt
 // appearance editors. Non-WebGL displays retain the same usable station.
 if(mirrorRoom){
  vanity.removeFromParent();
- area.setAttribute('aria-label','3D房間，點衣櫃或全身鏡走近試穿，點地板行走');
+ area.setAttribute('aria-label','3D房間，衣櫃可試穿，全身鏡可換造型，點地板行走');
  $('vanity-open').setAttribute('aria-label','在全身鏡前更換外觀');
  // A free-standing easel: leave a small physical clearance ahead of the baseboard.
  const skirtingFace=rearSkirting.position.z+rearSkirting.geometry.parameters.depth/2;
- const frame=new T.Group();frame.name='full-length-ray-mirror-frame';frame.position.set(MIRROR_APPROACH.x,FLOOR_TOP+.998,skirtingFace+.271);scene.add(frame);
+ const frame=new T.Group();frame.name='full-length-ray-mirror-frame';frame.position.set(MIRROR_WALL_X,FLOOR_TOP+1.080,skirtingFace+.475);scene.add(frame);
  const paneMount=new T.Group();paneMount.rotation.x=MIRROR_TILT;frame.add(paneMount);
- for(const side of [-1,1]){box(side*.425,0,0,.040,1.99,.062,'#9e7755',paneMount);box(0,side*.975,0,.872,.041,.062,'#b99163',paneMount);}
- for(const side of [-1,1])box(side*.407,0,.032,.007,1.90,.006,'#d2b076',paneMount);
+ for(const side of [-1,1]){box(side*.425,0,0,.040,2.15,.062,'#9e7755',paneMount);box(0,side*1.055,0,.872,.041,.062,'#b99163',paneMount);}
+ for(const side of [-1,1])box(side*.407,0,.032,.007,2.06,.006,'#d2b076',paneMount);
  for(const side of [-1,1]){
-  rod([side*.359,-.13,-.041],[side*.359,-.985,-.18],.018,'#9e7755',frame).name='free-standing-mirror-brace';
-  box(side*.359,-.981,.10,.067,.034,.60,'#896446',frame).name='free-standing-mirror-foot';
+  rod([side*.359,-.12,-.054],[side*.359,-1.069,-.18],.018,'#9e7755',frame).name='free-standing-mirror-brace';
+  box(side*.359,-1.063,.10,.067,.034,.60,'#896446',frame).name='free-standing-mirror-foot';
  }
- const surface=new T.Mesh(new T.PlaneGeometry(.816,1.944),new T.MeshBasicMaterial({color:'#b3c8c3',side:T.DoubleSide}));
+ const surface=new T.Mesh(new T.PlaneGeometry(.816,2.104),new T.MeshBasicMaterial({color:'#b3c8c3',side:T.DoubleSide}));
  surface.position.z=.034;surface.name='full-length-mirror-surface';paneMount.add(surface);
  frame.traverse(o=>{o.userData.station='mirror';});
  const bounds=new T.Box3().setFromObject(frame),margin=.30;
@@ -1762,7 +1771,7 @@ if(mirrorRoom){
   try{
    const roots=scene.children.filter(o=>o!==frame&&o!==avatar&&o!==targetMarker&&o!==doorCutaway&&o!==roomCat.group&&o!==windowMotes?.points);
    reflected=createRoomRayMirror(T,roots,avatar,renderer,{cat:roomCat.group,light:sun});if(!reflected)return;
-   reflected.mesh.scale.set(1.275,1.13,1);reflected.mesh.position.z=.035;reflected.mesh.userData.station='mirror';paneMount.add(reflected.mesh);
+   reflected.mesh.scale.set(1.275,2.104/1.72,1);reflected.mesh.position.z=.035;reflected.mesh.userData.station='mirror';paneMount.add(reflected.mesh);
    let shaderRejected=false;const prior=renderer.debug.onShaderError;
    renderer.debug.onShaderError=(...args)=>{shaderRejected=true;prior?.(...args);};
    try{renderer.compile(reflected.mesh,camera,scene);renderer.properties.get(reflected.mesh.material).currentProgram?.getUniforms();}finally{renderer.debug.onShaderError=prior;}
