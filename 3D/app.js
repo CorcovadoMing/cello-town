@@ -9,7 +9,8 @@ const labels={faceShape:'臉型',face:'神情',hair:'髮型',skin:'膚色',hairC
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));status.textContent='穿搭已自動保存在這個瀏覽器。';}catch{status.textContent='這次穿搭尚未儲存；瀏覽器不允許本機儲存。';}}
 const categories=[['faceShape','skin'],['face'],['hair','hairColor'],['upper','color'],['lower','lowerColor'],['shoes'],['hat'],['accessory']];
 let celloPerformance=null,rayMirrorFrame=null,mirrorCollider=null;
-const mirrorRoom=/\/experimental(?:\/|$)/.test(location.pathname)||new URLSearchParams(location.search).get('raymirror')==='1';
+const mirrorSetting=new URLSearchParams(location.search).get('raymirror');
+const mirrorRoom=/\/experimental(?:\/|$)/.test(location.pathname)||mirrorSetting==='1';
 const MIRROR_APPROACH={x:-.04,z:-.79};
 let activeCategory=0,previewMode=null,previewYaw=0,roomSnapshot=null;
 const visibleCategories=()=>previewMode==='wardrobe'?[3,4,5,6,7]:[0,1,2];
@@ -1670,19 +1671,23 @@ if(mirrorRoom){
  vanity.removeFromParent();
  area.setAttribute('aria-label','3D房間，點衣櫃或全身鏡走近試穿，點地板行走');
  $('vanity-open').setAttribute('aria-label','在全身鏡前更換外觀');
- // Hang from the wall itself, clear of the floor skirting, with no easel feet.
- const wallFace=rearWall.position.z+rearWall.geometry.parameters.depth/2;
- const frame=new T.Group();frame.name='full-length-ray-mirror-frame';frame.position.set(.65,1.258,wallFace+.034);frame.rotation.set(0,0,0);scene.add(frame);
+ // A free-standing easel: leave a small physical clearance ahead of the baseboard.
+ const skirtingFace=rearSkirting.position.z+rearSkirting.geometry.parameters.depth/2;
+ const frame=new T.Group();frame.name='full-length-ray-mirror-frame';frame.position.set(.65,FLOOR_TOP+.998,skirtingFace+.271);frame.rotation.set(0,0,0);scene.add(frame);
  for(const side of [-1,1]){box(side*.425,0,0,.040,1.99,.062,'#9e7755',frame);box(0,side*.975,0,.872,.041,.062,'#b99163',frame);}
  for(const side of [-1,1])box(side*.407,0,.032,.007,1.90,.006,'#d2b076',frame);
- for(const side of [-1,1])box(side*.38,.72,-.029,.06,.08,.010,'#987658',frame);
+ for(const side of [-1,1]){
+  rod([side*.359,-.13,-.022],[side*.359,-.985,-.24],.018,'#9e7755',frame).name='free-standing-mirror-brace';
+  box(side*.359,-.981,.10,.067,.034,.60,'#896446',frame).name='free-standing-mirror-foot';
+ }
  const surface=new T.Mesh(new T.PlaneGeometry(.816,1.944),new T.MeshBasicMaterial({color:'#b3c8c3',side:T.DoubleSide}));
  surface.position.z=.034;surface.name='full-length-mirror-surface';frame.add(surface);
  frame.traverse(o=>{o.userData.station='mirror';});
  const bounds=new T.Box3().setFromObject(frame),margin=.30;
  mirrorCollider={minX:bounds.min.x-margin,maxX:bounds.max.x+margin,minZ:bounds.min.z-margin,maxZ:bounds.max.z+.46};
  rayMirrorFrame=frame;
- if(!software&&new URLSearchParams(location.search).get('raymirror')==='1')requestAnimationFrame(()=>setTimeout(()=>{
+ // Reflections are part of the experimental room, not an opt-in link.
+ if(!software&&mirrorSetting!=='0')requestAnimationFrame(()=>setTimeout(()=>{
   let reflected=null;
   try{
    const roots=scene.children.filter(o=>o!==frame&&o!==avatar&&o!==targetMarker&&o!==doorCutaway&&o!==roomCat.group);

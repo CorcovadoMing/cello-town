@@ -13,6 +13,7 @@ test('full-length experiment traces real scene hits without re-rendering a secon
  assert.match(polish,/if\(hit<=\.0002\|\|hit>=best\)/);
  assert.doesNotMatch(polish,/WebGLRenderTarget|\.render\(/);
  const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
- assert.match(app,/get\('raymirror'\)==='1'/);
+ assert.match(app,/if\(!software&&mirrorSetting!=='0'\)/);
+ assert.match(app,/const mirrorRoom=.{1,140}\.test\(location\.pathname\)\|\|mirrorSetting==='1'/);
  assert.doesNotMatch(app,/__roomRayMirror|standForProbe/);
 });

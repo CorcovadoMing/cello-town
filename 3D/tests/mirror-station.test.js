@@ -25,9 +25,11 @@ test('the full-length mirror replaces the experimental vanity and carries the ou
 
 test('mirror glass stands upright and square with the wardrobe front',()=>{assert.match(app,/frame\.rotation\.set\(0,0,0\)/);});
 
-test('the wall-mounted frame and both rendered surfaces keep their own station',()=>{
- assert.match(app,/wallFace=rearWall\.position\.z\+rearWall\.geometry\.parameters\.depth\/2/);
- assert.match(app,/frame\.position\.set\(\.65,1\.258,wallFace\+\.034\)/);
+test('the near-wall easel and both rendered surfaces keep their own station',()=>{
+ assert.match(app,/skirtingFace=rearSkirting\.position\.z\+rearSkirting\.geometry\.parameters\.depth\/2/);
+ assert.match(app,/frame\.position\.set\(\.65,FLOOR_TOP\+\.998,skirtingFace\+\.271\)/);
+ assert.match(app,/free-standing-mirror-foot/);
+ assert.match(app,/free-standing-mirror-brace/);
  assert.match(app,/reflected\.mesh\.userData\.station='mirror'/);
  assert.match(app,/scene\.children\.slice\(wardrobeStart\)\.forEach\(o=>\{o\.userData\.station='wardrobe'/);
  assert.match(app,/station==='mirror'\?'wardrobe':station/);
