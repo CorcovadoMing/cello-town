@@ -1212,7 +1212,10 @@ function previewCameraTarget(){
  const probe=camera.clone();probe.position.copy(roomSnapshot.cameraPosition);probe.quaternion.copy(roomSnapshot.cameraQuaternion);
  const height=camera.top-camera.bottom,zoom=Math.max(1.25,Math.min(3.1,height*.34/1.75));probe.zoom=zoom;probe.updateProjectionMatrix();probe.updateMatrixWorld(true);
  const projected=new T.Vector3(pos.x,.97,pos.z).project(probe),phone=area.clientWidth<600;
- const desiredX=phone?0:-.25,desiredY=phone?.48:.05;
+ // Narrow try-on uses a bottom drawer. Lift the model without changing
+ // magnification or the room itself, so the shoes stay above the controls.
+ const compactWardrobe=previewMode==='wardrobe'&&area.clientWidth<345;
+ const desiredX=phone?0:-.25,desiredY=phone?(compactWardrobe?.58:.48):.05;
  const right=new T.Vector3(1,0,0).applyQuaternion(probe.quaternion),up=new T.Vector3(0,1,0).applyQuaternion(probe.quaternion);
  probe.position.addScaledVector(right,(projected.x-desiredX)*(probe.right-probe.left)/(2*zoom));probe.position.addScaledVector(up,(projected.y-desiredY)*height/(2*zoom));
  return{position:probe.position,zoom};
