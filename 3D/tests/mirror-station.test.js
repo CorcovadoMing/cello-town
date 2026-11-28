@@ -19,8 +19,16 @@ test('mirror routes stay outside both nearby obstacle and furniture rather than 
 });
 test('the full-length mirror replaces the experimental vanity and carries the outfit interaction',()=>{
  assert.match(app,/if\(mirrorRoom\)\{\s*vanity\.removeFromParent\(\);/);
- assert.match(app,/frame\.traverse\(o=>\{o\.userData\.station='wardrobe'/);
- assert.match(app,/wardrobe:mirrorRoom\?MIRROR_APPROACH/);
+ assert.match(app,/frame\.traverse\(o=>\{o\.userData\.station='mirror'/);
+ assert.match(app,/wardrobe:\{x:2\.2,z:-\.8\},mirror:MIRROR_APPROACH/);
 });
 
 test('mirror glass stands upright and square with the wardrobe front',()=>{assert.match(app,/frame\.rotation\.set\(0,0,0\)/);});
+
+test('the wall-mounted frame and both rendered surfaces keep their own station',()=>{
+ assert.match(app,/wallFace=rearWall\.position\.z\+rearWall\.geometry\.parameters\.depth\/2/);
+ assert.match(app,/frame\.position\.set\(\.65,1\.258,wallFace\+\.034\)/);
+ assert.match(app,/reflected\.mesh\.userData\.station='mirror'/);
+ assert.match(app,/scene\.children\.slice\(wardrobeStart\)\.forEach\(o=>\{o\.userData\.station='wardrobe'/);
+ assert.match(app,/station==='mirror'\?'wardrobe':station/);
+});

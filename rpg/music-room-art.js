@@ -58,14 +58,39 @@ function tiles(g,a,b,key,isRight){
   F(g,[[x1,-6,roofRidge(x1)],[x1+.9,-6,roofRidge(x1+.9)],[x1+.9,74,roofRidge(x1+.9)],[x1,74,roofRidge(x1)]],col[3]);
  }
 }
+const wallFaces=[
+ [[-72,0,-3],[72,0,-3],[72,0,12],[-72,0,12]],
+ [[70,0,-3],[70,68,-3],[70,68,12],[70,0,12]],
+ [[-70,0,12],[70,0,12],[70,0,81],[0,0,135],[-70,0,81]],
+ [[70,0,12],[70,68,12],[70,68,81],[70,0,81]]
+];
+const eaveFaces=[
+ [[0,-6,142],[79,-6,84],[79,-6,78],[0,-6,136],[-79,-6,78],[-79,-6,84]],
+ [[0,-7,143],[79,-7,85],[79,-7,83],[0,-7,141],[-79,-7,83],[-79,-7,85]],
+ [[79,-6,84],[79,74,84],[79,74,78],[79,-6,78]],
+ [[-18,49,130],[-6,49,138],[-6,49,146],[-18,49,146]],
+ [[-6,49,138],[-6,62,138],[-6,62,146],[-6,49,146]]
+];
+const housePolys=[...roofPolys,...wallFaces.concat(eaveFaces).map(f=>f.map(v=>P(...v)))];
+export function musicRoomHouseHit(x,y){
+ if(!Number.isFinite(x)||!Number.isFinite(y))return false;
+ return housePolys.some(poly=>{
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+   const [a,b]=poly[j],[c,d]=poly[i];
+   if((b>y)!==(d>y)&&x<(c-a)*(y-b)/(d-b)+a)inside=!inside;
+  }
+  return inside;
+ });
+}
 export function drawMusicRoom(g,key='sun'){
  const sun=key==='sun';
  g.save();
  // Raised masonry foundation, front plaster, projecting side wall and gable.
- F(g,[[-72,0,-3],[72,0,-3],[72,0,12],[-72,0,12]],'#887e61');
- F(g,[[70,0,-3],[70,68,-3],[70,68,12],[70,0,12]],'#5b6251');
- F(g,[[-70,0,12],[70,0,12],[70,0,81],[0,0,135],[-70,0,81]],sun?'#e8cc92':'#c9bb97');
- F(g,[[70,0,12],[70,68,12],[70,68,81],[70,0,81]],sun?'#a3865d':'#8d8165');
+ F(g,wallFaces[0],'#887e61');
+ F(g,wallFaces[1],'#5b6251');
+ F(g,wallFaces[2],sun?'#e8cc92':'#c9bb97');
+ F(g,wallFaces[3],sun?'#a3865d':'#8d8165');
  for(let y=0;y<65;y+=13){
   F(g,[[70,y,13],[70,y+.9,13],[70,y+.9,81],[70,y,81]],'#817050');
  }
@@ -94,13 +119,13 @@ export function drawMusicRoom(g,key='sun'){
  r(g,674,137,2,12,'#e4cf9d');r(g,669,142,13,2,'#e4cf9d');
  // Sloped eaves have visible thickness at the front and along the right.
  tiles(g,-79,0,key,false);tiles(g,0,79,key,true);
- F(g,[[0,-6,142],[79,-6,84],[79,-6,78],[0,-6,136],[-79,-6,78],[-79,-6,84]],'#5b533d');
- F(g,[[0,-7,143],[79,-7,85],[79,-7,83],[0,-7,141],[-79,-7,83],[-79,-7,85]],sun?'#e1bd7e':'#bdab7c');
+ F(g,eaveFaces[0],'#5b533d');
+ F(g,eaveFaces[1],sun?'#e1bd7e':'#bdab7c');
  F(g,roofShape(-1.8,1.8,-7,74,1),'#a89363');
- F(g,[[79,-6,84],[79,74,84],[79,74,78],[79,-6,78]],'#5c5944');
+ F(g,eaveFaces[2],'#5c5944');
  // Chimney: shaded front face, lit return and cap sit on the same roof.
- F(g,[[-18,49,130],[-6,49,138],[-6,49,146],[-18,49,146]],'#9b654c');
- F(g,[[-6,49,138],[-6,62,138],[-6,62,146],[-6,49,146]],'#b9845c');
+ F(g,eaveFaces[3],'#9b654c');
+ F(g,eaveFaces[4],'#b9845c');
  F(g,chimney,'#d1a879');
  g.restore();
 }

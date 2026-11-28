@@ -40,7 +40,7 @@ test('bridge writes no storage and pointer navigation is arrival-only',()=>{
  const bridge=fs.readFileSync(new URL('../room-door.js',import.meta.url),'utf8');
  assert.doesNotMatch(bridge,/localStorage|sessionStorage/);
  const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
- assert.match(app,/if\(roomDoorHit\(x,y\)\)\{approachRoom\(\);\}/);
+ assert.ok(app.includes("if(webglTown?webglTown.houseHit(x,y):!canvasRoomOccluded(x,y)&&(roomDoorHit(x,y)||musicRoomHouseHit(x,y))){approachRoom();}"));
  assert.match(app,/approachRoom=\(\)=>\{if\(!dlg.open\)walkTo\(ROOM_ENTRY,'room'\);\}/);
  assert.match(app,/if\(kind==='room'\)\{enterRoom\(\);return;\}/);
  assert.match(app,/if\(enteringRoom\|\|dlg.open\)return;/);

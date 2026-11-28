@@ -13,3 +13,9 @@ test('projected room uses finite geometry and balanced canvas state',()=>{
  });
  assert.equal(depth,0);assert.ok(pixels>30&&faces>100);
 });
+
+test('visible music-room paint selects façade and both roof sides without selecting scenery',async()=>{
+ const {musicRoomHouseHit}=await import('../music-room-art.js');
+ for(const [x,y] of [[620,182],[726,198],[705,97],[642,114],[676,205]])assert.equal(musicRoomHouseHit(x,y),true,`${x},${y}`);
+ for(const [x,y] of [[734,265],[775,218],[605,65],[595,173],[NaN,95]])assert.equal(musicRoomHouseHit(x,y),false,`${x},${y}`);
+});

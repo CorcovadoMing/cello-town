@@ -17,9 +17,12 @@ export function normalize(x){const out=defaults();for(const k in OPTIONS)if(Numb
 if(original>=0&&original<4&&out.upper===original&&out.lower===original&&out.shoes===0)out.legacyOutfit=original;
 return out;}
 export function update(s,k,v){return normalize({...s,[k]:v,...(['upper','lower','shoes'].includes(k)?{legacyOutfit:-1}:{})});}
-export function move(p,x,z,dt){const len=Math.hypot(x,z)||1,speed=1.65*Math.min(Math.max(dt,0),.05);const next={x:Math.max(-2.2,Math.min(2.2,p.x+x/len*speed)),z:Math.max(-.8,Math.min(1.9,p.z+z/len*speed))};return next;}
+// Same walking speed for manual directions and approach paths. Gait is ground-distance driven.
+export const ROOM_WALK_SPEED=2.03;
+export function roomWalkPhase(phase,before,after){return phase+Math.hypot(after.x-before.x,after.z-before.z)*5.7;}
+export function move(p,x,z,dt){const len=Math.hypot(x,z)||1,speed=ROOM_WALK_SPEED*Math.min(Math.max(dt,0),.05);const next={x:Math.max(-2.2,Math.min(2.2,p.x+x/len*speed)),z:Math.max(-.8,Math.min(1.9,p.z+z/len*speed))};return next;}
 
-export function stepToward(p,target,dt){const dx=target.x-p.x,dz=target.z-p.z,d=Math.hypot(dx,dz),step=1.65*Math.min(Math.max(dt,0),.05);if(d<=step)return {...target};return move(p,dx,dz,dt);}
+export function stepToward(p,target,dt){const dx=target.x-p.x,dz=target.z-p.z,d=Math.hypot(dx,dz),step=ROOM_WALK_SPEED*Math.min(Math.max(dt,0),.05);if(d<=step)return {...target};return move(p,dx,dz,dt);}
 
 // Original clay-collectible silhouettes; stable indices preserve existing saves.
 export const FACE_SHAPES=Object.freeze([

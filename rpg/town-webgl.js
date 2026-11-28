@@ -281,13 +281,14 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const bark=makeOrchardBark(T);
  const barkMaterial=new T.MeshPhongMaterial({map:bark,bumpMap:bark,bumpScale:.38,shininess:6,specular:'#2b241b'});
  const windowGlass=new T.MeshLambertMaterial({emissive:'#b88651',emissiveIntensity:.32});
- const batches=new Map();
+ const batches=new Map(),houseInstances=new Map(),houseMesh=new Set();
+ let markingHouse=false;
  const model=new T.Object3D(),sample=new T.Vector3();
  const color=new T.Color();
  function shape(kind,x,y,z,sx,sy,sz,tint,rx=0,ry=0,rz=0,flex=0){
   const [dx,dz]=local(x,z);model.position.set(dx,y,dz);model.rotation.set(rx,ry,rz);model.scale.set(sx,sy,sz);model.updateMatrix();
   if(!batches.has(kind))batches.set(kind,[]);
-  batches.get(kind).push([model.matrix.clone(),tint,flex,x,z]);
+  batches.get(kind).push([model.matrix.clone(),tint,flex,x,z,markingHouse]);
  }
  const box=(...args)=>shape('box',...args);
  const woodDetail=(...args)=>shape('weathered-board',...args);
@@ -588,6 +589,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  // House is a real small chalet: façade and all roof meshes share the same
  // local origin, actor contact coordinates and approach as the pixel original.
  const cx=room.x+96,fr=room.depth-2,cy=fr-38;
+ markingHouse=true;
  box(cx,5,cy,148,10,82,'#9c8d6b');
  box(cx,42,cy,140,72,76,'#e4c58e');
  for(let x=cx-61;x<=cx+65;x+=14)box(x,4,fr+1,7,1.3,1,'#bea985');
@@ -606,7 +608,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  // True gables are triangular meshes, roof slopes are thick tiled slabs.
  const gable=new T.Shape();gable.moveTo(-70,0);gable.lineTo(70,0);gable.lineTo(0,43);gable.closePath();
  const gg=new T.ExtrudeGeometry(gable,{depth:76,bevelEnabled:false});
- const gm=new T.Mesh(gg,new T.MeshLambertMaterial({color:'#dbb77c',flatShading:true}));gm.position.set(cx-W/2,78,cy-38-H/2);gm.castShadow=true;gm.receiveShadow=true;scene.add(gm);
+ const gm=new T.Mesh(gg,new T.MeshLambertMaterial({color:'#dbb77c',flatShading:true}));gm.position.set(cx-W/2,78,cy-38-H/2);gm.castShadow=true;gm.receiveShadow=true;scene.add(gm);houseMesh.add(gm);
  const slope=.52;
  for(const s of [-1,1]){
   box(cx+s*39,100,cy,91,7,96,'#8d604d',0,0,-s*slope);
@@ -620,9 +622,10 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  }
  box(cx,130,cy,5,4,98,'#a47a55');
  box(cx-25,120,cy-19,12,33,13,'#aa7856');box(cx-25,138,cy-19,16,4,17,'#d3a77a');
- const eye=new T.Mesh(new T.CylinderGeometry(8,8,2,10),new T.MeshLambertMaterial({color:'#8daaaa'}));eye.rotation.x=Math.PI/2;eye.position.set(cx-W/2,96,fr+1-H/2);scene.add(eye);
+ const eye=new T.Mesh(new T.CylinderGeometry(8,8,2,10),new T.MeshLambertMaterial({color:'#8daaaa'}));eye.rotation.x=Math.PI/2;eye.position.set(cx-W/2,96,fr+1-H/2);scene.add(eye);houseMesh.add(eye);
  box(cx,96,fr+3,2,12,1.5,cream);box(cx,96,fr+3,12,2,1.5,cream);
  for(const [dy,w] of [[8,52],[16,46],[24,39]])box(cx,3,fr+dy,w,6,7,wood);
+ markingHouse=false;
  plane(cx-25,fr+20,2.9,73,24,'#3e503e',.26);
  // Rural story clusters: firewood and a rain barrel by the cabin;
  // a patched bank fence and stepping-stone alcove at the pond; little
@@ -692,10 +695,13 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const swaying=[];
  for(const [kind,items] of batches){
   const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='orchard-needle'?needles.material:kind==='trunk'?barkMaterial:kind==='window-glass'?windowGlass:kind==='weathered-board'?boardSkin:material,items.length);
-  items.forEach(([matrix,tint,flex,x,z],i)=>{
+  const houseIds=new Set();
+  items.forEach(([matrix,tint,flex,x,z,house],i)=>{
+   if(house)houseIds.add(i);
    batch.setMatrixAt(i,matrix);batch.setColorAt(i,color.set(tint));
    if(flex>0)swaying.push({batch,i,base:matrix,flex,x,z,seed:x*.006+z*.012});
   });
+  if(houseIds.size)houseInstances.set(batch,houseIds);
   batch.instanceMatrix.needsUpdate=true;batch.instanceColor.needsUpdate=true;batch.castShadow=true;batch.receiveShadow=true;scene.add(batch);
  }
  // Rain spilling from the little porch gutter is 3D detail, not extra
@@ -762,6 +768,30 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   ndc.set(x/W*2-1,1-y/H*2);ray.setFromCamera(ndc,camera);
   return ray.ray.intersectPlane(ground,sample)?{x:sample.x+W/2,y:sample.z+H/2}:null;
  }
+ const nearPoint=new T.Vector3(),farPoint=new T.Vector3(),roomRay=new T.Raycaster(),spritePixels=new Map();
+ function houseHit(x,y){
+  if(!alive||camera!==mapCamera||x<room.x-24||x>room.x+room.w+24||y<0||y>room.depth+27)return false;
+  const sx=x/W*2-1,sy=1-y/H*2;
+  // This town camera has a sheared projection. Use two unprojected points,
+  // not the default orthographic camera direction, to match the actual pixel.
+  nearPoint.set(sx,sy,-1).unproject(camera);farPoint.set(sx,sy,1).unproject(camera);
+  roomRay.ray.set(nearPoint,farPoint.sub(nearPoint).normalize());
+  scene.updateMatrixWorld(true);
+  spritePixels.clear();for(const {sprite,canvas,ctx} of sprites.values())spritePixels.set(sprite,{canvas,ctx});
+  const eligible=scene.children.filter(o=>o.visible&&(o.isMesh||o.isGroup));
+  for(const hit of roomRay.intersectObjects(eligible,true)){
+   const o=hit.object,mat=Array.isArray(o.material)?o.material[hit.face?.materialIndex??0]:o.material;
+   let visible=true;for(let p=o;p;p=p.parent)if(!p.visible){visible=false;break;}
+   if(!visible||!mat||mat.visible===false||mat.colorWrite===false||mat.transparent||mat.depthWrite===false)continue;
+   const sprite=spritePixels.get(o);
+   if(sprite&&hit.uv){
+    const {canvas,ctx}=sprite,c=t=>Math.min(1-1e-8,Math.max(0,t));
+    if(ctx.getImageData(Math.floor(c(hit.uv.x)*canvas.width),Math.floor(c(1-hit.uv.y)*canvas.height),1,1).data[3]/255<mat.alphaTest)continue;
+   }
+   return houseMesh.has(o)||houseInstances.get(o)?.has(hit.instanceId)===true;
+  }
+  return false;
+ }
  const dryMoisture=Object.freeze([]);
  let alive=true,lastWeather='',lastLight=null;
  function discard(){
@@ -773,7 +803,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   renderer.dispose();onLoss?.();
  }
  output.addEventListener('webglcontextlost',e=>{e.preventDefault();discard();},{once:true});
- return Object.freeze({output,project,inverse,drawSprite,footmarks,
+ return Object.freeze({output,project,inverse,houseHit,drawSprite,footmarks,
   hideSprites(){for(const s of sprites.values())s.sprite.visible=false;},
   render(weather,moisture=dryMoisture,now=Date.now(),motion=true,view='play',clock=0){
    if(!alive)return false;

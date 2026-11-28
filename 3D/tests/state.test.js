@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {KEY,OPTIONS,defaults,normalize,update,move}from '../state.js';import{readFileSync}from'node:fs';
+import test from 'node:test';import assert from 'node:assert/strict';import {KEY,OPTIONS,defaults,normalize,update,move,stepToward,roomWalkPhase,ROOM_WALK_SPEED}from '../state.js';import{readFileSync}from'node:fs';
 test('separate storage and valid appearance presets',()=>{assert.notEqual(KEY,'cello-town-rpg-v1');assert.equal(KEY,'cello-town-3d-avatar-v1');for(const[k,values]of Object.entries(OPTIONS))for(let n=0;n<values.length;n++)assert.equal(update(defaults(),k,n)[k],n);});
 test('bad storage safely defaults and rejects arbitrary properties',()=>{assert.deepEqual(normalize(null),defaults());assert.deepEqual(normalize({face:999,hair:-1,skin:'2',unknown:'x'}),defaults());});
 test('movement bounded with capped dt and normalized diagonal',()=>{let p={x:0,z:0};const a=move(p,1,0,.05),b=move(p,1,1,.05);assert.ok(Math.abs(Math.hypot(b.x,b.z)-a.x)<1e-10);for(let n=0;n<1000;n++)p=move(p,1,1,100);assert.equal(p.x,2.2);assert.equal(p.z,1.9);});
@@ -11,3 +11,13 @@ test('legacy appearance keeps original face proportions and separates new shape 
 test('one live renderer; active icon categories replace all 3D preview work',()=>{const s=readFileSync(new URL('../app.js',import.meta.url),'utf8');assert.equal((s.match(/new T.WebGLRenderer/g)||[]).length,1);assert.ok(!/outfitPreview|previewCache|toDataURL|new XMLSerializer/.test(s));assert.ok(s.includes("tab.setAttribute('role','tab')"));assert.ok(s.includes("tab.setAttribute('aria-selected'"));assert.ok(s.includes("for(const k of categories[activeCategory])"));assert.ok(s.includes("e.key==='ArrowRight'"));assert.ok(s.includes("e.key==='End'"));assert.ok(s.includes('const shape=FACE_SHAPES[state.faceShape]'));});
 test('wardrobe new coat does not change legacy outfit indices or storage key',()=>{assert.equal(OPTIONS.outfit.length,4);assert.equal(OPTIONS.outfit[0],'森林背心裙');assert.equal(OPTIONS.outfit[2],'柔軟針織衫');assert.equal(normalize({outfit:3}).outfit,3);assert.equal(KEY,'cello-town-3d-avatar-v1');});
 test('furniture opens before floor rejection; preview frame blocks room movement; curtain clears arch',()=>{const s=readFileSync(new URL('../app.js',import.meta.url),'utf8');assert.ok(s.indexOf("blockers[0]?.object.userData.station")<s.indexOf("blockers[0]&&blockers[0].point.y>.11"));assert.ok(s.includes("if(previewMode){if(previewMode!=='records')avatar.rotation.y=previewYaw"));assert.ok(s.includes("camera.quaternion.copy(old.cameraQuaternion)"));assert.ok(!s.includes("old.visibility.forEach"));assert.ok(!s.slice(s.indexOf("function enterPreview"),s.indexOf("function exitPreview")).includes("o.visible=false"));assert.ok(s.includes("area.setPointerCapture(e.pointerId)"));assert.ok(s.includes("WINDOW_APERTURE.spring+WINDOW_APERTURE.outerHalf+.14"));assert.equal((s.match(/new T.WebGLRenderer/g)||[]).length,1);});
+
+test('manual and automatic room movement share the faster pace and gait follows actual displacement',()=>{
+ const start={x:0,z:0},manual=move(start,1,0,.025),automatic=stepToward(start,{x:1,z:0},.025);
+ assert.equal(ROOM_WALK_SPEED,2.03);
+ assert.deepEqual(manual,automatic);
+ assert.equal(roomWalkPhase(1,start,start),1);
+ assert.ok(Math.abs((roomWalkPhase(1,start,manual)-1)/manual.x-5.7)<1e-10);
+ const stop={x:2.2,z:0};
+ assert.equal(roomWalkPhase(1,stop,move(stop,1,0,.05)),1);
+});
