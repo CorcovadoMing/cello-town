@@ -160,13 +160,20 @@ function pondSurface(T,map){
    float knots = smoothstep(.17,.79,sin(uvPond.x*37.+sin(uvPond.y*19.-t*3.)*1.7+t*4.));
    float band = (1.-smoothstep(.035,.44,abs(uvPond.x-townWaterLightX+.16*(uvPond.y-.48))));
    float border = smoothstep(.01,.13,uvPond.y)*(1.-smoothstep(.74,.995,uvPond.y));
-   float wash = (.027+.088*band*border)*townWaterBrightness;
-   float glint = .17*blade*knots*band*border*townWaterBrightness;
-   diffuseColor.rgb = mix(diffuseColor.rgb,vec3(.54,.64,.39),wash+glint)
+   // A lighter shallow shelf follows the bank, while suspended colour
+   // and patches of open sky remain visible between reflected ripples.
+   float edgeDistance = min(min(uvPond.x,1.-uvPond.x),min(uvPond.y,1.-uvPond.y));
+   float shallow = 1.-smoothstep(.012,.18,edgeDistance+overlap*.014);
+   float skyTone = .42+.26*swell+.15*overlap;
+   vec3 pool = mix(diffuseColor.rgb*vec3(.79,.91,1.02),vec3(.28,.55,.43),shallow*.44);
+   pool = mix(pool,vec3(.47,.64,.68),skyTone*.19);
+   float daylight = (.023+.075*band*border)*townWaterBrightness;
+   float spark = .26*blade*knots*band*border*townWaterBrightness;
+   diffuseColor.rgb = mix(mix(pool,vec3(.60,.71,.50),daylight),vec3(.86,.90,.65),spark)
       * (1.+swell*.043+overlap*.023);
   `);
  };
- material.customProgramCacheKey=()=> 'town-pond-ripple-1';
+ material.customProgramCacheKey=()=> 'town-pond-ripple-2';
  return {material,update(now,weather,lamp,motion){
   phase.value=motion?now%96000/96000*Math.PI*2:0;
   brightness.value=weather==='rain'?.24:weather==='breeze'?.72:.97;

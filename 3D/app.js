@@ -135,20 +135,41 @@ function roomFinish(o,kind,repeatX=1,repeatY=1){
     g.beginPath();g.ellipse(knotX,knotY,1.8+j*1.8,5+j*3.8,.16,j*.35,Math.PI*1.82+j*.26);g.stroke();
    }
   }else if(kind==='limewash'){
-   g.fillStyle='#fff9ee';g.fillRect(0,0,128,128);
-   for(let i=0;i<54;i++){
-    const x=rand()*128,y=rand()*128,r=4+rand()*24;
-    const shade=i%3===0?'#c2ad9524':i%3===1?'#ffffff53':'#d3c4ab2d';
-    // Wrap mottle at swatch edges instead of imprinting the UV tiles.
-    for(const u of [x,x<r?x+128:x>128-r?x-128:null])for(const v of [y,y<r?y+128:y>128-r?y-128:null]){
-     if(u===null||v===null)continue;
-     const b=g.createRadialGradient(u,v,0,u,v,r);b.addColorStop(0,shade);b.addColorStop(1,shade.slice(0,7)+'00');
-     g.fillStyle=b;g.fillRect(u-r,v-r,r*2,r*2);
-    }
+   // Baked chalk and pigment, not a continuous noise shader. All layers
+   // wrap at both axes so the same wall material can continue into its cap.
+   g.fillStyle='#fbf7ec';g.fillRect(0,0,128,128);
+   const wrap=(x,y,extent,stamp)=>{
+    for(const u of [x,x<extent?x+128:x>128-extent?x-128:null])
+     for(const v of [y,y<extent?y+128:y>128-extent?y-128:null])
+      if(u!==null&&v!==null)stamp(u,v);
+   };
+   function wash(x,y,rx,ry,angle,pigment,alpha){
+    wrap(x,y,Math.max(rx,ry),(u,v)=>{
+     g.save();g.translate(u,v);g.rotate(angle);g.scale(rx,ry);
+     const soft=g.createRadialGradient(-.13,.07,.025,0,0,1);
+     soft.addColorStop(0,'rgba('+pigment+','+alpha+')');
+     soft.addColorStop(.49,'rgba('+pigment+','+(alpha*.47)+')');
+     soft.addColorStop(1,'rgba('+pigment+',0)');
+     g.fillStyle=soft;g.fillRect(-1,-1,2,2);g.restore();
+    });
    }
-   for(let i=0;i<31;i++){
-    const x=rand()*128,y=rand()*128;g.strokeStyle=i%3?'#a7967911':'#fffdf33b';g.lineWidth=.55;
-    g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+9,y+(rand()-.5)*5,x+16+rand()*9,y-2);g.stroke();
+   // Broad, barely coloured warm/cool openings between broken trowel strokes.
+   for(const [x,y,rx,ry,angle,ink,alpha] of [
+    [22,27,40,27,.42,'203,180,146',.16],[91,40,41,33,-.62,'236,224,193',.61],
+    [74,99,41,30,.31,'186,183,153',.23],[124,82,36,21,-.34,'255,253,235',.82],
+    [35,113,39,19,-.63,'233,209,176',.43],[103,123,38,21,.18,'189,175,145',.21],
+    [51,62,41,32,-.48,'255,255,241',.73]
+   ])wash(x,y,rx,ry,angle,ink,alpha);
+   for(let i=0;i<53;i++){
+    const x=rand()*128,y=rand()*128,rx=4+rand()*12,ry=2+rand()*5,angle=rand()*Math.PI;
+    const light=i%3!==0;
+    wash(x,y,rx,ry,angle,light?'255,255,245':'177,163,135',light?.29:.135);
+   }
+   // A sparse finish of dry, embedded pinholes instead of etched seams.
+   for(let i=0;i<340;i++){
+    const x=rand()*128,y=rand()*128,r=.22+rand()*.55;
+    g.fillStyle=i%4?'#7762461b':'#fffff76e';
+    wrap(x,y,r,(u,v)=>{g.beginPath();g.arc(u,v,r,0,Math.PI*2);g.fill();});
    }
   }else if(kind==='window-enamel'||kind==='joinery-oil'){
    const painted=kind==='window-enamel',wash=g.createLinearGradient(0,0,128,0);
