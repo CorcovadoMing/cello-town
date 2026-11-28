@@ -16,14 +16,14 @@ function normalized(s){
 // outdoor drawing revision and its accompanying module, not future drift.
 const reviewedExperimentalHashes={
  '3D/room-polish.js':'67f7847e5a0d2c28d0c07e2b0187dadf77f249902582d610d7588276f827228c',
- '3D/app.js':'674625062938bbe546bb54f611cc32295844b2b9a6f5a6c40f2eb80df5619e4f',
+ '3D/app.js':'682f771e6583913d7875aed3b911fc1ecd255d56bed3327eac8dedf0629adc8a',
  'rpg/ambience.js':'0c10897dd68d28b39a695f60d98d5f2bffb6811fb591eb8518b3fdcf18254d28',
  'rpg/town-countryside.js':'6ecb51d230884d0149dc12f95d812e2a53a9c6981d5349e102a81805c6489601',
  'rpg/town-shore.js':'083e2f167cc3ac445334c82dd1a05f5f15693d8f84fe4f39a778fb2dee55c0a5',
  'rpg/town-breeze.js':'8c6e5009f3a12eb2089c23c6e78cb958a5f041af78682837cb4716557490d1d4',
  'rpg/style.css':'5ead5010e045d1bdc85ec3e0c5c5b3a29fa5063720582676e6e94c7999c101ee',
  'rpg/app.js':'b4895373f78d01bf29f13d69371c235f2af41d764fd7b451da924d442845b4e2',
- 'rpg/index.html':'16fcd678729a362627ac6e734fb8ad39c99ba094cb84c1f5effd687ebbf4dd23',
+ 'rpg/index.html':'b4adc9f5d5539b820c9e8e086b951f9044b23a0df9092885a96d501e15d99d47',
  'rpg/town-depth.js':'3b082ca07119d517e0b747dd8ba8433c3aed0aa14bd18d07b2df6451c8efc7af',
  'rpg/music-room-art.js':'00011725eb971e6e7e7811f0898983c5c798c7808e47f7e9af9e31d25affbb6b',
  'rpg/town-webgl.js':'fa50f09cad67ccabe91df71a1c03a2ad2639b74bbc3f8ede3e2eb4cf0e284076',
