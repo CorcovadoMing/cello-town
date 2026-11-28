@@ -41,9 +41,9 @@ test('shared package, settings and gameplay are not initialized by the WebGL ren
  assert.doesNotMatch(s,/localStorage|sessionStorage|fetch\(|location\.(replace|assign)|navigator\.media/);
  const app=readFileSync(new URL('../../rpg/app.js',import.meta.url),'utf8');
  assert.match(app,/view\?'webgl':'canvas'/);
- assert.match(app,/if\(new URLSearchParams\(location.search\)\.get\('flat'\)!=='1'\)/);
- assert.match(app,/onLoss:\(\)=>\{pending3DTown=null;setTownView\(null\)/);
- assert.match(app,/if\(pending3DTown&&worldInView&&!target&&!keys.size&&!enteringRoom&&!dlg.open\)/);
+ assert.match(app,/const FLAT_TOWN=new URLSearchParams\(location.search\)\.get\('flat'\)==='1'/);
+ assert.match(app,/onLoss:\(\)=>\{\s*pending3DTown=null;setTownView\(null\);pickTownRenderer\('canvas'\)/);
+ assert.match(app,/if\(pending3DTown&&worldInView&&!dlg.open\)/);
 });
 test('outdoor WebGL applies the shared road, verge and bed moisture on every weather state',()=>{
  const app=readFileSync(new URL('../../rpg/app.js',import.meta.url),'utf8');

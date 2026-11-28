@@ -16,19 +16,21 @@ test('fourteen individual silhouettes have reproducible crown and tapered trunk 
   const trunks=t.branches.slice(0,2);
   assert.ok(trunks.every(row=>row[1]===100&&row[3]===200&&row[8]===0&&row[10]===0));
   assert.ok(trunks[1][4]<trunks[0][4]);
-  const core=t.crown.filter(row=>row[0]!=='orchard-leaf');
-  if(orchardFamily(i)==='fir'){
-   assert.equal(core.length,4);
-   assert.ok(core.every((row,j)=>row[0]==='orchard-fir'&&row[1]===100&&row[3]===200&&
-    (j===0||row[2]>core[j-1][2]&&row[4]<core[j-1][4])));
+  const fir=orchardFamily(i)==='fir',leaves=t.crown;
+  // Every canopy part is an individually cut-out foliage cluster.
+  assert.ok(leaves.every(row=>row[0]===(fir?'orchard-needle':'orchard-leaf')));
+  assert.ok(leaves.length>=120&&leaves.length<=330);
+  if(fir){
+   const levels=leaves.map(row=>row[2]);
+   assert.ok(Math.max(...levels)-Math.min(...levels)>40,'full tall conifer built from needles');
+   assert.ok(leaves.filter(row=>row[8]<-1.0).length>120,'needle sprays fill a crown in overhead as well as low view');
   }else{
-   assert.equal(core.length,1);
-   assert.ok(core[0][4]>core[0][5],'upright broadleaf wider than tall');
    assert.equal(t.branches.length,17);
-   assert.ok(t.branches.slice(-3).every(row=>row[4]<2),'nearby details are tapered twigs, not extra trunks');
+   assert.ok(t.branches.slice(-3).every(row=>row[4]<2),'nearby details are tapered twigs');
+   assert.ok(leaves.filter(row=>row[3]>205).length>=45,'near-side foliage has distinct small layers');
+   const depth=leaves.map(row=>row[3]);assert.ok(Math.max(...depth)-Math.min(...depth)>60,'fanned layers have spatial depth');
   }
-  const leaves=t.crown.filter(row=>row[0]==='orchard-leaf');
-  if(orchardFamily(i)==='broadleaf'){assert.ok(leaves.filter(row=>row[3]>205).length>=45,'pondside foliage has distinct small layers');assert.ok(leaves.some(row=>row[2]<core[0][2]-8));}
+  assert.ok(new Set(leaves.map(row=>row[7])).size>=4,'tone varies beyond a single color');
   assert.ok(t.crown.every(f=>f.slice(1,7).every(Number.isFinite)&&f[2]>36));
  }
 });

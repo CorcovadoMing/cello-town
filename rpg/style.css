@@ -232,3 +232,7 @@ body,body *{font-family:var(--town-font)!important}
 .map-stage[data-watch="pond"] :is(.quest-sign,.teacher-marker-layer,#toast){visibility:hidden}
 .map-stage[data-watch="pond"] canvas{cursor:default}
 @media(max-width:360px){.town-watch{padding-inline:8px}.watch-choices button{padding-inline:8px}}
+
+/* Keep the 960:560 map footprint without exposing the legacy renderer on startup. */
+.world-loading{position:absolute;inset:0;z-index:6;display:grid;place-items:center;background:#edf0df;color:#3c5b44;font-weight:650;font-size:clamp(.8rem,2.8vw,1rem);pointer-events:auto}
+.map-stage:has(.world-loading) :is(.quest-sign,.teacher-marker-layer,#toast){visibility:hidden}

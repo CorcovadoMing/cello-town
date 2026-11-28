@@ -1,4 +1,4 @@
-import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,makeTownWebGL} from './town-webgl.js?v=world-3d-017-shore-depth';
+import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,makeTownWebGL} from './town-webgl.js?v=world-3d-018-leaf-country';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';
@@ -28,6 +28,19 @@ let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
 const $=id=>document.getElementById(id), canvas=$('world'),dlg=$('dialog'),KEY=/\/experimental(?:\/|$)/.test(globalThis.location?.pathname||'')?'cello-town-experimental-rpg-v1':'cello-town-rpg-v1';
 let g=canvas.getContext('2d'),webglTown=null,pending3DTown=null,last3DPaint=-Infinity;
+const firstMapNotice=$('world-loading');
+const FLAT_TOWN=new URLSearchParams(location.search).get('flat')==='1';
+const TOWN_BOOT_DEADLINE_MS=4200;
+let townBoot=FLAT_TOWN?'canvas':'pending',townBootTimer=null,firstMapPainted=false;
+function pickTownRenderer(mode){
+ if(townBoot!=='pending')return false;
+ townBoot=mode;clearTimeout(townBootTimer);townBootTimer=null;return true;
+}
+function markMapPainted(mode){
+ if(firstMapPainted||(mode!=='canvas'&&mode!=='webgl'))return;
+ firstMapPainted=true;canvas.dataset.renderer=mode;
+ canvas.style.removeProperty('visibility');canvas.removeAttribute('inert');firstMapNotice?.remove();
+}
 const watchBar=$('town-watch'),watchStage=canvas.closest('.map-stage');
 const watchButtons=[...watchBar.querySelectorAll('button[data-watch-view]')];
 let watchView='play';
@@ -296,7 +309,7 @@ function drawPracticeStand(){
 }
 function setTownView(view){
  if(!view&&webglTown&&watchView!=='play')selectWatchView('play',true);
- webglTown=view;last3DPaint=-Infinity;canvas.dataset.renderer=view?'webgl':'canvas';
+ webglTown=view;last3DPaint=-Infinity;if(firstMapPainted)canvas.dataset.renderer=view?'webgl':'canvas';
  watchBar.hidden=!view;watchStage.dataset.watch=watchView;
 
 }
@@ -357,7 +370,7 @@ function drawWebGLTown(t,rainFrame,petFrame,moisture){
  }
  return true;
 }
-function draw(t){const rainFrame=rainSystem.sample(t,gameWeather.key,[player,npc],reducedMotion.matches);const petFrame=rainPets.update(t,{weather:gameWeather.key,player,playerUmbrella:umbrellaPose(player,rainFrame.actorOpen[0]),reduced:reducedMotion.matches});const moisture=wetSoil.update(t,gameWeather.key,reducedMotion.matches,rainFrame);if(webglTown){try{if(drawWebGLTown(t,rainFrame,petFrame,moisture))return;}catch{webglTown?.discard();setTownView(null);}}townArt.drawGround(g);townDepth.drawGround(g,gameWeather.key);drawWetSoil(g,moisture,'road');
+function draw(t){const rainFrame=rainSystem.sample(t,gameWeather.key,[player,npc],reducedMotion.matches);const petFrame=rainPets.update(t,{weather:gameWeather.key,player,playerUmbrella:umbrellaPose(player,rainFrame.actorOpen[0]),reduced:reducedMotion.matches});const moisture=wetSoil.update(t,gameWeather.key,reducedMotion.matches,rainFrame);if(webglTown){try{if(drawWebGLTown(t,rainFrame,petFrame,moisture))return 'webgl';}catch{}webglTown?.discard();setTownView(null);}townArt.drawGround(g);townDepth.drawGround(g,gameWeather.key);drawWetSoil(g,moisture,'road');
 // water
 terrainArt.drawPond(g);
 // Sparse bank planting stays outside the fish/ripple water clip.
@@ -379,7 +392,7 @@ drawBenchLife(g,t,reducedMotion.matches,petFrame);
 if(gameWeather.key!=='rain')drawTownWeather(g,t,gameWeather.key,reducedMotion.matches,RAIN_EXCLUSIONS);
 for(const actor of [player,npc])townDepth.drawActorContact(g,actor.x,actor.y,gameWeather.key);
 // Ground anchors order visible silhouettes; collision footprints remain separate.
-let entities=[{y:petFrame.life.cat.groundY,draw:()=>drawGardenLife(g,t,reducedMotion.matches,petFrame)},...(petFrame.dogActive?[{y:petFrame.dog.y,draw:()=>drawRainDog(g,petFrame.dog)}]:[]),...(petFrame.benchCatActive?[{y:petFrame.benchCat.y,draw:()=>drawRainBenchCat(g,petFrame.benchCat)}]:[]),{y:stand.y,draw:drawPracticeStand},{y:MUSIC_ROOM.depth,draw:()=>townDepth.drawRoom(g,gameWeather.key,drawMusicRoom)},{y:231,draw:()=>{chairs.forEach(chair=>drawLoungeChair(g,chair));}},{y:245,draw:()=>drawLoungeTable(g,{rain:gameWeather.key==='rain',readingSide:loungePose.reading&&!dlg.open?chairs[loungePose.seatIndex].id:null})},...[player,npc].flatMap((actor,i)=>rainFrame.actorStage[i]!=='closed'?[{y:actor.y+21,draw:()=>drawRainUmbrella(g,{...actor,kind:i===1?'teacher':'player'},rainFrame.actorOpen[i],rainFrame.actorStage[i],rainFrame.actorGrip[i])}]:[]),...TREE_LAYOUT.map((a,i)=>({y:a[1]+46*a[2],draw:()=>tree(...a,t,i+1)})),{y:npc.y,draw:()=>person(npc.x,npc.y,t,{teacher:true,holdingUmbrella:rainFrame.actorStage[1]!=='closed'})},{y:player.y,draw:()=>person(player.x,player.y,t,{...player,holdingUmbrella:rainFrame.actorStage[0]!=='closed'})}];entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());if(gameWeather.key==='rain')drawRainFrame(g,rainFrame);label('老師',npc.x,npc.y+24);drawQuestMarker(t);drawStandMarker(t);if(!dlg.open)drawQuietChat(g,quietChatPose.bubbles,{teacher:npc,player});if(near&&!['chair','seated'].includes(near)){g.strokeStyle='#fff2c3';g.lineWidth=2;g.beginPath();g.ellipse(near==='npc'?npc.x:near==='garden'?garden.x:stand.x,near==='npc'?npc.y:near==='garden'?garden.y:stand.y,24,10,0,0,Math.PI*2);g.stroke();}}
+let entities=[{y:petFrame.life.cat.groundY,draw:()=>drawGardenLife(g,t,reducedMotion.matches,petFrame)},...(petFrame.dogActive?[{y:petFrame.dog.y,draw:()=>drawRainDog(g,petFrame.dog)}]:[]),...(petFrame.benchCatActive?[{y:petFrame.benchCat.y,draw:()=>drawRainBenchCat(g,petFrame.benchCat)}]:[]),{y:stand.y,draw:drawPracticeStand},{y:MUSIC_ROOM.depth,draw:()=>townDepth.drawRoom(g,gameWeather.key,drawMusicRoom)},{y:231,draw:()=>{chairs.forEach(chair=>drawLoungeChair(g,chair));}},{y:245,draw:()=>drawLoungeTable(g,{rain:gameWeather.key==='rain',readingSide:loungePose.reading&&!dlg.open?chairs[loungePose.seatIndex].id:null})},...[player,npc].flatMap((actor,i)=>rainFrame.actorStage[i]!=='closed'?[{y:actor.y+21,draw:()=>drawRainUmbrella(g,{...actor,kind:i===1?'teacher':'player'},rainFrame.actorOpen[i],rainFrame.actorStage[i],rainFrame.actorGrip[i])}]:[]),...TREE_LAYOUT.map((a,i)=>({y:a[1]+46*a[2],draw:()=>tree(...a,t,i+1)})),{y:npc.y,draw:()=>person(npc.x,npc.y,t,{teacher:true,holdingUmbrella:rainFrame.actorStage[1]!=='closed'})},{y:player.y,draw:()=>person(player.x,player.y,t,{...player,holdingUmbrella:rainFrame.actorStage[0]!=='closed'})}];entities.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());if(gameWeather.key==='rain')drawRainFrame(g,rainFrame);label('老師',npc.x,npc.y+24);drawQuestMarker(t);drawStandMarker(t);if(!dlg.open)drawQuietChat(g,quietChatPose.bubbles,{teacher:npc,player});if(near&&!['chair','seated'].includes(near)){g.strokeStyle='#fff2c3';g.lineWidth=2;g.beginPath();g.ellipse(near==='npc'?npc.x:near==='garden'?garden.x:stand.x,near==='npc'?npc.y:near==='garden'?garden.y:stand.y,24,10,0,0,Math.PI*2);g.stroke();}return 'canvas';}
 function teacherWithinReach(){return Math.hypot(player.x-npc.x,player.y-npc.y)<TEACHER_TALK_RADIUS;}
 function standWithinReach(){return Math.hypot(player.x-stand.x,player.y-stand.y)<48;}
 function gardenWithinReach(){return Math.hypot(player.x-garden.x,player.y-garden.y)<55;}
@@ -430,17 +443,25 @@ function update(dt,idleDt=dt){
 }
 const approachRoom=()=>{if(!dlg.open)walkTo(ROOM_ENTRY,'room');};
 function interact(){if(dlg.open)return;if(!playerSeated&&roomDoorNearby(player)){approachRoom();return;}if(playerSeated){standUp();return;}if(near==='chair'){const index=chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y)).indexOf(Math.min(...chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y))));requestChair(index);return;}if(near==='npc')talk();else if(near==='stand')practice();else if(near==='garden')openGarden();else toast('再靠近老師、戶外譜架或花園入口一點。');}
-const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open||enteringRoom)return;if(watchView!=='play'){if(e.key==='Escape'){e.preventDefault();selectWatchView('play');watchButtons[0].focus({preventScroll:true});}return;}if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;teacherApproach.cancel();});canvas.onpointerdown=e=>{if(dlg.open||enteringRoom||watchView!=='play')return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{idleLast=null;if(document.hidden){teacherApproach.cancel();pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});let idleLast=null;function loop(t){const dt=Math.min((t-last)/1000,.04),idleDt=idleLast===null?0:Math.max(0,(t-idleLast)/1000);last=t;idleLast=document.hidden?null:t;if(!document.hidden){
- if(pending3DTown&&worldInView&&!target&&!keys.size&&!enteringRoom&&!dlg.open){
-  const view=pending3DTown;pending3DTown=null;
-  try{if(view.render(gameWeather.key))setTownView(view);else view.discard();}catch{view.discard();}
+const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(!firstMapPainted)return;if(dlg.open||enteringRoom)return;if(watchView!=='play'){if(e.key==='Escape'){e.preventDefault();selectWatchView('play');watchButtons[0].focus({preventScroll:true});}return;}if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;teacherApproach.cancel();});canvas.onpointerdown=e=>{if(!firstMapPainted)return;if(dlg.open||enteringRoom||watchView!=='play')return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{idleLast=null;if(document.hidden){teacherApproach.cancel();pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});let idleLast=null;function loop(t){const dt=Math.min((t-last)/1000,.04),idleDt=idleLast===null?0:Math.max(0,(t-idleLast)/1000);last=t;idleLast=document.hidden?null:t;if(!document.hidden){
+ if(pending3DTown&&worldInView&&!dlg.open){
+  const view=pending3DTown;pending3DTown=null;setTownView(view);
  }
- update(dt,idleDt);if(!webglTown||(worldInView&&!dlg.open))draw(t);
+ if(townBoot!=='pending'&&!pending3DTown){
+  update(dt,idleDt);
+  if((firstMapPainted&&!webglTown)||(worldInView&&!dlg.open))markMapPainted(draw(t));
+ }
  }requestAnimationFrame(loop);}render();setTownView(null);requestAnimationFrame(loop);
-if(new URLSearchParams(location.search).get('flat')!=='1'){
- const load=()=>makeTownWebGL({trees:TREE_LAYOUT,chairs,stand,room:MUSIC_ROOM,onLoss:()=>{pending3DTown=null;setTownView(null);}})
-  .then(view=>{pending3DTown=view;}).catch(()=>{setTownView(null);});
- if(typeof requestIdleCallback==='function')requestIdleCallback(load,{timeout:600});else setTimeout(load,50);
+if(!FLAT_TOWN){
+ townBootTimer=setTimeout(()=>pickTownRenderer('canvas'),TOWN_BOOT_DEADLINE_MS);
+ makeTownWebGL({trees:TREE_LAYOUT,chairs,stand,room:MUSIC_ROOM,onLoss:()=>{
+  pending3DTown=null;setTownView(null);pickTownRenderer('canvas');
+ }})
+ .then(view=>{
+  if(pickTownRenderer('webgl'))pending3DTown=view;
+  else view.discard();
+ })
+ .catch(()=>pickTownRenderer('canvas'));
 }
 setTimeout(()=>$('toast').style.opacity=0,6000);
 

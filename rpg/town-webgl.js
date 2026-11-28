@@ -1,6 +1,7 @@
+import {makeCountryside} from './town-countryside.js?v=1';
 import {addShoreCraft} from './town-shore.js?v=1';
 import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=2';
-import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,makeOrchardSkin,makeOrchardVolumes,townSunVector} from './town-orchard.js?v=8';
+import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './town-orchard.js?v=9';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
@@ -63,7 +64,7 @@ export const TOWN_PAINT_PALETTE=Object.freeze({
  pond:Object.freeze(['#81b1a5','#79a99f','#8cbbac','#719f99','#adcaba'])
 });
 function landscapePigment(T,kind){
- const c=document.createElement('canvas');c.width=768;c.height=448;
+ const c=document.createElement('canvas');c.width=1152;c.height=672;
  const ctx=c.getContext('2d');
  ctx.scale(c.width/W,c.height/H);
  const [base,shade,light,warm,cool]=TOWN_PAINT_PALETTE[kind];
@@ -90,8 +91,36 @@ function landscapePigment(T,kind){
    glaze(xx,yy,w,h,angle,accents[(i+group)%accents.length],.13+rank*.25);
   }
  }
+ // Fine, softly irregular pigment: tiny mineral flecks on the walking
+ // surface, and overlapping grass grains where the meadow catches the light.
+ if(kind!=='pond'){
+  const meadow=kind==='meadow',dark=meadow?'#6e844e':'#9d8961',mid=meadow?'#8f9d65':'#b39d74',pale=meadow?'#c0c58f':'#efe2bf';
+  // Mottled colour islands create medium-scale relief before fine grain
+  // becomes visible, including in the lower perspective shot.
+  for(let cell=0;cell<290;cell++){
+   const x=next()*W,y=next()*H,r=2.7+next()*8,angle=(next()-.5)*1.15;
+   ctx.globalAlpha=.15+next()*.24;ctx.fillStyle=[dark,mid,pale][cell%3];
+   ctx.beginPath();ctx.ellipse(x,y,r*(1.21+next()*.53),r*(.24+next()*.44),angle,0,Math.PI*2);ctx.fill();
+   if(cell%3===0){
+    ctx.globalAlpha=.11+next()*.18;ctx.strokeStyle=pale;ctx.lineWidth=.57+next();
+    ctx.beginPath();ctx.moveTo(x-r*.7,y+r*.29);ctx.quadraticCurveTo(x,y+r*.48,x+r*.71,y+r*.18);ctx.stroke();
+   }
+  }
+  for(let cell=0;cell<102;cell++){
+   const x=next()*W,y=next()*H,grain=next();
+   for(let i=0;i<53;i++){
+    const angle=next()*Math.PI*2,r=Math.sqrt(next()),xx=x+Math.cos(angle)*r*(18+grain*57),yy=y+Math.sin(angle)*r*(13+grain*29);
+    const scale=.30+next()*1.23;
+    ctx.globalAlpha=.095+next()*.23;ctx.strokeStyle=[dark,mid,pale][i%3];ctx.lineWidth=scale*.62;
+    ctx.beginPath();ctx.moveTo(xx,yy);
+    ctx.quadraticCurveTo(xx+scale*.72,yy-scale*.18,xx+scale*(meadow?1.18:2.02),yy+scale*(meadow?-1.1:.44));ctx.stroke();
+    if(i%4===0){ctx.globalAlpha=.13+next()*.12;ctx.fillStyle=i%8?dark:pale;ctx.fillRect(xx-scale*.24,yy+scale*.43,scale*.56,scale*.36);}
+   }
+  }
+  ctx.globalAlpha=1;
+ }
  const t=new T.CanvasTexture(c);
- t.colorSpace=T.SRGBColorSpace;t.anisotropy=2;return t;
+ t.colorSpace=T.SRGBColorSpace;t.anisotropy=4;return t;
 }
 // Water pigment varies with depth. Two drifting ripple bands bend the
 // lighter reflection across the actual pond mesh; nothing is painted over fish.
@@ -215,19 +244,18 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const porchFill=new T.DirectionalLight('#fff0db',.43);
  porchFill.position.set(70,260,610);
  scene.add(sun,fill,porchFill);
- const leafy=makeOrchardLeaf(T),crowns=makeOrchardVolumes(T);
+ const leafy=makeOrchardLeaf(T),needles=makeOrchardLeaf(T,true);
  const meadowPigment=landscapePigment(T,'meadow'),soilPigment=landscapePigment(T,'soil'),pondPigment=landscapePigment(T,'pond');
  const geometry={
   box:new T.BoxGeometry(1,1,1),'weathered-board':new T.BoxGeometry(1,1,1), sphere:new T.IcosahedronGeometry(1,1),
-  trunk:new T.CylinderGeometry(.36,.51,1,7), cone:new T.ConeGeometry(1,1,5),
-  circle:new T.CircleGeometry(1,18), 'orchard-leaf':leafy.geometry,'orchard-wide':crowns.wide,'orchard-round':crowns.round,'orchard-fir':crowns.fir, 'window-glass':new T.BoxGeometry(1,1,1)
+  trunk:new T.CylinderGeometry(.36,.51,1,11,2), cone:new T.ConeGeometry(1,1,5),
+  circle:new T.CircleGeometry(1,18), 'orchard-leaf':leafy.geometry,'orchard-needle':needles.geometry, 'window-glass':new T.BoxGeometry(1,1,1)
  };
  const material=new T.MeshLambertMaterial({flatShading:true});
  const boardSkin=new T.MeshLambertMaterial({map:woodWearMap(T),flatShading:true});
  const leafyMaterial=leafy.material;
- const barkMaterial=new T.MeshLambertMaterial({map:makeOrchardBark(T),flatShading:true});
- const crownMaterial=new T.MeshLambertMaterial({map:makeOrchardSkin(T),vertexColors:true,emissive:'#8eaa72',emissiveIntensity:.24});
- const firMaterial=new T.MeshLambertMaterial({map:makeOrchardSkin(T,true),vertexColors:true,emissive:'#76917a',emissiveIntensity:.20});
+ const bark=makeOrchardBark(T);
+ const barkMaterial=new T.MeshPhongMaterial({map:bark,bumpMap:bark,bumpScale:.38,shininess:6,specular:'#2b241b'});
  const windowGlass=new T.MeshLambertMaterial({emissive:'#b88651',emissiveIntensity:.32});
  const batches=new Map();
  const model=new T.Object3D(),sample=new T.Vector3();
@@ -256,7 +284,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   q.lineTo(x,z+rad);q.quadraticCurveTo(x,z,x+rad,z);q.closePath();
   const geo=new T.ExtrudeGeometry(q,{depth:height,bevelEnabled:true,bevelThickness:2,bevelSize:2,bevelSegments:2,curveSegments:8});
   const edgeMaterial=new T.MeshLambertMaterial({color:tint,flatShading:true});
-  const material=cap?[new T.MeshLambertMaterial({map:cap,color:'#fbf7ef',flatShading:true}),edgeMaterial]:edgeMaterial;
+  const material=cap?[new T.MeshPhongMaterial({map:cap,bumpMap:cap,bumpScale:.83,shininess:4,specular:'#242a19',color:'#fbf7ef'}),edgeMaterial]:edgeMaterial;
   if(cap)paintTerrainUV(T,geo,w,d);
   const mesh=new T.Mesh(geo,material);
   mesh.position.y=top-height;mesh.rotation.x=-Math.PI/2;mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
@@ -281,7 +309,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const pathLoop=[[168,312],[179,302],[236,300],[319,302],[385,298],[453,302],[514,298],[566,302],[630,299],[637,283],[636,254],[648,244],[704,244],[716,253],[715,281],[719,300],[751,301],[779,303],[793,314],[790,356],[777,369],[709,371],[636,368],[562,372],[501,369],[498,414],[500,463],[497,510],[499,556],[489,564],[442,564],[428,553],[428,500],[430,459],[427,414],[426,369],[374,367],[310,370],[255,368],[182,368],[170,359]];
  const trail=new T.Shape();
  pathLoop.forEach(([x,z],i)=>i?trail.lineTo(x-W/2,H/2-z):trail.moveTo(x-W/2,H/2-z));trail.closePath();
- const pathMesh=new T.Mesh(paintTerrainUV(T,new T.ExtrudeGeometry(trail,{depth:1.85,bevelEnabled:true,bevelThickness:1.2,bevelSize:1.8,bevelSegments:2})),new T.MeshLambertMaterial({map:soilPigment,color:'#f7f4eb',flatShading:true}));
+ const pathMesh=new T.Mesh(paintTerrainUV(T,new T.ExtrudeGeometry(trail,{depth:1.85,bevelEnabled:true,bevelThickness:1.2,bevelSize:1.8,bevelSegments:2})),new T.MeshPhongMaterial({map:soilPigment,bumpMap:soilPigment,bumpScale:.69,shininess:3,specular:'#30271c',color:'#f7f4eb'}));
  pathMesh.rotation.x=-Math.PI/2;pathMesh.position.y=1.2;pathMesh.receiveShadow=true;scene.add(pathMesh);
  const footfall=createFootfallTracker((x,z)=>insidePolygon(x,z,pathLoop));
  const stampTexture=(()=>{
@@ -436,20 +464,8 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    i=j;
   }
  }
- // Continuous foliage clusters on the north rim, all anchored to the
- // model; muted sage separates them from the sharper hand-shaped orchard.
- for(const [a,z,count] of [[87,49,5],[238,39,4],[391,50,5],[563,40,5],[717,46,6],[860,48,5]]){
-  for(let i=0;i<count;i++){
-   const x=a+(i-(count-1)/2)*20+5*rng(),d=z+(rng()-.5)*20,h=11+rng()*9;
-   const width=13+rng()*11,depth=12+rng()*7,turn=rng();
-   const greens=['#809754','#7c925b','#8ba760','#94a365'];
-   for(let layer=0;layer<3;layer++){
-    const a=turn*6.283+layer*2.1;
-    shape('orchard-leaf',x+Math.sin(a)*6,8+h*.58+layer*2,d+Math.cos(a)*depth*.30,
-     width*(1.19-layer*.09),h*(1.32-layer*.10),1,greens[(i+layer)%4],-.32-layer*.34,a,.32*Math.cos(a));
-   }
-  }
- }
+ // Painted pasture and 3D brush beyond the original north fence.
+ const updateCountryside=makeCountryside({T,scene,W,H,shape,leafMaps:[leafy.material.map,needles.material.map]});
  for(const [i,[x,y,s]] of trees.entries()){
   addOrchardTree({shape:(kind,x,y,z,sx,sy,sz,tint,rx=0,ry=0,rz=0)=>{
    const flex=kind==='trunk'?0:Math.min(1,Math.max(.2,y/(99*s)));
@@ -651,7 +667,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const updateShore=addShoreCraft({T,scene,W,H,trees,room,shape});
  const swaying=[];
  for(const [kind,items] of batches){
-  const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='trunk'?barkMaterial:kind==='window-glass'?windowGlass:kind==='orchard-fir'?firMaterial:kind==='weathered-board'?boardSkin:kind.startsWith('orchard-')?crownMaterial:material,items.length);
+  const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='orchard-needle'?needles.material:kind==='trunk'?barkMaterial:kind==='window-glass'?windowGlass:kind==='weathered-board'?boardSkin:material,items.length);
   items.forEach(([matrix,tint,flex,x,z],i)=>{
    batch.setMatrixAt(i,matrix);batch.setColorAt(i,color.set(tint));
    if(flex>0)swaying.push({batch,i,base:matrix,flex,x,z,seed:x*.006+z*.012});
@@ -744,6 +760,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    }
    updateGrass(clock,weather,motion);
    updateShore(weather,close);
+   updateCountryside(close);
    scene.background=close?horizons[weather==='rain'?1:0]:mapBackground;
    if(weather!==lastWeather){
     lastWeather=weather;
