@@ -1,4 +1,4 @@
-import {addOrchardTree,makeOrchardLeaf,townSunVector} from './town-orchard.js?v=3';
+import {addOrchardTree,makeOrchardLeaf,townSunVector} from './town-orchard.js?v=4';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
@@ -384,12 +384,12 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
    if(!alive)return false;
    if(weather!==lastWeather){
     lastWeather=weather;
-    scene.background.set(weather==='rain'?'#c7c6bc':'#eee3d5');
+    scene.background.set(weather==='rain'?'#c9c7bc':'#f2e3ca');
     sun.intensity=weather==='sun'?1.86:weather==='breeze'?1.37:.49;
-    sun.color.set(weather==='rain'?'#ffe7b0':'#ffe7b8');
-    fill.intensity=weather==='rain'?1.78:1.64;
+    sun.color.set(weather==='rain'?'#ffe7b0':weather==='breeze'?'#ffe5bf':'#ffdb9b');
+    fill.intensity=weather==='rain'?1.78:1.70;
     porchFill.intensity=weather==='rain'?.22:.57;
-    fill.color.set(weather==='rain'?'#dceef2':'#f5f0dc');
+    fill.color.set(weather==='rain'?'#e2eee9':'#fff0dc');
     renderer.shadowMap.needsUpdate=true;
    }
    const lamp=townSunVector(now);

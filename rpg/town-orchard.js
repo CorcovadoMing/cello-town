@@ -1,5 +1,5 @@
-// Handmade branch systems: blossom sprays grow on individual twigs rather
-// than a stack of solid crown volumes. Each primary is [x,height,z,span].
+// Handmade branch systems: blossom sprays grow on individual twigs with overlapping, uneven boughs
+// rather than a stack of solid crown volumes. Each primary is [x,height,z,span].
 const profiles=[
  {bark:'#78624d',leaf:['#57754b','#6a8b55','#87a268','#a5ad72'],height:49,limbs:[[-27,64,1,15],[-14,79,-9,16],[4,91,-2,15],[24,71,11,17],[32,60,3,13]]},
  {bark:'#827055',leaf:['#62794f','#769064','#91a673','#a7af7c'],height:64,limbs:[[-15,67,-2,12],[-11,83,7,12],[-4,98,-8,14],[6,112,-1,11],[16,88,5,12]]},
@@ -25,18 +25,19 @@ function leaflet(g,x,y,angle,len,wide,tone){
 export function makeOrchardLeaf(T){
  const c=document.createElement('canvas');c.width=c.height=128;
  const g=c.getContext('2d');
- // An asymmetric cluster of five fronds: enough overlapping silhouettes
- // to read at phone scale, but the alpha still keeps spaces between tips.
- const stems=[[62,116,-.73,58],[61,105,.78,53],[63,101,-.31,78],[67,89,.46,65],[65,82,.04,70]];
+ // Layer the sideways growth behind the outer fronds. Keep the rim open
+ // so the crown still breaks into visible leaves and dappled shadows.
+ const stems=[[56,94,-1.14,47],[66,88,1.08,51],[68,92,-.58,66],
+  [62,110,-.73,57],[60,104,.78,53],[62,100,-.31,77],[68,93,.46,64],[64,87,.04,70]];
  for(let i=0;i<stems.length;i++){
   const [x,y,a,len]=stems[i];
   g.save();g.translate(x,y);g.rotate(a);
   g.strokeStyle='#b3b09b';g.lineWidth=1.45;
   g.beginPath();g.moveTo(0,0);g.quadraticCurveTo(3,-len*.48,0,-len);g.stroke();
   for(let j=0;j<5;j++){
-   const d=.19+j*.153,h=(18+((i*5+j*7)%8))*(1-j*.06),tone=224+((i*17+j*23)%27);
-   leaflet(g,1.7,-len*d,-.75-j*.04,h,5.0-j*.28,tone+6);
-   if((i+j)%5!==3)leaflet(g,1.7,-len*(d+.075),.71+j*.09,h*.91,4.7-j*.28,tone);
+   const d=.19+j*.153,h=(16+((i*5+j*7)%9))*(1-j*.06),tone=228+((i*17+j*23)%25);
+   leaflet(g,1.7,-len*d,-.75-j*.04,h,5.45-j*.29,tone+6);
+   if((i+j)%5!==3)leaflet(g,1.7,-len*(d+.075),.71+j*.09,h*.94,5.05-j*.27,tone);
   }
   leaflet(g,0,-len*.87,.13,15,4,224);g.restore();
  }
@@ -46,7 +47,7 @@ export function makeOrchardLeaf(T){
  // MeshLambert's texture and alpha threshold are forwarded by Three's
  // directional depth material, giving fine perforated leaf shadows.
  const material=new T.MeshLambertMaterial({map:texture,alphaTest:.38,side:T.DoubleSide,
-  emissive:'#778967',emissiveIntensity:.29});
+  emissive:'#939568',emissiveIntensity:.34});
  material.shadowSide=T.DoubleSide;
  return {geometry,material};
 }
@@ -83,7 +84,27 @@ export function addOrchardTree({shape},x,z,scale,index){
   const light=near(elbow,tip,.77),w=22+next()*6;
   shape('orchard-leaf',x+light[0]*scale,(light[1]+9)*scale,z+(light[2]-2)*scale,w*scale,w*.81*scale,1,
    p.leaf[3],-.26,bias+j*.49,side*.37);
-
+ }
+ // Fill canopy holes above the exposed forks in a separate seeded pass:
+ // do not move the previously placed branches or outer sprays.
+ const centres=p.limbs.map(([tx,y,tz])=>[tx+shift,y,tz]);
+ const order=centres.slice().sort((a,b)=>a[0]-b[0]);
+ const fill=(v,w,col,rx,ry,rz)=>shape('orchard-leaf',x+v[0]*scale,v[1]*scale,z+v[2]*scale,w*scale,w*.84*scale,1,col,rx,ry,rz);
+ for(const [j,tip] of centres.entries()){
+  for(let k=0;k<3;k++){
+   const spiral=(j*1.73+k*2.10)+(next()-.5)*.4;
+   const interior=near([shift,p.height+8,-1],tip,.54+k*.14);
+   interior[0]+=Math.sin(spiral)*(4+k*2);
+   interior[1]+=7+k*4+(next()-.5)*5;
+   interior[2]+=Math.cos(spiral)*(8+k*2);
+   fill(interior,26+next()*7,p.leaf[k===1?3:2],-.32+(next()-.5)*.9,spiral,-.66+next()*1.32);
+  }
+ }
+ for(let j=1;j<order.length;j++){
+  const a=order[j-1],b=order[j],bridge=near(a,b,.45+next()*.1);
+  bridge[1]+=1+next()*7;
+  bridge[2]+=(next()-.5)*10;
+  fill(bridge,27+next()*7,p.leaf[2+(j%2)],-.32+(next()-.5)*.65,bias+j*1.8,-.45+next()*.9);
  }
 }
 // Same wall clock and 12-minute loop already used by the weather selector;

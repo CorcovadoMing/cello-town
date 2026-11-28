@@ -14,12 +14,12 @@ function normalized(s){
 // Preserve the main parity fixture: allow only the exact tested experimental
 // outdoor drawing revision and its accompanying module, not future drift.
 const outdoorVisualHashes={
- 'rpg/app.js':'04f7fcb5e0aba12a052c7bb0cb9042c02ad56c33df7b887aa3654411a1b8131b',
- 'rpg/index.html':'0f34dd3c6c31b1fae3610679e7b4fdc40900af93d9905bf1b8951506bf3069b8',
+ 'rpg/app.js':'d924c1880314c8cabf2c7b995711cd3ebe026e1b5675ab8480749ac1b5b2e592',
+ 'rpg/index.html':'2e67fa6e0d035f00b35d9723982ccfb5a83ad7aedcc4b792d450609b0543de5e',
  'rpg/town-depth.js':'3b082ca07119d517e0b747dd8ba8433c3aed0aa14bd18d07b2df6451c8efc7af',
  'rpg/music-room-art.js':'00011725eb971e6e7e7811f0898983c5c798c7808e47f7e9af9e31d25affbb6b',
- 'rpg/town-webgl.js':'d7a270007d9b7400d7977bebaa9b2e77b5bbe11ca9d3dee75c7dbf16816cc972',
- 'rpg/town-orchard.js':'c457f8eb9f52de1062ae5f58ce8a32e4996a17ca4490a31153234738057fac66'
+ 'rpg/town-webgl.js':'dec8df53869bdced83bc9325dba4683f8cdfddb7df496db60e7fdb8856a8e4d9',
+ 'rpg/town-orchard.js':'18161aa1aea06164725855cdd82386ae2e642624d15de2920fbc9e856c541e8a'
 };
 const sha256=text=>crypto.createHash('sha256').update(text).digest('hex');
 test('experimental matches exact main snapshot except the scoped storage, manuscript and outdoor art',()=>{
