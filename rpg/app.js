@@ -1,4 +1,4 @@
-import {makeTownWebGL} from './town-webgl.js?v=world-3d-008-boughs';
+import {benchCatLift,makeTownWebGL} from './town-webgl.js?v=world-3d-009-lush';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';
@@ -300,8 +300,13 @@ function drawWebGLTown(t,rainFrame,petFrame,moisture){
  if(cat)sprite('cat',cat.x,cat.groundY+6,64,52,()=>drawGardenCat(g,cat));
  if(visitor)sprite('visitor',visitor.x,visitor.y+25,45,47,()=>drawGardenVisitor(g,visitor),27);
  if(petFrame.dogActive){const d=petFrame.dog;sprite('dog',d.x,d.y+5,68,49,()=>drawRainDog(g,d));}
- if(petFrame.benchCatActive){const c=petFrame.benchCat;sprite('bench-cat',c.x,c.y+6,62,53,()=>drawRainBenchCat(g,c),c.mode==='home'?31:0);}
- else sprite('bench-cat',222,220,66,34,()=>drawBenchLife(g,t,reduced,petFrame),32);
+ // Sprite sheets are cached by ID. Every pose of this cat must use the
+ // same sheet dimensions, even on a world load during rain.
+ const b=petFrame.benchCat,active=petFrame.benchCatActive;
+ sprite('bench-cat',active?b.x:222,active?b.y+6:220,66,53,()=>{
+  if(active)drawRainBenchCat(g,{...b,jump:0});
+  else drawBenchLife(g,t,reduced,petFrame);
+ },benchCatLift(b));
  for(let i=0;i<2;i++)if(rainFrame.actorStage[i]!=='closed'){
   const a=i===0?player:npc;
   sprite('umbrella'+i,a.x,a.y+10,105,111,()=>drawRainUmbrella(g,{...a,kind:i===1?'teacher':'player'},rainFrame.actorOpen[i],rainFrame.actorStage[i]));

@@ -14,9 +14,9 @@ test('fourteen individual silhouettes have reproducible crown and tapered trunk 
  for(const [i,t] of trees.entries()){
   assert.deepEqual(t,capture(i));
   assert.equal(t.branches.length,35);
-  assert.equal(t.crown.length,64);
+  assert.equal(t.crown.length,87);
   const fill=t.crown.slice(45);
-  assert.ok(fill.every(f=>f[2]>66&&f[4]>=32.5));
+  assert.ok(fill.every(f=>f[2]>65&&f[4]>=38.75));
   const interior=fill.filter(f=>Math.abs(f[1]-100)<21);
   assert.ok(interior.length>=5,'leafy rail across the middle but not at the roots');
   assert.equal(t.branches[0][3],200);

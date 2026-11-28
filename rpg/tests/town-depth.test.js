@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+
 import {createTownDepth} from '../town-depth.js';
 
 test('town depth uses bounded transparent atlases, only rebakes on weather change, preserves world origin',()=>{
@@ -23,4 +25,31 @@ test('town depth uses bounded transparent atlases, only rebakes on weather chang
  assert.equal(layerCalls.length,14);
  assert.deepEqual(layerCalls[0],[canvases[0],0,0]);
  assert.deepEqual(layerCalls[1],[canvases[1],555,35]);
+});
+
+
+import {benchCatLift} from '../town-webgl.js';
+test('bench cat stays seated during stretch and follows its real support through a hop',()=>{
+ const s=benchCatLift({mode:'home',y:211});
+ const g=benchCatLift({mode:'return',y:247});
+ assert.ok(s>31.5&&s<34);
+ assert.ok(g>1&&g<2);
+ assert.equal(benchCatLift({mode:'stretch',y:211}),s);
+ for(const mode of ['jumpUp','jumpDown']){
+  assert.equal(benchCatLift({mode,y:211,jump:0}),s);
+  assert.equal(benchCatLift({mode,y:247,jump:0}),g);
+  const overFrontSlat=benchCatLift({mode,y:223,jump:14*Math.sin(Math.PI/3)});
+  assert.ok(overFrontSlat>31.5);
+  let last=null;
+  for(let i=0;i<=100;i++){
+   const u=i/100,y=211+36*u,h=benchCatLift({mode,y,jump:14*Math.sin(Math.PI*u)});
+   assert.ok(h>=g-1e-9,'must not penetrate even near the landing');
+   if(last!==null)assert.ok(Math.abs(last-h)<.9,'no height snap');
+   last=h;
+  }
+ }
+ const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
+ assert.equal((app.match(/sprite\('bench-cat'/g)||[]).length,1);
+ assert.match(app,/sprite\('bench-cat',active\?b.x:222,active\?b.y\+6:220,66,53/);
+ assert.match(app,/drawRainBenchCat\(g,\{\.\.\.b,jump:0\}\)/);
 });

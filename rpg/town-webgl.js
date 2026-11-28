@@ -1,4 +1,4 @@
-import {addOrchardTree,makeOrchardLeaf,townSunVector} from './town-orchard.js?v=4';
+import {addOrchardTree,makeOrchardLeaf,townSunVector} from './town-orchard.js?v=5';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
    projection, GPU resources and the scenery meshes. */
@@ -11,6 +11,19 @@ const local=(x,z)=>[x-W/2,z-H/2];
 // identity projection. Elevation projects only upward; no yaw across the
 // map, perspective scaling, camera tracking or touch offsets are introduced.
 const VIEW_Z=.88;
+const BENCH_SLAT_CENTER_Y=30, BENCH_SLAT_THICKNESS=3;
+const BENCH_SEAT_TOP=BENCH_SLAT_CENTER_Y+BENCH_SLAT_THICKNESS/2;
+const BENCH_HOME_Z=211, BENCH_LANDING_Z=247;
+const PET_GROUND_TOP=1.4, PET_CONTACT_OFFSET=.8;
+// A billboard references the supporting surface before the painted pose.
+// Interpolate support across the old 2D path; put its hop in world height
+// exactly once so the bench can occlude correctly without hiding the cat.
+export function benchCatLift({mode,y,jump=0}){
+ if(mode==='home'||mode==='stretch')return BENCH_SEAT_TOP+PET_CONTACT_OFFSET;
+ if(mode!=='jumpUp'&&mode!=='jumpDown')return PET_GROUND_TOP;
+ const u=Math.max(0,Math.min(1,(y-BENCH_HOME_Z)/(BENCH_LANDING_Z-BENCH_HOME_Z)));
+ return (BENCH_SEAT_TOP+PET_CONTACT_OFFSET)*(1-u)+PET_GROUND_TOP*u+Math.max(0,jump)/VIEW_Z;
+}
 export function makeTownCamera(T){
  const camera=new T.OrthographicCamera(-W/2,W/2,H/2,-H/2,2,4200);
  camera.position.set(0,1000,1000*VIEW_Z);camera.lookAt(0,0,0);camera.updateMatrixWorld();
@@ -200,7 +213,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  // Bare grass and genuine cast shadows under the wooden bench.
  const wood='#ad8150',edge='#735b41',warm='#d2aa69',cream='#ede0ae';
  for(const x of [190,309]){box(x,15,221,5,30,5,edge);box(x,29,197,5,58,5,edge);}
- for(const z of [205,211,217,223])box(250,30,z,135,3,4,z%2?wood:warm);
+ for(const z of [205,BENCH_HOME_Z,217,223])box(250,BENCH_SLAT_CENTER_Y,z,135,BENCH_SLAT_THICKNESS,4,z%2?wood:warm);
  for(const y of [38,47,55])box(250,y,196,135,5,4,wood);
  function table(x,z,width=64,depth=32){
   for(const dx of [-width*.39,width*.39])for(const dz of [-depth*.36,depth*.36])box(x+dx,14,z+dz,4,28,4,edge);
@@ -222,7 +235,13 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  for(const [a,z,count] of [[87,49,5],[238,39,4],[391,50,5],[563,40,5],[717,46,6],[860,48,5]]){
   for(let i=0;i<count;i++){
    const x=a+(i-(count-1)/2)*20+5*rng(),d=z+(rng()-.5)*20,h=11+rng()*9;
-   sphere(x,9,d,13+rng()*11,h,12+rng()*7,['#a6b78b','#96ac86','#9aaa82','#adbd8f'][i%4],.08,rng());
+   const width=13+rng()*11,depth=12+rng()*7,turn=rng();
+   const greens=['#809754','#7c925b','#8ba760','#94a365'];
+   for(let layer=0;layer<3;layer++){
+    const a=turn*6.283+layer*2.1;
+    shape('orchard-leaf',x+Math.sin(a)*6,8+h*.58+layer*2,d+Math.cos(a)*depth*.30,
+     width*(1.19-layer*.09),h*(1.32-layer*.10),1,greens[(i+layer)%4],-.32-layer*.34,a,.32*Math.cos(a));
+   }
   }
  }
  for(const [i,[x,y,s]] of trees.entries()){
@@ -325,6 +344,16 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  for(const [x,z,green]of[[350,252,'#94a879'],[355,253,'#7e9c68'],[364,249,'#a2ae75'],[329,455,'#88a472'],[337,460,'#a1b179'],[698,479,'#8ea779'],[706,483,'#a6b47c'],[710,476,'#859d6a'],[912,511,'#91a573'],[920,516,'#859c6d']]){
   sphere(x,3.8,z,7+rng()*5,5+rng()*2,7,green,.16,rng());
   for(let j=0;j<3;j++){const xx=x+j*4-3,zz=z+8+j%2;shape('cone',xx,2.2,zz,1.7,5.5,1.6,'#809f6b');if(j%2===0)sphere(xx,4.4,zz,1.6,1.4,1.4,'#ecdb9f');}
+ }
+ // Fresh growth at the edges only; flowers, route and plot stay readable.
+ for(const [x,z,hue,s] of [[35,381,0,1],[257,378,1,.83],[274,389,0,.74],[718,451,1,.90],
+  [711,466,2,.79],[908,443,0,.72],[922,467,1,1],[764,253,2,.88],[786,238,0,.70]]){
+  const colours=['#638344','#77974e','#87a958'];
+  for(let j=0;j<4;j++){
+   const theta=j*1.73+z*.05,width=(10+j%2*3)*s;
+   shape('orchard-leaf',x+Math.cos(theta)*6*s,(6+j%3*2)*s,z+Math.sin(theta)*5*s,
+    width,width*1.20,1,colours[(hue+j)%3],-.34-j*.17,theta,.33*Math.sin(theta));
+  }
  }
  // Wooden stand is another readable full-volume landmark.
  box(stand.x,22,stand.y,4,42,4,edge);
