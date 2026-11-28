@@ -1,4 +1,4 @@
-import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,createTownFramePacer,makeTownWebGL} from './town-webgl.js?v=detail-044';
+import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,createTownFramePacer,makeTownWebGL} from './town-webgl.js?v=shore-045';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';

@@ -5,3 +5,15 @@ test('curtain relief is thick finite bounded geometry with no cast or received s
 test('sculpture uses existing material cache and leaves aperture, lights, animation and fallback outside builder',()=>{const s=app.slice(app.indexOf('const curtainTop='),app.indexOf('// SVG has no depth buffer:'));assert.ok(!s.includes('new T.MeshStandardMaterial'));assert.ok(!s.includes('Texture'));assert.ok(!s.includes('requestAnimationFrame'));assert.ok(s.includes("tie.name='curtain-tieback'"));assert.ok(app.includes("if(typeof software!=='undefined'&&software)windowGroup.traverse"));});
 
 test('gathered cloth meets the outer rim at tie height while leaving the central glass clear',()=>{const group=build();for(const side of[-1,1]){const cloth=group.getObjectByName('curtain-pulled-back-'+side),p=cloth.geometry.attributes.position;let edge=Infinity;for(let i=0;i<p.count;i++)if(Math.abs(p.getY(i)-.67)<.025)edge=Math.min(edge,Math.abs(p.getX(i)));assert.ok(edge>.80&&edge<.88,`tie edge ${edge} meets .87 outer rim without crossing .76 glass`);}});
+
+test('cloth warp spans left and right symmetrically, keeping the hems below window glass',()=>{
+ const group=build();
+ for(const side of [-1,1]){
+  const cloth=group.getObjectByName('curtain-pulled-back-'+side);
+  const uv=cloth.geometry.attributes.uv,p=cloth.geometry.attributes.position;
+  assert.equal(uv.count,p.count);
+  for(let i=0;i<uv.count;i++)assert.ok(uv.getX(i)>.05&&uv.getX(i)<.95&&uv.getY(i)>.02&&uv.getY(i)<.98);
+  const bottom=Array.from({length:p.count},(_,i)=>i).filter(i=>p.getY(i)<.19);
+  assert.ok(bottom.length>0&&bottom.every(i=>uv.getY(i)<.09));
+ }
+});

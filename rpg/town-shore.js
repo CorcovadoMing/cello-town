@@ -75,6 +75,37 @@ function shorelineContact(T,scene,W,H){
    if(i%7===0&&offset>1)line(u-s*.5,v-r*.38,u+s*.62,v-r*.29,'#e0d6ad77',.22);
   }
  }
+ // A thin changing shelf is visible under the clear water between the
+ // larger stones. Broad, overlapping clay tongues follow a single edge
+ // tangent; shaded outer lips give way to silt, not a bright outline.
+ // Baked into the existing decal; leave the open water and fish untouched.
+ for(const [edge,along,span,reach,skew] of [
+  [3,.56,9,6.5,-.16],[5,.36,10,7,.11],[7,.48,14,9,-.12],
+  [10,.46,10,6.4,.23],[12,.68,10,8.2,.12],[14,.43,12,8,-.15],
+  [17,.50,11,7.8,-.18],[19,.42,8,6.5,.20]
+ ]){
+  const [x,z,tx,tz,nx,nz,len]=edges[edge];
+  const u=x+tx*len*along,v=z+tz*len*along;
+  g.save();g.transform(tx,tz,nx,nz,u,v);
+  const wash=g.createRadialGradient(-span*.20,reach*.19,.5,0,reach*.22,span);
+  wash.addColorStop(0,'#c3a7789c');wash.addColorStop(.45,'#9c8c627a');wash.addColorStop(.76,'#77805745');wash.addColorStop(1,'#74805400');
+  g.fillStyle=wash;
+  g.beginPath();g.moveTo(-span,-1.4);
+  g.bezierCurveTo(-span*.74,reach*.74,-span*.32,reach*.40,span*skew,reach);
+  g.bezierCurveTo(span*.50,reach*.87,span*.79,reach*.45,span,-1.2);
+  g.quadraticCurveTo(0,-3.3,-span,-1.4);g.fill();
+  for(let j=0;j<4;j++){
+   const k=(j-1.6)*span*.28,xx=k+.28*Math.cos(edge+j*4),yy=1.4+(j%3)*1.62;
+   const l=1.05+(j%3)*.63,w=.55+j*.095;
+   // Submerged slate with a narrow warm plane, shaded on its lower edge.
+   g.beginPath();g.moveTo(xx-l,yy);g.lineTo(xx-l*.46,yy-w*.78);
+   g.lineTo(xx+l*.57,yy-w);g.lineTo(xx+l,yy+w*.44);
+   g.lineTo(xx+l*.33,yy+w);g.lineTo(xx-l*.64,yy+w*.63);g.closePath();
+   g.fillStyle=['#69705e91','#7d816995','#8a826997','#74796a90'][(edge+j)%4];g.fill();
+   line(xx-l*.45,yy-w*.67,xx+l*.53,yy-w*.83,'#c6b8907c',.31);
+  }
+  g.restore();
+ }
  // Actual reed clusters get irregular roots, plant shade and small litter.
  for(const [x,z,ang] of [[47,417,.16],[18,432,-1.12],[208,530,-1.7],[253,443,2.4],
   [249,488,2.91],[252,510,3.42],[118,402,1.6]]){
@@ -133,6 +164,15 @@ export function addShoreCraft({T,scene,W,H,trees,room,shape}){
    if(i%3===1)shape('sphere',dx,1.28,dz,3+rand()*5,.30+rand()*.36,1.6+rand()*4,bank[i%bank.length],0,rand()*TAU);
    else rock(dx,dz,.72+rand()*.74);
   }
+ }
+ // A few slipped pieces of shale reveal the sediment between the
+ // round bank stones. Wide, thin profiles and a dark sunk lower stratum
+ // read as ledges, not another scatter of boulders. Use the existing batch.
+ for(const [x,z,w,d,yaw] of [[65,417,8.7,3.1,.07],[126,407,7.6,3.4,-.14],
+  [187,410,8.6,3.8,-.29],[250,486,8.8,3.4,1.06],[226,519,7.1,3.5,.65]]){
+  shape('sphere',x,1.64,z,w,1.65,d,'#596354',.025,yaw,.024);
+  shape('sphere',x-.7,2.78,z-.55,w*.86,1.15,d*.88,'#9a9879',.025,yaw,.024);
+  shape('sphere',x-1.6,3.12,z-.85,w*.48,.48,d*.49,'#b5a582',.026,yaw,.020);
  }
  // An old, tiny angler's step projects from the reeds, with a real gap
  // underneath it and metal fasteners. It is entirely inside the pond blocker.

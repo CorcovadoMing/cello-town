@@ -3,7 +3,7 @@ import {makeGroundRain} from './town-ground-rain.js?v=1';
 import {makeVerge} from './town-verge.js?v=2';
 import {drawLoungeBook,loungePageTurn} from './lounge-art.js?v=reader-041';
 import {makeCountryside} from './town-countryside.js?v=canopy-044';
-import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=woodland-037';
+import {addShoreCraft,OPEN_POND_BANK,OPEN_POND_UV} from './town-shore.js?v=silt-shelf-045';
 import {breezeAt,TOWN_WIND,windLeafAt,windLeafFloatAt,makeLivingGrass,makePondHorizon,POND_SHOT,LAWN_DRIFTS,lawnAnchor} from './town-breeze.js?v=wind-040';
 import {addOrchardTree,makeOrchardLeaf,makeOrchardBark,townSunVector} from './town-orchard.js?v=woodland-037';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions

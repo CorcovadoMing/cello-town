@@ -244,6 +244,27 @@ function roomFinish(o,kind,repeatX=1,repeatY=1){
   if(kind==='oak'||kind==='walnut'){
    for(let j=0;j<25;j++){const y=rand()*128;g.strokeStyle='rgba(91,62,33,'+(.03+rand()*.09)+')';g.lineWidth=.5+rand()*.8;g.beginPath();g.moveTo(0,y);for(let x=0;x<=128;x+=8)g.lineTo(x,y+Math.sin(x*.045+j)*(.6+rand()*1.8));g.stroke();}
    for(let j=0;j<2;j++){g.strokeStyle='rgba(105,71,38,.10)';g.beginPath();g.ellipse(25+j*72,32+j*57,13,2.8,0,0,Math.PI*2);g.stroke();}
+  }else if(kind==='linen-curtain'){
+   // Irregular warm flax threads, window-light variation, then the actual
+   // doubled cloth hem. Distinct warp and weft keep it from reading as wood.
+   const wash=g.createLinearGradient(0,0,0,128);
+   [[0,'#e4dccd'],[.18,'#f8f2e4'],[.70,'#f5efdf'],[.89,'#e6d9c1'],[1,'#d1bfa3']]
+    .forEach(([at,c])=>wash.addColorStop(at,c));
+   g.fillStyle=wash;g.fillRect(0,0,128,128);
+   for(let i=0;i<110;i++){
+    const x=rand()*128;g.fillStyle=i%5?'#6e5b3d12':'#ffffff40';
+    g.fillRect(x,rand()*2,.44+rand()*.98,128);
+   }
+   for(let i=0;i<105;i++){
+    const y=rand()*128;g.fillStyle=i%3?'#fff9e833':'#715e3e14';
+    g.fillRect(rand()*3,y,128,.35+rand()*.62);
+   }
+   // Stitches are darker than cloth fibers but not outré white outlines.
+   g.fillStyle='#8e755836';g.fillRect(0,115.3,128,.85);
+   g.fillStyle='#fff8e5a8';g.fillRect(0,117,128,.8);
+   g.fillStyle='#7c695247';g.fillRect(0,121.2,128,.95);
+   g.strokeStyle='#fff4dba5';g.lineWidth=.9;g.setLineDash([1.6,2.3]);
+   g.beginPath();g.moveTo(0,122.2);g.lineTo(128,122.2);g.stroke();g.setLineDash([]);
   }else if(kind==='linen'||kind==='woven'){
    for(let i=0;i<128;i+=4){g.fillStyle='rgba(98,81,59,.055)';g.fillRect(i,0,1,128);g.fillRect(0,i,128,1);}
    if(kind==='woven')for(let y=0;y<128;y+=16)for(let x=0;x<128;x+=16){g.fillStyle='rgba(130,110,76,.06)';g.fillRect(x+(y%32?8:0),y,7,7);}
@@ -448,7 +469,14 @@ const curtainRod=rod([-curtainOuter-.06,curtainTop,.19],[curtainOuter+.06,curtai
 curtains.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;}});
 curtains.traverse(o=>{if(o.isMesh){
  if(o.name.startsWith('curtain-pulled')||o.name.startsWith('curtain-sculpted')){
-  const a=o.geometry.attributes.position,uv=[];for(let i=0;i<a.count;i++)uv.push(a.getX(i)*2,a.getY(i)*2);o.geometry.setAttribute('uv',new T.Float32BufferAttribute(uv,2));roomFinish(o,'linen');
+  const a=o.geometry.attributes.position,uv=[];
+  for(let i=0;i<a.count;i++){
+   const y=a.getY(i),x=Math.abs(a.getX(i));
+   const u=.062+T.MathUtils.clamp((x-.56)/.66,0,1)*.876;
+   const v=.026+T.MathUtils.clamp((y-curtainBottom+.008)/(curtainTop-curtainBottom+.027),0,1)*.947;
+   uv.push(u,v);
+  }
+  o.geometry.setAttribute('uv',new T.Float32BufferAttribute(uv,2));roomFinish(o,'linen-curtain');
  }
 }});
 // SVG has no depth buffer: keep this backdrop below every foreground object.
