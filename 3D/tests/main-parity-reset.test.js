@@ -9,6 +9,7 @@ function normalized(s){
   .replace("positionManuscript();if(reading&&reading.phase!=='walking'){if(!software||t-lastDraw>100){renderer.render(scene,camera);lastDraw=t;}return;}", 'positionManuscript();')
   .replace(/  \/\/ BEGIN INTERIOR MATERIAL SWATCHES[\s\S]*?  \/\/ END INTERIOR MATERIAL SWATCHES\n/,'')
   .replace(/\/\/ BEGIN INTERIOR SURFACE FINISH[\s\S]*? \/\/ END INTERIOR SURFACE FINISH\n/,'')
+  .replace("roomFinish(rug,'rug-medallion');","roomFinish(rug,'woven',5,5);")
   .replace('tickRoomCamera(t,dt);positionManuscript();roomCat.animateCat','tickRoomCamera(t,dt);roomCat.animateCat');
  return intact.replace(/\.js\?v=[^'"\s]+/g,'.js').replace(/KEY=\/[^;]+;/g,m=>m.includes('3d-avatar')?"KEY='cello-town-3d-avatar-v1';":"KEY='cello-town-rpg-v1';");}
 // Preserve the main parity fixture: allow only the exact tested experimental
@@ -19,7 +20,7 @@ const outdoorVisualHashes={
  'rpg/town-breeze.js':'8c6e5009f3a12eb2089c23c6e78cb958a5f041af78682837cb4716557490d1d4',
  'rpg/style.css':'5ead5010e045d1bdc85ec3e0c5c5b3a29fa5063720582676e6e94c7999c101ee',
  'rpg/app.js':'13cb53a1b4680c76d062ab3422f4984d1230f41f12f81e80d6135c5c8e3d12fc',
- 'rpg/index.html':'c63ebbbe9ce95072e2f73fbba55c7ac0b10b7f2b6f16193fdef2c27c928aa49a',
+ 'rpg/index.html':'f7f938780ff654714f4a9da8e396f0831f323cc8b329a389c6a5aac096df762b',
  'rpg/town-depth.js':'3b082ca07119d517e0b747dd8ba8433c3aed0aa14bd18d07b2df6451c8efc7af',
  'rpg/music-room-art.js':'00011725eb971e6e7e7811f0898983c5c798c7808e47f7e9af9e31d25affbb6b',
  'rpg/town-webgl.js':'cd72f22f057af8a5bdc18f5ca8d62e3b40f4deaf873d08216ae6e35e243662e4',

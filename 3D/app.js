@@ -150,6 +150,36 @@ function roomFinish(o,kind,repeatX=1,repeatY=1){
     const x=rand()*128,y=rand()*128;g.strokeStyle=i%3?'#a7967911':'#fffdf33b';g.lineWidth=.55;
     g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+9,y+(rand()-.5)*5,x+16+rand()*9,y-2);g.stroke();
    }
+  }else if(kind==='rug-medallion'){
+   // One authored textile for the whole ellipse. Ink-dyed yarn feels
+   // softer than a repeated grid; keep the center quiet for the avatars.
+   const size=256,mid=size/2;c.width=c.height=size;
+   const wash=g.createRadialGradient(mid,mid,15,mid,mid,128);
+   [[0,'#f7edcc'],[.46,'#eee7c6'],[.67,'#d6d4ac'],[.8,'#b4bd93'],[1,'#969a71']].forEach(([at,col])=>wash.addColorStop(at,col));
+   g.fillStyle=wash;g.fillRect(0,0,size,size);
+   const ringYarn=(radius,width,color)=>{
+    g.beginPath();g.arc(mid,mid,radius,0,Math.PI*2);g.lineWidth=width;g.strokeStyle=color;g.stroke();
+   };
+   ringYarn(121,3,'#e4dbb5');ringYarn(113,2,'#757d59');ringYarn(102,1.3,'#ece3ba');
+   ringYarn(82,1.2,'#969572');ringYarn(51,1,'#b2a681');
+   // Pair opposing leaf stitches without noisy one-pixel checkerboard tiles.
+   for(let i=0;i<24;i++){
+    g.save();g.translate(mid,mid);g.rotate(i*Math.PI/12);
+    g.fillStyle=i%3===0?'#b28b67':'#d9cfab';
+    g.beginPath();g.moveTo(-4,102);g.quadraticCurveTo(1,106,4,110);g.quadraticCurveTo(-1,111,-4,102);g.fill();
+    g.restore();
+   }
+   for(let i=0;i<8;i++){
+    g.save();g.translate(mid,mid);g.rotate(i*Math.PI/4);
+    g.strokeStyle='#ae946e';g.lineWidth=1.2;
+    g.beginPath();g.moveTo(0,25);g.quadraticCurveTo(-11,39,0,60);g.quadraticCurveTo(11,39,0,25);g.stroke();
+    g.restore();
+   }
+   ringYarn(16,1.7,'#a48a68');
+   for(let i=0;i<2200;i++){
+    const x=rand()*size,y=rand()*size;
+    g.fillStyle=i%3?'#5446380e':'#fffae72b';g.fillRect(x,y,.5+rand()*3,.5+rand()*.7);
+   }
   }else if(kind==='soft-brass'){
    const sheen=g.createLinearGradient(0,0,128,0);
    [[0,'#c4a979'],[.21,'#eadbbe'],[.39,'#fbf4dc'],[.57,'#e4d0a7'],[.81,'#c7af83'],[1,'#f1e6cd']].forEach(([x,c])=>sheen.addColorStop(x,c));
@@ -408,7 +438,7 @@ box(0,.685,.217,.73,.105,.018,'#bea07d',vanity);
 box(0,.69,.232,.10,.018,.018,'#cbb17b',vanity);
 vanity.traverse(o=>{o.userData.station='vanity';if(o.isMesh&&o.geometry.type==='BoxGeometry')roomFinish(o,'walnut',1,1);});
 // Rug center and stitched border.
-const rug=mesh(new T.RingGeometry(0,1.6,48,8),'#c4c7a4',0,.045,.45);rug.rotation.x=-Math.PI/2;rug.scale.y=.72;const rugLine=ring(0,.065,.45,1.45,.018,'#ece8cb');rugLine.rotation.x=Math.PI/2;rugLine.scale.y=.72;roomFinish(rug,'woven',5,5);
+const rug=mesh(new T.RingGeometry(0,1.6,48,8),'#c4c7a4',0,.045,.45);rug.rotation.x=-Math.PI/2;rug.scale.y=.72;const rugLine=ring(0,.065,.45,1.45,.018,'#ece8cb');rugLine.rotation.x=Math.PI/2;rugLine.scale.y=.72;roomFinish(rug,'rug-medallion');
 // Nested stitched border, with a muted sage edge rather than a shiny disc.
 const rugEdge=ring(0,.061,.45,1.56,.012,'#a3ad8e');rugEdge.rotation.x=Math.PI/2;rugEdge.scale.y=.72;rugEdge.castShadow=false;
 const stitches=[];for(let i=0;i<24;i++){const a=i/24*Math.PI*2;const stitch=box(Math.cos(a)*1.49,.068,.45+Math.sin(a)*1.49*.72,.035,.003,.012,'#e4dfc2');stitch.rotation.y=-a;stitch.castShadow=false;stitches.push(stitch);}batchRoomDetails(stitches,'rug-hand-stitching');
