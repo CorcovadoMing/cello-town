@@ -1,4 +1,4 @@
-import {makeTownWebGL} from './town-webgl.js?v=world-3d-004-landscape';
+import {makeTownWebGL} from './town-webgl.js?v=world-3d-005-wet-smoothing';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';

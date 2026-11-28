@@ -164,7 +164,12 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   const paper=document.createElement('canvas');paper.width=w;paper.height=d;
   const raw=document.createElement('canvas');raw.width=w;raw.height=d;
   const ctx=raw.getContext('2d'),soft=paper.getContext('2d'),map=new T.CanvasTexture(paper);
-  soft.filter='blur(1.4px)';
+  // Canvas filters are optional. Bilinear resampling of the completed
+  // mask smooths the cell edges on both modern and older Canvas engines.
+  const thumb=document.createElement('canvas');
+  thumb.width=Math.ceil(w/3);thumb.height=Math.ceil(d/3);
+  const down=thumb.getContext('2d');
+  down.imageSmoothingEnabled=soft.imageSmoothingEnabled=true;
   map.colorSpace=T.SRGBColorSpace;map.generateMipmaps=false;
   map.minFilter=T.LinearFilter;map.magFilter=T.LinearFilter;
   const material=new T.MeshBasicMaterial({map,transparent:true,depthWrite:false,alphaTest:.002});
@@ -172,20 +177,21 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   const [dx,dz]=local(x+w/2,z+d/2);
   mesh.rotation.x=-Math.PI/2;mesh.position.set(dx,y,dz);mesh.visible=false;
   scene.add(mesh);
-  return {kind,x,z,w,d,ctx,soft,raw,map,mesh};
+  return {kind,x,z,w,d,ctx,soft,raw,down,thumb,map,mesh};
  }
  const wetLayers=[wetLayer('road',148,216,664,344,4.63),wetLayer('bed',742,410,158,97,9.75)];
  let previousMoisture=null;
  function updateWetLayers(moisture){
   if(moisture===previousMoisture)return;
   previousMoisture=moisture;
-  for(const {kind,x,z,w,d,ctx,soft,raw,map,mesh} of wetLayers){
+  for(const {kind,x,z,w,d,ctx,soft,raw,down,thumb,map,mesh} of wetLayers){
    mesh.visible=moisture.some(c=>(c.kind===kind||(kind==='road'&&c.kind==='verge'))&&c.level>0);
    if(!mesh.visible)continue;
    ctx.clearRect(0,0,w,d);
    ctx.save();ctx.translate(-x,-z);drawWetSoil(ctx,moisture,kind);ctx.restore();
-   // Blur once per layer after compositing, not once per potentially wet cell.
-   soft.clearRect(0,0,w,d);soft.drawImage(raw,0,0);map.needsUpdate=true;
+   down.clearRect(0,0,thumb.width,thumb.height);
+   down.drawImage(raw,0,0,thumb.width,thumb.height);
+   soft.clearRect(0,0,w,d);soft.drawImage(thumb,0,0,w,d);map.needsUpdate=true;
   }
  }
  // Bare grass and genuine cast shadows under the wooden bench.

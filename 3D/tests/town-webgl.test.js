@@ -56,6 +56,9 @@ test('outdoor WebGL applies the shared road, verge and bed moisture on every wea
  assert.match(webgl,/wetLayer\('road'[\s\S]+wetLayer\('bed'/);
  assert.match(webgl,/kind==='road'&&c\.kind==='verge'/);
  assert.match(webgl,/drawWetSoil\(ctx,moisture,kind\)/);
+ assert.match(webgl,/down\.drawImage\(raw,0,0,thumb.width,thumb.height\)/);
+ assert.match(webgl,/soft\.drawImage\(thumb,0,0,w,d\)/);
+ assert.doesNotMatch(webgl,/soft\.filter/);
  assert.match(webgl,/updateWetLayers\(moisture\);\s*renderer\.render/);
  assert.doesNotMatch(webgl,/puddles\.forEach|render\(weather\)\{/);
 });
