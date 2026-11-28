@@ -63,10 +63,10 @@ export function makeOrchardSkin(T,needle=false){
  const g=c.getContext('2d');g.fillStyle='#d5d7cc';g.fillRect(0,0,256,256);
  let seed=needle?7211:4913;
  const next=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
- const patches=needle?42:48;
+ const patches=needle?53:62;
  for(let j=0;j<patches;j++){
   const x=next()*256,y=next()*256,d=9+next()*37,angle=needle?2.7+next()*.94:next()*6.283;
-  const tone=149+Math.round(next()*88);
+  const tone=135+Math.round(next()*105);
   // Wrap paint across the single UV seam rather than repeating a grid.
   for(const offset of [-256,0,256]){
    if(x+offset+d*1.8<0||x+offset-d*1.8>256)continue;
@@ -77,8 +77,8 @@ export function makeOrchardSkin(T,needle=false){
   }
   for(let k=0;k<12;k++){
    const a=next()*6.283,r=next()*d*.80,xx=x+Math.cos(a)*r,yy=y+Math.sin(a)*r;
-   const len=(needle?4:6)+next()*(needle?8:9),wide=len*(needle?.17:.43);
-   const shade=Math.min(251,tone+Math.round(next()*31));
+   const len=(needle?4:6)+next()*(needle?8:9),wide=len*(needle?.19:.46);
+   const shade=Math.max(106,Math.min(253,tone+Math.round(next()*64)-15));
    for(const offset of [-256,0,256])if(xx+offset>-15&&xx+offset<271)
     leaflet(g,xx+offset,yy,angle+(next()-.5)*(needle?1.30:3.4),len,wide,shade);
   }
@@ -144,9 +144,9 @@ export function addOrchardTree({shape},x,z,scale,index){
    const y=height-54+k*13+(k===3?4:0);
    const turn=index*.61+k*.73;
    emit('orchard-fir',0,y,0,width,tierH,width*.90,firPalette[k],0,turn);
-   for(let j=0;j<9;j++){
-    const theta=j*Math.PI*2/9+turn,rad=width*(.33+next()*.054);
-    emit('orchard-leaf',Math.sin(theta)*rad,y-8+next()*4,Math.cos(theta)*rad,11+next()*7,10+next()*6,1,
+   for(let j=0;j<14;j++){
+    const theta=j*Math.PI*2/14+turn,rad=width*(.355+next()*.067);
+    emit('orchard-leaf',Math.sin(theta)*rad,y-8+next()*5,Math.cos(theta)*rad,11+next()*7,10+next()*6,1,
      firPalette[Math.min(3,k+(j%3===0?1:0))],.56+next()*.32,Math.sin(theta)*.49,.11*Math.sin(theta));
    }
   }
@@ -160,7 +160,7 @@ export function addOrchardTree({shape},x,z,scale,index){
  }
  const cy=trunk+25,turn=index*.63;
  const kind=w>=67?'orchard-wide':'orchard-round';
- emit(kind,0,cy,0,w,h,d,dark,0,turn);
+ emit(kind,0,cy,0,w*.92,h*.94,d*.94,dark,0,turn);
  for(let j=0;j<42;j++){
   const theta=j*2.399963+turn,ny=1-2*(j+.5)/42,ring=Math.sqrt(1-ny*ny);
   const a=Math.sin(theta)*ring*w*.487,c=Math.cos(theta)*ring*d*.51;
@@ -169,6 +169,18 @@ export function addOrchardTree({shape},x,z,scale,index){
   const width=12.5+next()*6;
   emit('orchard-leaf',a*shoulder,b,c*shoulder,width,width*(.72+next()*.22),1,j%5===0||ny>.32?light:dark,
    .30+(next()-.5)*.40,Math.sin(theta)*.52,(next()-.5)*.58);
+ }
+ // Front-facing leaves are planted along the bough surface, not formed
+ // from vertical strips around the trunk. Vary light exposure by sector.
+ for(let j=0;j<26;j++){
+  const a=j*2.399963+turn,r=Math.sqrt((j+.4)/26)*.88;
+  const nx=Math.cos(a)*r,ny=Math.sin(a)*r;
+  const surface=Math.sqrt(Math.max(.09,1-nx*nx-ny*ny));
+  const fy=cy+ny*h*.44,fx=nx*w*.49,fz=surface*d*.47+4.2;
+  const width=9+next()*10;
+  const tint=j%7===0||ny>.14&&nx<.25?light:dark;
+  emit('orchard-leaf',fx,fy,fz,width,width*(.68+next()*.23),1,tint,
+   .34-ny*.29+(next()-.5)*.18,-nx*.58+(next()-.5)*.29,(next()-.5)*.85);
  }
 }
 // Same wall clock and 12-minute loop already used by the weather selector;

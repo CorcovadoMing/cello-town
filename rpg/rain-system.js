@@ -26,15 +26,15 @@ export function createRainSystem({canopies=[],excludeRects=[],seed=0}={}){
    exposure=Math.min(exposure,t*t*(3-2*t));
   }
   return exposure;
- },actorOpen:[0,0],actorStage:['closed','closed']};
+ },actorOpen:[0,0],actorGrip:[0,0],actorStage:['closed','closed']};
  let onset=null,last=null;
  function reset(d,born){d.born=born;d.phase='rest';const n=Math.imul(d.id+1,73856093)^Math.imul(d.cycle+1,19349663)^(seed>>>0);d.landingX=22+rainHash(n)%916;d.landingY=150+rainHash(n^0x9e3779b9)%410;d.depth=d.landingY<300?0:d.landingY<400?1:2;d.fallDuration=[650,580,510][d.depth];d.length=[12,15,18][d.depth];d.width=[1,1.3,1.6][d.depth];d.opacity=[.43,.54,.66][d.depth];d.x=d.landingX;d.y=-24;d.excluded=excludeRects.some(r=>d.x>=r.x&&d.x<=r.x+r.w&&d.landingY>=r.y&&d.landingY<=r.y+r.h);}
  return {sample(time,key,actors=[],reduced=false){
   contacts.length=0;umbrellas.length=0;
-  if(key!=='rain'){onset=null;last=time;frame.actorOpen.fill(0);frame.actorStage.fill('closed');for(const d of drops)d.phase='rest';return frame;}
+  if(key!=='rain'){onset=null;last=time;frame.actorOpen.fill(0);frame.actorGrip.fill(0);frame.actorStage.fill('closed');for(const d of drops)d.phase='rest';return frame;}
   if(onset===null){onset=time;for(const d of drops){d.cycle=0;reset(d,time+d.id*7);}}
   const age=time-onset;
-  for(let i=0;i<2;i++){const delay=i===0?450:1450;const q=reduced?1:Math.max(0,Math.min(1,(age-delay)/420));frame.actorOpen[i]=q;frame.actorStage[i]=q>=1?'open':age>=delay?'opening':age>=delay-300?'prepare':'closed';if(actors[i]&&q>0)umbrellas.push(umbrellaPose(actors[i],q));}
+  for(let i=0;i<2;i++){const delay=i===0?450:1450;const q=reduced?1:Math.max(0,Math.min(1,(age-delay)/420));frame.actorOpen[i]=q;frame.actorGrip[i]=reduced?1:Math.max(0,Math.min(1,(age-delay+300)/300));frame.actorStage[i]=q>=1?'open':age>=delay?'opening':age>=delay-300?'prepare':'closed';if(actors[i]&&q>0)umbrellas.push(umbrellaPose(actors[i],q));}
   if(reduced){for(const d of drops)d.phase='rest';last=time;return frame;}
   const dt=last===null?0:time-last;
   for(const d of drops){

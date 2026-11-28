@@ -41,7 +41,7 @@ export function createTeacher(){
 // A 16-world-pixel cycle: each planted shoe counter-translates eight pixels
 // during its stance half, while the opposite foot swings clear of the ground.
 export function teacherFoot(phase,side=true){const t=((phase/(Math.PI*2))%1+1)%1;return {travel:(t<.5?1-4*t:-1+4*(t-.5))*(side?3.2:3.63636),lift:t<.5?0:Math.sin((t-.5)*Math.PI*2)*2.4};}
-export function drawTeacher(g,{x,y,t=0,walking=false,facing='front',stride=0,observing=false,reduced=false}){
+export function drawTeacher(g,{x,y,t=0,walking=false,facing='front',stride=0,observing=false,reduced=false,holdingUmbrella=false}){
  const hair='#694b43',edge='#493e43',dress='#b7809e',shade='#936681',skin='#f5cfa7';
  const active=walking&&!reduced,swing=active?Math.sin(stride)*2.2:0,blink=!reduced&&!walking&&(t+1317)%5270>5110;
  g.save();g.translate(x,y);g.scale(1.25,1.10);g.fillStyle='#294a3530';g.fillRect(-11,0,22,5);
@@ -54,13 +54,13 @@ export function drawTeacher(g,{x,y,t=0,walking=false,facing='front',stride=0,obs
   foot(0,-4,shade);
   p(-8,-25,15,9,dress);p(-7,-17,14,9,shade);p(-8,-8,17,4,dress);
   foot(1,1,skin);
-  p(-3,-23-swing*.45,5,7,'#d39bb5');p(-2,-16-swing*.45,3,5,skin);
+  p(-3,-23-swing*.45,5,7,'#d39bb5');if(!holdingUmbrella)p(-2,-16-swing*.45,3,5,skin);
   p(4,-25,3,3,'#fff1d9');p(6,-21,1,3,'#ead292');p(-7,-15,14,2,'#e3bf97');
   p(-7,-5,4,2,'#f6dfcd');p(0,-5,4,2,'#f6dfcd');p(5,-5,3,2,'#f6dfcd');
  }else{
   foot(0,-6,skin);foot(1,3,skin);
   p(-10,-25,20,8,dress);p(-12,-23+swing*.45,4,7,'#d39bb5');p(8,-23-swing*.45,4,7,'#d39bb5');
-  p(-12,-17+swing*.45,3,6,skin);p(9,-17-swing*.45,3,6,skin);p(-7,-17,14,4,shade);
+  if(!holdingUmbrella||!back)p(-12,-17+swing*.45,3,6,skin);if(!holdingUmbrella||back)p(9,-17-swing*.45,3,6,skin);p(-7,-17,14,4,shade);
   p(-8,-13,16,5,dress);p(-10,-8,20,4,dress);p(-9,-5,5,2,'#f6dfcd');p(-2,-5,5,2,'#f6dfcd');p(5,-5,4,2,'#f6dfcd');
   if(!back){p(-5,-25,4,3,'#fff1d9');p(1,-25,4,3,'#fff1d9');p(-1,-21,2,3,'#ead292');}
   p(-7,-15,14,2,'#e3bf97');if(back){p(-1,-14,2,6,shade);p(-3,-15,6,2,'#f0cda0');}

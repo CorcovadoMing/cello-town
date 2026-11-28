@@ -26,6 +26,8 @@ test('fourteen individual silhouettes have reproducible crown and tapered trunk 
    assert.ok(core[0][4]>core[0][5],'upright broadleaf wider than tall');
    assert.equal(t.branches.length,14);
   }
+  const leaves=t.crown.filter(row=>row[0]==='orchard-leaf');
+  if(orchardFamily(i)==='broadleaf')assert.ok(leaves.filter(row=>row[3]>205).length>=25,'visible side retains layered detail');
   assert.ok(t.crown.every(f=>f.slice(1,7).every(Number.isFinite)&&f[2]>36));
  }
 });

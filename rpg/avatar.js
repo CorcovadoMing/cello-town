@@ -8,7 +8,7 @@ export function facingForMotion(previous='front',dx=0,dy=0){
  return horizontal?(dx<0?'left':'right'):(dy<0?'back':'front');
 }
 export const PLAYER_PALETTE=Object.freeze({coat:'#526f58',shade:'#3c5646',sleeve:'#80906b'});
-export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false}){
+export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false,holdingUmbrella=false}){
  const outline='#3d3938',skin='#f4c998',hair='#503c32',coat=PLAYER_PALETTE.coat,shade=PLAYER_PALETTE.shade,shirt=PLAYER_PALETTE.sleeve,seam='#96a179',accent='#c9a86b';
  const motion=!reduced,stride=walking&&motion?Math.round(Math.sin(t/105)*4):0;
  const bob=motion?(walking?Math.round(Math.abs(Math.sin(t/105))*2):Math.round((1+Math.sin(t/540))*1.4)):0;
@@ -25,7 +25,7 @@ export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false
   p(-10,-28,19,17,outline);p(-8,-27,15,13,shirt);
   // Side strap and bib edge sit over the moss shirt, not across the face.
   p(3,-27,3,15,coat);p(-6,-17,13,6,coat);p(-5,-24,6,10,shade);
-  p(-5,-24,5,8,shirt);p(-4,-16+Math.round(stride/2),4,5,skin);
+  p(-5,-24,5,8,shirt);if(!holdingUmbrella)p(-4,-16+Math.round(stride/2),4,5,skin);
   p(3,-22,2,2,accent);p(1,-16,3,3,seam);p(-6,-12,12,2,shade);
   p(-6,-49,7,3,outline);p(-12,-47,22,3,outline);p(-14,-44,27,18,outline);
   p(10,-32,3,3,outline);p(-10,-26,20,3,outline);p(-7,-23,14,2,outline);
@@ -35,7 +35,7 @@ export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false
  }else if(facing==='back'){
   p(-8,-11,6,10+stride,shade);p(2,-11,6,10-stride,shade);p(-9,-2+stride,7,4,outline);p(2,-2-stride,7,4,outline);
   p(-12,-28,24,17,outline);p(-15,-25,5,12,outline);p(10,-25,5,12,outline);p(-10,-27,20,14,shirt);
-  p(-14,-24,4,8,shirt);p(10,-24,4,8,shirt);p(-13,-16,4,4,skin);p(9,-16,4,4,skin);
+  p(-14,-24,4,8,shirt);p(10,-24,4,8,shirt);if(!holdingUmbrella)p(-13,-16,4,4,skin);p(9,-16,4,4,skin);
   // Paired straps join a plain back yoke; small pocket seams distinguish the rear.
   p(-7,-27,3,9,coat);p(4,-27,3,9,coat);p(-8,-21,16,10,coat);
   p(-7,-21,14,2,shade);p(-1,-19,2,8,shade);p(-6,-17,4,3,seam);p(2,-17,4,3,seam);p(-8,-12,16,2,shade);
@@ -47,7 +47,7 @@ export function drawPlayer(g,{x,y,t=0,walking=false,facing='front',reduced=false
   // Original front face/hair retained; moss shirt and tailored green overalls.
   p(-8,-11,6,10+stride,shade);p(2,-11,6,10-stride,shade);p(-9,-2+stride,7,4,outline);p(2,-2-stride,7,4,outline);
   p(-12,-28,24,17,outline);p(-15,-25,5,12,outline);p(10,-25,5,12,outline);p(-10,-27,20,14,shirt);
-  p(-14,-24,4,8,shirt);p(10,-24,4,8,shirt);p(-13,-16,4,4,skin);p(9,-16,4,4,skin);
+  p(-14,-24,4,8,shirt);p(10,-24,4,8,shirt);p(-13,-16,4,4,skin);if(!holdingUmbrella)p(9,-16,4,4,skin);
   p(-7,-27,3,8,coat);p(4,-27,3,8,coat);p(-7,-22,14,10,coat);p(-8,-13,16,3,coat);
   p(-6,-22,2,2,accent);p(4,-22,2,2,accent);p(-3,-19,6,4,seam);p(-2,-18,4,2,coat);p(-1,-13,2,3,shade);
   p(-5,-49,7,3,outline);p(-12,-47,24,3,outline);p(-15,-44,30,18,outline);p(-12,-26,24,3,outline);p(-8,-23,16,2,outline);

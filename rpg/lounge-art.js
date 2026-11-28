@@ -1,7 +1,7 @@
 import {umbrellaShape} from './rain-geometry.js?v=35';
 // Original, ephemeral 8-bit scenery. No state, route, timing or storage ownership.
-import {drawPlayer,PLAYER_PALETTE} from './avatar.js?v=42';
-import {drawTeacher} from './teacher.js?v=48';
+import {drawPlayer,PLAYER_PALETTE} from './avatar.js?v=43';
+import {drawTeacher} from './teacher.js?v=49';
 const freeze=o=>Object.freeze(o);
 export const LOUNGE_LAYOUT=freeze({table:freeze({x:490,y:218,depth:245,solid:freeze({x:458,y:214,w:64,h:31})}),seats:freeze([
  freeze({id:'left',x:440,y:232,facing:'right',approach:freeze({x:423,y:250}),solid:freeze({x:430,y:225,w:20,h:12})}),
@@ -36,33 +36,54 @@ export function drawLoungeChair(g,seat){
  rect(g,7,-6,3,10,'#92734e');rect(g,8,-5,1,8,'#c0a273');
  rect(g,-6,-10,15,1,'#e2c89a');g.restore();
 }
-export function drawSeatedResident(g,{x,y,kind='player',facing='right',t=0,reduced=false,reading=false}){
+export function drawSeatedResident(g,{x,y,kind='player',facing='right',t=0,reduced=false,reading=false,holdingUmbrella=false}){
  const teacher=kind==='teacher',side=facing==='left'?'left':'right';
  g.save();g.translate(x,y);
  // Keep the existing face/upper body identity, clipped only at the seat line.
  // Sitting is not a scaled standing sprite: bent knees and grounded shoes follow.
  g.save();g.beginPath();g.rect(-30,-65,60,57);g.clip();
- (teacher?drawTeacher:drawPlayer)(g,{x:0,y:teacher?1:3,t,walking:false,facing:side,reduced});g.restore();
+ (teacher?drawTeacher:drawPlayer)(g,{x:0,y:teacher?1:3,t,walking:false,facing:side,reduced,holdingUmbrella});g.restore();
  if(side==='left')g.scale(-1,1);
  const cloth=teacher?'#b7809e':PLAYER_PALETTE.coat,dark=teacher?'#936681':PLAYER_PALETTE.shade;
  rect(g,-5,-8,13,5,dark);rect(g,-5,-8,12,3,cloth);rect(g,6,-5,4,6,teacher?'#f5cfa7':cloth);
  rect(g,5,1,8,3,'#493e43');rect(g,7,1,4,1,'#8c7460');
  rect(g,-6,-3,8,3,dark);rect(g,0,-1,3,3,teacher?'#f5cfa7':dark);rect(g,-1,2,7,2,'#493e43');
  if(teacher){rect(g,-5,-6,10,2,'#f6dfcd');rect(g,-3,-8,3,2,'#e3bf97');}
- if(teacher&&reading){
+ if(teacher&&reading&&!holdingUmbrella){
   // Hands reach toward the table; the book is drawn once on the tabletop.
   rect(g,6,-18,9,3,'#b7809e');rect(g,13,-18,4,3,'#f5cfa7');
   rect(g,4,-14,11,3,'#936681');rect(g,14,-14,4,3,'#f5cfa7');
  }
  g.restore();
 }
-export function drawRainUmbrella(g,{x,y,facing='front',kind='player'},opening=1,stage='open'){
+const easeGrip=q=>{const u=Math.max(0,Math.min(1,q));return u*u*(3-2*u);};
+export function umbrellaWrist(opening,preparation){
+ return Math.round(-18-3*easeGrip(preparation)-12*easeGrip(opening));
+}
+export function drawRainUmbrella(g,{x,y,facing='front',kind='player',bodyShift=0},opening=1,stage='open',prep=1){
+ if(stage==='closed')return;
  g.save();g.translate(x,y);if(facing==='left')g.scale(-1,1);
  const back=facing==='back',shaft=back?-7:10,teacher=kind==='teacher';
- if(stage==='prepare'){rect(g,shaft,-39,3,20,teacher?'#a5aaa6':'#647d73');rect(g,shaft+1,-40,1,4,teacher?'#f4f2e8':'#93aa96');g.restore();return;}
- if(opening<=0){g.restore();return;}
+ const wrist=umbrellaWrist(opening,prep),shoulder=back?-11:facing==='front'?12:-2,sy=-22-bodyShift;
+ const elbow=back?-13:12,ey=Math.round((sy+wrist)*.5)+2;
+ const coat=teacher?'#c58da8':'#7e926e',shade=teacher?'#9e708d':'#506751',skin=teacher?'#f5cfa7':'#f4c998';
+ const segment=(ax,ay,bx,by)=>{
+  const n=Math.max(1,Math.ceil(Math.hypot(bx-ax,by-ay)));
+  for(let k=0;k<=n;k++){
+   const x=Math.round(ax+(bx-ax)*k/n),y=Math.round(ay+(by-ay)*k/n);
+   rect(g,x-1,y-1,4,4,shade);rect(g,x-1,y-2,3,3,coat);
+  }
+ };
+ const drawGrip=()=>{segment(shoulder,sy,elbow,ey);segment(elbow,ey,shaft,wrist);rect(g,shaft-1,wrist-2,4,4,skin);};
+ if(stage==='prepare'||opening<=0){
+  rect(g,shaft,wrist-20,3,20,teacher?'#a5aaa6':'#647d73');
+  rect(g,shaft+1,wrist-21,1,4,teacher?'#f4f2e8':'#93aa96');
+  drawGrip();g.restore();return;
+ }
  const shape=umbrellaShape(kind),palette=teacher?['#b9bfba','#e6e7e0','#fffdf4']:['#5c786b','#78998a','#a6baa5'];
- rect(g,shaft,-73,1,40,teacher?'#858c86':'#766b54');rect(g,shaft,-33,4,2,teacher?'#858c86':'#766b54');rect(g,shaft+3,-36,1,3,teacher?'#858c86':'#766b54');
+ const stem=teacher?'#858c86':'#766b54';
+ rect(g,shaft,-73,1,73+wrist,stem);rect(g,shaft,wrist,4,2,stem);rect(g,shaft+3,wrist-3,1,3,stem);
+ drawGrip();
  for(const[full,yy,h]of shape.bands){const w=full*opening;
   rect(g,shaft-w/2,yy,w,h,palette[0]);if(w>=6)rect(g,shaft-w/2+2*opening,yy,w/2-2*opening,h,palette[1]);
   const stripe=Math.min(4*opening,w);rect(g,shaft-stripe/2,yy,stripe,h,palette[2]);
