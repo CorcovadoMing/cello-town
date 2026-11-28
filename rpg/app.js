@@ -1,4 +1,4 @@
-import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,makeTownWebGL} from './town-webgl.js?v=world-3d-013-lower-gaze';
+import {benchCatLift,drawGroundedSeated,LOUNGE_BODY_SHIFT,makeTownWebGL} from './town-webgl.js?v=world-3d-014-living-town';
 import {TEACHER_TALK_RADIUS,createTeacherApproach} from './teacher-approach.js?v=51';
 import {createQuietChat,drawQuietChat} from './quiet-chat.js?v=51';
 import {ROOM_ENTRY,ROOM_RETURN,roomReturnURL,roomDoorHit,roomDoorNearby,createDoorApproach} from './room-door.js?v=exp3';
@@ -28,6 +28,19 @@ let gameWeather=weatherAt();
 const townFish=fishVariants(Math.floor(Math.random()*4294967296));
 const $=id=>document.getElementById(id), canvas=$('world'),dlg=$('dialog'),KEY=/\/experimental(?:\/|$)/.test(globalThis.location?.pathname||'')?'cello-town-experimental-rpg-v1':'cello-town-rpg-v1';
 let g=canvas.getContext('2d'),webglTown=null,pending3DTown=null,last3DPaint=-Infinity;
+const watchBar=$('town-watch'),watchStage=canvas.closest('.map-stage');
+const watchButtons=[...watchBar.querySelectorAll('button[data-watch-view]')];
+let watchView='play';
+const mapHint=document.querySelector('.map-input-hint');
+const playHint=mapHint.innerHTML;
+function selectWatchView(next,reset=false){
+ if((!reset&&(!webglTown||dlg.open||enteringRoom))||!watchButtons.some(b=>b.dataset.watchView===next))return;
+ watchView=next;keys.clear();target=null;player.walking=false;teacherApproach.cancel();
+ watchStage.dataset.watch=watchView;last3DPaint=-Infinity;
+ for(const b of watchButtons)b.setAttribute('aria-pressed',String(b.dataset.watchView===watchView));
+ mapHint.innerHTML=watchView==='play'?playHint:'景物照常流動，選「遊玩」即可繼續';
+}
+for(const button of watchButtons)button.onclick=()=>selectWatchView(button.dataset.watchView);
 const compactTown=matchMedia('(max-width: 600px)');
 let worldInView=true;
 if(typeof IntersectionObserver==='function'){
@@ -282,7 +295,10 @@ function drawPracticeStand(){
  p(11,-25,2,7,'#ad7054');p(-17,-25,2,3,'#c7af79');p(15,-24,2,3,'#c7af79');
 }
 function setTownView(view){
+ if(!view&&webglTown&&watchView!=='play')selectWatchView('play',true);
  webglTown=view;last3DPaint=-Infinity;canvas.dataset.renderer=view?'webgl':'canvas';
+ watchBar.hidden=!view;watchStage.dataset.watch=watchView;
+
 }
 function drawWebGLTown(t,rainFrame,petFrame,moisture){
  const v=webglTown;if(!v)return false;
@@ -321,14 +337,16 @@ function drawWebGLTown(t,rainFrame,petFrame,moisture){
  }
  v.footmarks([{id:'player',x:player.x,z:player.y,active:!playerSeated},
   {id:'teacher',x:npc.x,z:npc.y,active:loungePose.mode!=='seated'}],t,key,!reduced);
- if(!v.render(key,moisture,Date.now(),!reduced))return false;
+ if(!v.render(key,moisture,Date.now(),!reduced,watchView,t))return false;
  g.drawImage(v.output,0,0);
+ if(watchView==='pond')return true;
  // Ground projection is the original Canvas identity, so the shared pond
  // life and sheltered rain contacts stay aligned with the same landmarks.
  drawPondLife(g,t,reduced,townFish);
  drawPetPondContact(g,petFrame.pondContact);
  if(key==='rain')drawRainFrame(g,rainFrame);
  else drawTownWeather(g,t,key,reduced,RAIN_EXCLUSIONS);
+ if(watchView==='overlook')return true;
  const project=v.project;
  const teacher=project(npc.x,npc.y+18,0),flowers=project(821,391,0);
  label('老師',teacher.x,teacher.y+6);label('你的花園',flowers.x,flowers.y);
@@ -379,7 +397,8 @@ function update(dt,idleDt=dt){
  const teacher=teacherActor.update(dt,{practiceActive:practiceOpen&&dlg.open,dialogOpen:dlg.open,holdForInteraction:quietChat.active||lounge.state.borrowed||target?.kind==='npc',reducedMotion:reducedMotion.matches,player});
  loungePose=lounge.update(dt,{teacher,player,playerSeated,playerSeatIndex:(playerSeated||waitingForChair||target?.kind==='chair')?selectedChair:null,practice:practiceOpen&&dlg.open,dialog:(dlg.open&&!practiceOpen)||quietChat.active,questApproach:target?.kind==='npc',rain:gameWeather.key==='rain',reduced:reducedMotion.matches});
  Object.assign(npc,loungePose.borrowed?loungePose.pose:teacher);
- if(waitingForChair&&!dlg.open)sitDown();
+ if(waitingForChair&&!dlg.open&&watchView==='play')sitDown();
+ if(watchView!=='play')return;
 
  if(enteringRoom){teacherApproach.cancel();return;}
  if(dlg.open){teacherApproach.cancel();player.walking=false;quietChatPose=quietChat.update(dt,{teacher:npc,player,modal:true});return;}
@@ -412,7 +431,7 @@ function update(dt,idleDt=dt){
 }
 const approachRoom=()=>{if(!dlg.open)walkTo(ROOM_ENTRY,'room');};
 function interact(){if(dlg.open)return;if(!playerSeated&&roomDoorNearby(player)){approachRoom();return;}if(playerSeated){standUp();return;}if(near==='chair'){const index=chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y)).indexOf(Math.min(...chairs.map(c=>Math.hypot(player.x-c.approach.x,player.y-c.approach.y))));requestChair(index);return;}if(near==='npc')talk();else if(near==='stand')practice();else if(near==='garden')openGarden();else toast('再靠近老師、戶外譜架或花園入口一點。');}
-const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open||enteringRoom)return;if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;teacherApproach.cancel();});canvas.onpointerdown=e=>{if(dlg.open||enteringRoom)return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{idleLast=null;if(document.hidden){teacherApproach.cancel();pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});let idleLast=null;function loop(t){const dt=Math.min((t-last)/1000,.04),idleDt=idleLast===null?0:Math.max(0,(t-idleLast)/1000);last=t;idleLast=document.hidden?null:t;if(!document.hidden){
+const dirs={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};window.addEventListener('keydown',e=>{if(dlg.open||enteringRoom)return;if(watchView!=='play'){if(e.key==='Escape'){e.preventDefault();selectWatchView('play');watchButtons[0].focus({preventScroll:true});}return;}if(dirs[e.key]){e.preventDefault();target=null;keys.add(dirs[e.key]);}if((e.key==='e'||e.key==='E'||e.key==='Enter')&&!e.repeat&&e.target===canvas){e.preventDefault();interact();}else if((e.key==='e'||e.key==='E')&&!e.repeat)interact();});window.addEventListener('keyup',e=>keys.delete(dirs[e.key]));window.addEventListener('blur',()=>{keys.clear();target=null;teacherApproach.cancel();});canvas.onpointerdown=e=>{if(dlg.open||enteringRoom||watchView!=='play')return;canvas.focus({preventScroll:true});const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*960/r.width,y=(e.clientY-r.top)*560/r.height;const clickedChair=chairs.findIndex(c=>Math.abs(x-c.x)<20&&y>c.y-34&&y<c.y+18);if(roomDoorHit(x,y)){approachRoom();}else if(clickedChair>=0){if(playerSeated&&clickedChair===selectedChair)standUp();else requestChair(clickedChair);}else if(Math.abs(x-stand.x)<28&&y>stand.y-48&&y<stand.y+8){if(standWithinReach()){standUp();target=null;practice();}else walkTo(standApproach,'stand');}else if(Math.hypot(x-npc.x,y-(npc.y-20))<55){if(teacherWithinReach()){standUp();target=null;talk();}else walkTo({x:npc.x,y:npc.y+35},'npc');}else if(x>730&&x<910&&y>395&&y<525){if(gardenWithinReach()){standUp();target=null;openGarden();}else walkTo({x:garden.x,y:garden.y},'garden');}else walkTo({x,y});};$('journal').onclick=journal;$('close').onclick=()=>dlg.close();dlg.addEventListener('close',()=>{practiceOpen=false;pausePracticeTimer();stop();keys.clear();canvas.focus({preventScroll:true});});document.addEventListener('visibilitychange',()=>{idleLast=null;if(document.hidden){teacherApproach.cancel();pausePracticeTimer();stop();keys.clear();target=null;}else resumePracticeTimer();});window.addEventListener('pageshow',resumePracticeTimer);window.addEventListener('pageshow',()=>{enteringRoom=false;});window.addEventListener('pagehide',()=>{pausePracticeTimer();stop();});let idleLast=null;function loop(t){const dt=Math.min((t-last)/1000,.04),idleDt=idleLast===null?0:Math.max(0,(t-idleLast)/1000);last=t;idleLast=document.hidden?null:t;if(!document.hidden){
  if(pending3DTown&&worldInView&&!target&&!keys.size&&!enteringRoom&&!dlg.open){
   const view=pending3DTown;pending3DTown=null;
   try{if(view.render(gameWeather.key))setTownView(view);else view.discard();}catch{view.discard();}

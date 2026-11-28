@@ -221,3 +221,14 @@ body,body *{font-family:var(--town-font)!important}
 .map-stage.door-shot-near>canvas,.map-stage.door-shot-near>.teacher-marker-layer{transform:translate(var(--door-shift-x,-20.417%),var(--door-shift-y,14.196%)) scale(1.82)}
 .map-stage.door-shot-arriving.door-shot-moving>canvas,.map-stage.door-shot-arriving.door-shot-moving>.teacher-marker-layer{transition-duration:400ms}
 @media(prefers-reduced-motion:reduce){.map-stage.door-shot-moving>canvas,.map-stage.door-shot-moving>.teacher-marker-layer{transition:none}.map-stage.door-shot-near>canvas,.map-stage.door-shot-near>.teacher-marker-layer{transform:none}}
+
+/* Observation is a separate fixed framing, not a gameplay camera toggle. */
+.town-watch{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 13px 8px;background:#edf0df;border-top:1px solid #cdd6be;color:#375044;font-size:12px}
+.town-watch[hidden]{display:none}.watch-caption{white-space:nowrap;letter-spacing:.06em}
+.watch-choices{display:inline-flex;gap:2px;align-items:stretch;padding:2px;background:#dfe6d2;border-radius:11px}
+.watch-choices button{margin:0;padding:3px 10px;border:1px solid transparent;border-radius:9px;background:transparent;color:#345045;min-height:40px;white-space:nowrap;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.watch-choices button[aria-pressed=true]{background:#f9f7ed;border-color:#d3dac4;box-shadow:0 1px 2px #2d473113}
+.watch-choices button:focus-visible{outline:2px solid #386e58;outline-offset:2px}
+.map-stage[data-watch="overlook"] :is(.quest-sign,.teacher-marker-layer,#toast),.map-stage[data-watch="pond"] :is(.quest-sign,.teacher-marker-layer,#toast){visibility:hidden}
+.map-stage[data-watch="overlook"] canvas,.map-stage[data-watch="pond"] canvas{cursor:default}
+@media(max-width:360px){.town-watch{padding-inline:8px}.watch-choices button{padding-inline:8px}}

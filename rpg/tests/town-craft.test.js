@@ -25,7 +25,7 @@ test('hand-placed seams, plants and metal fittings preserve paths, entries and g
  assert.match(renderer,/eaveDrops.visible=weather==='rain'/);
  assert.match(renderer,/updateEaveDrops\(weather,motion\?now:0\);\s*updateWetLayers\(moisture\)/);
  assert.match(renderer,/paintedWater.update\(now,weather,lamp,motion\)/);
- assert.match(renderer,/swayCrowns\(now,weather,motion\)/);
+ assert.match(renderer,/swayCrowns\(clock,weather,motion\)/);
  assert.match(renderer,/mesh|new T.MeshLambertMaterial/);
 });
 

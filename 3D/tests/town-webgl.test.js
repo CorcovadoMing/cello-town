@@ -49,7 +49,7 @@ test('outdoor WebGL applies the shared road, verge and bed moisture on every wea
  const app=readFileSync(new URL('../../rpg/app.js',import.meta.url),'utf8');
  const webgl=readFileSync(new URL('../../rpg/town-webgl.js',import.meta.url),'utf8');
  const draw=app.slice(app.indexOf('function drawWebGLTown'),app.indexOf('function draw(t)'));
- assert.match(draw,/v\.render\(key,moisture,Date\.now\(\),!reduced\)/);
+ assert.match(draw,/v\.render\(key,moisture,Date\.now\(\),!reduced,watchView,t\)/);
  assert.match(draw,/drawPondLife\(g,t,reduced,townFish\)/);
  assert.match(draw,/drawPetPondContact\(g,petFrame\.pondContact\)/);
  assert.match(draw,/if\(key==='rain'\)drawRainFrame\(g,rainFrame\)/);

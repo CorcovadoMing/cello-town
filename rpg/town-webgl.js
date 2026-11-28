@@ -1,3 +1,4 @@
+import {breezeAt,makeLivingGrass,makePondHorizon,POND_SHOT} from './town-breeze.js?v=1';
 import {addOrchardTree,makeOrchardLeaf,makeOrchardSkin,makeOrchardVolumes,townSunVector} from './town-orchard.js?v=7';
 /* Optional live 3D view of the existing gameplay map. All world (x, y) positions
    still belong to the town controller. This renderer owns only world-to-screen
@@ -193,8 +194,17 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
  renderer.shadowMap.autoUpdate=false;
  const scene=new T.Scene();
- scene.background=new T.Color('#eee3d5');
- const camera=makeTownCamera(T);
+ const mapBackground=new T.Color('#eee3d5');
+ scene.background=mapBackground;
+ const horizons=[makePondHorizon(T,false),makePondHorizon(T,true)];
+ const mapCamera=makeTownCamera(T);
+ const pondCamera=new T.PerspectiveCamera(POND_SHOT.fov,W/H,2,2350);
+ const [ex,ey,ez]=POND_SHOT.eye,[lx,ly,lz]=POND_SHOT.target;
+ pondCamera.position.set(ex-W/2,ey,ez-H/2);pondCamera.lookAt(lx-W/2,ly,lz-H/2);pondCamera.updateMatrixWorld();
+ const facingYaw=Math.atan2(ex-lx,ez-lz);
+ let camera=mapCamera;
+ const updateGrass=makeLivingGrass(T,scene,W,H);
+
  const sun=new T.DirectionalLight('#ffe7b0',2.05);
  sun.position.set(350,700,-310);sun.castShadow=true;
  sun.shadow.mapSize.set(1024,1024);
@@ -450,6 +460,60 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  const paintedWater=pondSurface(T,pondPigment);
  const water=new T.Mesh(new T.PlaneGeometry(225,135),paintedWater.material);
  water.rotation.x=-Math.PI/2;water.position.set(...[146-W/2,2.15,465-H/2]);water.receiveShadow=true;scene.add(water);
+ const rippleGeometry=new T.RingGeometry(.93,1,44);
+ const ripples=Array.from({length:12},(_,i)=>{
+  const mesh=new T.Mesh(rippleGeometry,new T.MeshBasicMaterial({color:'#e4f0d6',side:T.DoubleSide,transparent:true,opacity:0,depthWrite:false}));
+  mesh.rotation.x=-Math.PI/2;mesh.renderOrder=5;mesh.visible=false;scene.add(mesh);return mesh;
+ });
+ const fishGeometry=new T.PlaneGeometry(1,1);
+ const fishImage=(()=>{
+  const c=document.createElement('canvas');c.width=64;c.height=32;const g=c.getContext('2d');
+  g.fillStyle='#f4e5be';g.beginPath();g.ellipse(34,15,15,7,0,0,Math.PI*2);g.fill();
+  g.fillStyle='#bae3d1';g.beginPath();g.moveTo(24,15);g.lineTo(10,8);g.lineTo(13,16);g.lineTo(8,24);g.closePath();g.fill();
+  g.fillStyle='#fff4ce';g.beginPath();g.ellipse(37,12,6,2,0,0,Math.PI*2);g.fill();
+  const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;return t;
+ })();
+ const pondFish=['#548e91','#d97d62','#819d63'].map(color=>{
+  const mesh=new T.Mesh(fishGeometry,new T.MeshBasicMaterial({map:fishImage,color,side:T.DoubleSide,transparent:true,opacity:.64,depthWrite:false}));
+  mesh.visible=false;mesh.rotation.x=-Math.PI/2;mesh.renderOrder=4;scene.add(mesh);return mesh;
+ });
+ const rainGeometry=new T.PlaneGeometry(.46,8.3);
+ const lowRain=new T.InstancedMesh(rainGeometry,new T.MeshBasicMaterial({color:'#e3eee3',transparent:true,opacity:.29,side:T.DoubleSide,depthWrite:false}),112);
+ lowRain.visible=false;lowRain.frustumCulled=false;scene.add(lowRain);
+ function updatePondLife(close,weather,t,motion){
+  const rain=weather==='rain';
+  for(const [i,fish] of pondFish.entries()){
+   fish.visible=close;
+   if(!close)continue;
+   const a=(motion?t*.00017:0)+i*2.09;
+   fish.position.set(140+Math.sin(a)*67-W/2,2.21,464+Math.cos(a*.83+i)*42-H/2);
+   fish.rotation.z=Math.atan2(-.83*Math.sin(a*.83+i)*42,Math.cos(a)*67);
+   fish.scale.set(17+i*1.8,7+i*.6,1);
+   fish.material.opacity=.53+(rain?0:.12)*(1+Math.sin(a*2))*.5;
+  }
+  lowRain.visible=close&&rain&&motion;
+  for(let i=0;i<ripples.length;i++){
+   const ripple=ripples[i];
+   ripple.visible=close&&motion&&(rain||i<3);
+   if(!ripple.visible)continue;
+   const duration=rain?1600:3400,shifted=t+(i*719),cycle=Math.floor(shifted/duration),u=shifted%duration/duration;
+   const x=55+((i*49+cycle*83)%183),z=411+((i*31+cycle*23)%107),radius=1+u*(rain?9:18);
+   ripple.position.set(x-W/2,2.23+i*.001,z-H/2);
+   ripple.scale.set(radius,radius,1);
+   ripple.material.opacity=(rain?.39:.28)*Math.sin(u*Math.PI)*(.9-u*.45);
+  }
+  if(lowRain.visible){
+   for(let i=0;i<lowRain.count;i++){
+    const phase=(t*(.12+i%3*.014)+i*47.13)%130;
+    const x=18+(i*73%680)+(130-phase)*.14,z=174+(i*107%405);
+    model.position.set(x-W/2,131-phase,z-H/2);
+    model.rotation.set(0,facingYaw,-.13);model.scale.set(1,.58+i%3*.24,1);model.updateMatrix();
+    lowRain.setMatrixAt(i,model.matrix);
+   }
+   lowRain.instanceMatrix.needsUpdate=true;
+  }
+ }
+
  for(let i=0;i<17;i++){
   const x=42+i*12.2,z=i%2?398:531;
   sphere(x,1,z,6+rng()*6,3+rng()*3,5+rng()*3,i%3?'#a29e7d':'#bbb18d',0,rng());
@@ -458,7 +522,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  for(const [x,z,n] of [[56,426,9],[248,474,7],[81,530,8],[287,438,4],[562,427,5],[710,398,7],[906,528,7],[19,541,8],[934,548,8]]){
   for(let i=0;i<n;i++){
    const dx=x+(rng()-.5)*24,dz=z+(rng()-.5)*18,h=4+rng()*12;
-   shape('cone',dx,h*.44,dz,1.6,h,1.5,i%3?'#7c9c5f':'#9eae6b',.08,rng(),(rng()-.5)*.3);
+   shape('cone',dx,h*.44,dz,1.6,h,1.5,i%3?'#7c9c5f':'#9eae6b',.08,rng(),(rng()-.5)*.3,.35+h*.012);
    if(i%4===0)sphere(dx,h,dz,2.3,2.0,2.2,['#e9c4a8','#f4db8c','#e0baad'][i%3]);
   }
  }
@@ -587,7 +651,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   const batch=new T.InstancedMesh(geometry[kind],kind==='orchard-leaf'?leafyMaterial:kind==='window-glass'?windowGlass:kind==='orchard-fir'?firMaterial:kind==='weathered-board'?boardSkin:kind.startsWith('orchard-')?crownMaterial:material,items.length);
   items.forEach(([matrix,tint,flex,x,z],i)=>{
    batch.setMatrixAt(i,matrix);batch.setColorAt(i,color.set(tint));
-   if(flex>0)swaying.push({batch,i,base:matrix,flex,seed:x*.006+z*.012});
+   if(flex>0)swaying.push({batch,i,base:matrix,flex,x,z,seed:x*.006+z*.012});
   });
   batch.instanceMatrix.needsUpdate=true;batch.instanceColor.needsUpdate=true;batch.castShadow=true;batch.receiveShadow=true;scene.add(batch);
  }
@@ -607,18 +671,17 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
   }
   eaveDrops.instanceMatrix.needsUpdate=true;
  }
- let leafStep=-1,shadowStep=-1;
+ let leafStep=-1,shadowStep=-1,leafWeather='';
  const bent=new T.Matrix4();
  function swayCrowns(now,weather,allowed){
   const steptime=allowed?Math.floor(now/54):-2;
-  if(steptime===leafStep)return;
-  leafStep=steptime;
-  const t=allowed?steptime*.054:0;
-  const strength=allowed?(weather==='breeze'?1.38:weather==='rain'?.86:.64):0;
+  if(steptime===leafStep&&leafWeather===weather)return;
+  leafStep=steptime;leafWeather=weather;
+  const t=allowed?steptime*54:0;
   const updated=new Set();
-  for(const {batch,i,base,flex,seed} of swaying){
+  for(const {batch,i,base,flex,x,z,seed} of swaying){
    bent.copy(base);
-   const bend=strength*flex*flex*Math.sin(t*.97+seed);
+   const bend=flex*flex*(breezeAt(t,x,z,weather,allowed)*1.34+(allowed?.21*Math.sin(t*.0016+seed):0));
    bent.elements[12]+=bend;bent.elements[14]+=.48*bend;
    batch.setMatrixAt(i,bent);updated.add(batch);
   }
@@ -661,7 +724,7 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  function discard(){
   if(!alive)return;
   alive=false;
-  const resources=new Set();
+  const resources=new Set(horizons);
   scene.traverse(o=>{if(o.geometry)resources.add(o.geometry);if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){resources.add(m);if(m.map)resources.add(m.map);}}});
   for(const res of resources)res.dispose();
   renderer.dispose();onLoss?.();
@@ -669,11 +732,16 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
  output.addEventListener('webglcontextlost',e=>{e.preventDefault();discard();},{once:true});
  return Object.freeze({output,project,inverse,drawSprite,footmarks,
   hideSprites(){for(const s of sprites.values())s.sprite.visible=false;},
-  render(weather,moisture=dryMoisture,now=Date.now(),motion=true){
+  render(weather,moisture=dryMoisture,now=Date.now(),motion=true,view='play',clock=0){
    if(!alive)return false;
+   const close=view==='pond';
+   camera=close?pondCamera:mapCamera;
+   for(const {sprite} of sprites.values())sprite.rotation.y=close?facingYaw:0;
+   updateGrass(clock,weather,motion);
+   scene.background=close?horizons[weather==='rain'?1:0]:mapBackground;
    if(weather!==lastWeather){
     lastWeather=weather;
-    scene.background.set(weather==='rain'?'#dcd8cd':'#eee5d6');
+    mapBackground.set(weather==='rain'?'#dcd8cd':'#eee5d6');
     sun.intensity=weather==='sun'?1.86:weather==='breeze'?1.37:.59;
     sun.color.set(weather==='rain'?'#ffeac9':weather==='breeze'?'#ffe5bf':'#ffecc9');
     fill.intensity=weather==='rain'?2.12:1.70;
@@ -688,7 +756,8 @@ export async function makeTownWebGL({trees,chairs,stand,room,onLoss}){
     renderer.shadowMap.needsUpdate=true;
    }
    paintedWater.update(now,weather,lamp,motion);
-   swayCrowns(now,weather,motion);
+   updatePondLife(close,weather,clock,motion);
+   swayCrowns(clock,weather,motion);
    updateEaveDrops(weather,motion?now:0);
    updateWetLayers(moisture);
    renderer.render(scene,camera);return true;
