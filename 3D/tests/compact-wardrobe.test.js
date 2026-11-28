@@ -5,7 +5,6 @@ import vm from 'node:vm';
 import * as T from '../vendor/three.module.js';
 const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const source=app.slice(app.indexOf('function previewCameraTarget(){'),app.indexOf('function anchorEditor(){'));
-const baseline=source.replace('phone?(compactWardrobe?.58:.48):.05','phone?.48:.05');
 function run(width,mode,source,height=580){
  const area={clientWidth:width};
  const size=Math.max(3.75,(width<600?3.6:3.9)*height/width),lift=width<600?size*.13:0;
@@ -14,15 +13,17 @@ function run(width,mode,source,height=580){
  const roomSnapshot={cameraPosition:camera.position.clone(),cameraQuaternion:camera.quaternion.clone()};
  const ctx={T,camera,area,roomSnapshot,pos:{x:-.04,z:-.66},previewMode:mode};
  vm.createContext(ctx);vm.runInContext(source+';globalThis.target=previewCameraTarget();',ctx);
- return {position:ctx.target.position.toArray(),zoom:ctx.target.zoom};
+ camera.position.copy(ctx.target.position);camera.zoom=ctx.target.zoom;camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
+ return {position:ctx.target.position.toArray(),zoom:ctx.target.zoom,projection:new T.Vector3(ctx.pos.x,.97,ctx.pos.z).project(camera)};
 }
-test('very narrow wardrobe lifts framing without changing the model scale',()=>{
- const before=run(300,'wardrobe',baseline),after=run(300,'wardrobe',source);
- assert.notDeepEqual(after.position,before.position);assert.equal(after.zoom,before.zoom);
- assert.ok(after.position[1]<before.position[1]);
-});
-test('wider wardrobe, normal portrait and compact appearance keep same camera endpoints',()=>{
- for(const [w,mode] of [[300,'vanity'],[345,'wardrobe'],[367,'wardrobe'],[768,'wardrobe'],[1100,'wardrobe']]){
-  assert.deepEqual(run(w,mode,source),run(w,mode,baseline));
+test('wardrobe, mirror and appearance use the same stable fitting angle and framing',()=>{
+ for(const w of [300,345,367,768,1100]){
+  const primary=run(w,'wardrobe',source);
+  for(const mode of ['wardrobe','mirror','vanity']){
+   const actual=run(w,mode,source);
+   assert.deepEqual(actual.position,primary.position);assert.equal(actual.zoom,primary.zoom);
+   assert.ok(Math.abs(actual.projection.x-(w<600?0:-.25))<1e-10);
+   assert.ok(Math.abs(actual.projection.y-(w<600?.48:.05))<1e-10);
+  }
  }
 });

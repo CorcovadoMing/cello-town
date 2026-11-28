@@ -24,6 +24,8 @@ test('near-shore mud and actual refracted bed texture are clearer than deep wate
 });
 test('glints are compact, irregular point pulses rather than long wave blades',()=>{
  assert.match(s,/length\(delta\)/);
- assert.match(s,/smoothstep\(\.62,\.995,flicker\)/);
+ assert.match(s,/waveFront=sin\(townWaterTime\*2\.3-uvPond\.y\*19/);
+ assert.match(s,/crest\*nearLight\*bankLight/);
+ assert.doesNotMatch(s,/townWaterTime\*\(1\.9\+4\.\*b\)/);
  assert.match(s,/pow\(townWaterBrightness,3\.\)/);
 });

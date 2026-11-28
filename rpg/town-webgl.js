@@ -479,18 +479,23 @@ function pondSurface(T,map,spanX,spanZ){
     // The current sun map includes the moving, alpha-tested leaves.
     float sunlit=getShadowMask();
     float facing=.23+.77*pow(max(dot(N,normalize(townWaterSun+eye)),0.),8.);
-    // A compact pulse per irregular water cell; the cores stay pinpoints.
-    vec2 uvSpark=uvPond*vec2(83.,49.)+vec2(.14*longWave,.14*shortWave);
+    // The bright crest moves as one wave across a small patch of sun,
+    // instead of blinking independently at every point on the pond.
+    float sunCenter=.50+.25*townWaterSun.x;
+    float bankLight=1.-smoothstep(.075,.26,abs(uvPond.x-sunCenter+.18*(uvPond.y-.50)));
+    float nearLight=smoothstep(.31,.72,uvPond.y)*(1.-smoothstep(.91,.99,uvPond.y));
+    float waveFront=sin(townWaterTime*2.3-uvPond.y*19.+uvPond.x*5.2+.16*longWave);
+    vec2 uvSpark=uvPond*vec2(60.,34.)+vec2(.08*longWave,.08*shortWave);
     vec2 cell=floor(uvSpark);
     float a=townWaterGrain(cell),b=townWaterGrain(cell+vec2(15.8,41.2));
-    vec2 delta=fract(uvSpark)-vec2(.26+.48*a,.24+.52*b);
-    float r=mix(.085,.205,fract(a*14.7));
-    float point=(1.-smoothstep(.22*r,r,length(delta)));
-    float halo=(1.-smoothstep(.52*r,1.85*r,length(delta)))*.26;
-    float flicker=sin(townWaterTime*(1.9+4.*b)+a*23.0+crossWave*.9);
-    float sparkleDuty=smoothstep(.58,.96,a)*smoothstep(.62,.995,flicker);
-    float glint=(point+halo)*sparkleDuty*facing*sunlit*sunlit*pow(townWaterBrightness,3.);
-    pool=mix(pool,vec3(.99,.97,.81),min(.76,1.42*glint));
+    vec2 delta=fract(uvSpark)-vec2(.29+.43*a,.28+.44*b);
+    float r=mix(.080,.160,fract(a*14.7));
+    float point=1.-smoothstep(.25*r,r,length(delta));
+    float halo=(1.-smoothstep(.58*r,1.65*r,length(delta)))*.14;
+    float crest=smoothstep(.72,.99,waveFront);
+    float glint=(point+halo)*smoothstep(.52,.87,a)*crest*nearLight*bankLight
+      *facing*sunlit*sunlit*pow(townWaterBrightness,3.);
+    pool=mix(pool,vec3(.97,.94,.79),min(.55,.88*glint));
    }
    diffuseColor.rgb = pool*(1.+longWave*.013+shortWave*.010);
   `);

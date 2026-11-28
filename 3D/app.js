@@ -1214,22 +1214,12 @@ function animateRoomCamera(position,zoom,restoring=false,orientation=null,durati
 }
 function previewCameraTarget(){
  const probe=camera.clone();probe.position.copy(roomSnapshot.cameraPosition);probe.quaternion.copy(roomSnapshot.cameraQuaternion);
- const byMirror=roomSnapshot.station==='mirror';
- if(byMirror){
-  // A shallow oblique view exposes the mirror next to, not behind,
-  // the player while keeping actual geometrical reflections.
-  probe.position.set(pos.x-1.13,2.23,pos.z+4.55);
-  probe.lookAt(MIRROR_APPROACH.x,1.03,pos.z-.28);
- }
  const height=camera.top-camera.bottom,zoom=Math.max(1.25,Math.min(3.1,height*.34/1.75));probe.zoom=zoom;probe.updateProjectionMatrix();probe.updateMatrixWorld(true);
  const projected=new T.Vector3(pos.x,.97,pos.z).project(probe),phone=area.clientWidth<600;
- // Narrow try-on uses a bottom drawer. Lift the model without changing
- // magnification or the room itself, so the shoes stay above the controls.
- const compactWardrobe=previewMode==='wardrobe'&&area.clientWidth<345;
- const desiredX=byMirror?.13:phone?0:-.25,desiredY=phone?(compactWardrobe?.58:.48):.05;
+ const desiredX=phone?0:-.25,desiredY=phone?.48:.05;
  const right=new T.Vector3(1,0,0).applyQuaternion(probe.quaternion),up=new T.Vector3(0,1,0).applyQuaternion(probe.quaternion);
  probe.position.addScaledVector(right,(projected.x-desiredX)*(probe.right-probe.left)/(2*zoom));probe.position.addScaledVector(up,(projected.y-desiredY)*height/(2*zoom));
- return{position:probe.position,zoom,quaternion:probe.quaternion};
+ return{position:probe.position,zoom};
 }
 function anchorEditor(){if(!previewMode||previewMode==='records'||previewMode==='performance')return;camera.updateMatrixWorld(true);const panel=document.querySelector('aside'),r=area.getBoundingClientRect(),m=document.querySelector('main').getBoundingClientRect();
  const project=(x,y,z)=>{const v=new T.Vector3(x,y,z).project(camera);return{x:r.left+(v.x+1)*r.width/2,y:r.top+(1-v.y)*r.height/2}};
@@ -1267,9 +1257,9 @@ function enterPreview(station){
  if(mode==='cat'){beginCatView();return;}
  if(mode==='cello'){seatPerformance();return;}
  if(previewMode)exitPreview();
- roomSnapshot={station,rotation:avatar.rotation.clone(),heading,cameraPosition:cameraMotion?.restoring?cameraMotion.to.clone():camera.position.clone(),cameraQuaternion:camera.quaternion.clone(),cameraZoom:cameraMotion?.restoring?cameraMotion.toZoom:camera.zoom,focus:area};
- release();tap=null;previewMode=mode;previewYaw=station==='mirror'?Math.PI:Math.atan2(camera.position.x-pos.x,camera.position.z-pos.z);activeCategory=mode==='wardrobe'?3:0;
- area.setAttribute('aria-label','房間內角色試穿，左右拖曳或方向鍵轉動');document.body.classList.add('preview-open');document.body.dataset.editor=mode;const panel=document.querySelector('aside');panel.setAttribute('role','region');panel.setAttribute('aria-label',mode==='wardrobe'?(station==='mirror'?'全身鏡試穿':'衣櫃試穿'):(mirrorRoom?'全身鏡外觀':'梳妝台'));panel.hidden=false;$('preview-close').hidden=false;controls();const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom,false,target.quaternion);anchorEditor();$('preview-close').focus({preventScroll:true});
+ roomSnapshot={rotation:avatar.rotation.clone(),heading,cameraPosition:cameraMotion?.restoring?cameraMotion.to.clone():camera.position.clone(),cameraQuaternion:camera.quaternion.clone(),cameraZoom:cameraMotion?.restoring?cameraMotion.toZoom:camera.zoom,focus:area};
+ release();tap=null;previewMode=mode;previewYaw=Math.atan2(camera.position.x-pos.x,camera.position.z-pos.z);activeCategory=mode==='wardrobe'?3:0;
+ area.setAttribute('aria-label','房間內角色試穿，左右拖曳或方向鍵轉動');document.body.classList.add('preview-open');document.body.dataset.editor=mode;const panel=document.querySelector('aside');panel.setAttribute('role','region');panel.setAttribute('aria-label',mode==='wardrobe'?(station==='mirror'?'全身鏡試穿':'衣櫃試穿'):(mirrorRoom?'全身鏡外觀':'梳妝台'));panel.hidden=false;$('preview-close').hidden=false;controls();const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);anchorEditor();$('preview-close').focus({preventScroll:true});
 }
 function exitPreview(){if(celloPerformance)return;if(!previewMode)return;const old=roomSnapshot;release();if(tap&&area.hasPointerCapture(tap.id))area.releasePointerCapture(tap.id);tap=null;previewMode=null;heading=old.heading;avatar.rotation.copy(old.rotation);camera.quaternion.copy(old.cameraQuaternion);animateRoomCamera(old.cameraPosition,old.cameraZoom,true);area.setAttribute('aria-label',mirrorRoom?'3D房間，點衣櫃或全身鏡走近試穿，點地板行走':'3D房間，點衣櫃或梳妝台走近更換外觀，點地板行走');document.body.classList.remove('preview-open');delete document.body.dataset.editor;const panel=document.querySelector('aside');panel.removeAttribute('role');panel.removeAttribute('aria-label');panel.removeAttribute('style');panel.hidden=true;$('preview-close').hidden=true;old.focus?.focus({preventScroll:true});roomSnapshot=null;}
 $('cat-watch-access').onclick=()=>approachStation('cat');
@@ -1294,32 +1284,6 @@ function performanceParts(){
 }
 const PERFORMANCE_YAW=Math.PI-.42, performanceUp=new T.Vector3(0,1,0);
 function performanceFramePoint(x,y,z){return new T.Vector3(x,y,z).applyAxisAngle(performanceUp,PERFORMANCE_YAW).add(new T.Vector3(pos.x,standY(pos),pos.z));}
-function performanceCameraForRoom(width=area.clientWidth){
- if(!rayMirrorFrame)return performanceCamera(width);
- const aspect=(camera.right-camera.left)/(camera.top-camera.bottom);
- const probe=camera.clone(),focus=new T.Vector3();
-  // The mirror and the seated musician occupy different parts of the
-  // same room. A small dolly back and a shallow yaw keep both in the
-  // portrait frame without resorting to a flattened wide-angle crop.
-  const narrow=T.MathUtils.smoothstep(1.08-aspect,0,.52);
-  probe.position.set(.30-1.08*narrow,1.75+.06*narrow,1.53+1.66*narrow);
-  focus.set(-.86+.20*narrow,1.05+.22*narrow,-1.63);
-  probe.lookAt(focus);probe.updateMatrixWorld(true);
-  const points=[];
-  rayMirrorFrame.updateWorldMatrix(true,true);
-  const pane=rayMirrorFrame.getObjectByName('full-length-mirror-surface');
-  for(const x of[-.455,.455])for(const y of[-1.035,1.035])points.push(pane.localToWorld(new T.Vector3(x,y,0)));
-  // Bounds of the seated avatar/cello/bow, including the sweep of the bow.
-  for(const x of[-2.63,-1.02])for(const y of[.04,1.92])for(const z of[-1.16,-.17])points.push(new T.Vector3(x,y,z));
-  let tan=Math.tan(T.MathUtils.degToRad(37)*.5);
-  for(const point of points){
-   const p=point.applyMatrix4(probe.matrixWorldInverse),depth=-p.z;
-   if(depth>.01)tan=Math.max(tan,Math.abs(p.x)/(depth*aspect*.90),Math.abs(p.y)/(depth*.89));
-  }
-  const distance=probe.position.distanceTo(focus);
-  return{position:probe.position,quaternion:probe.quaternion,zoom:(camera.top-camera.bottom)/(2*distance*tan),
-   fov:T.MathUtils.radToDeg(2*Math.atan(tan)),distance,lens:1};
-}
 function performanceCamera(width=area.clientWidth){
  const aspect=(camera.right-camera.left)/(camera.top-camera.bottom);
  const portrait=T.MathUtils.smoothstep(1.4-aspect,0,.55);
@@ -1434,7 +1398,7 @@ function tickPerformance(dt,t){
  const clock=reduced.matches?(returning?0:PERFORMANCE_TRANSITION_MS):playing?PERFORMANCE_TRANSITION_MS:returning?PERFORMANCE_TRANSITION_MS-p.elapsed:p.elapsed;
  const phase=performanceTransition(clock),sit=phase.sit,carry=phase.carry;p.transitionStage=phase.stage;
  pos={x:T.MathUtils.lerp(p.approachPosition.x,p.seatPosition.x,carry),z:T.MathUtils.lerp(p.approachPosition.z,p.seatPosition.z,carry)};
- if(!returning&&!p.cameraStarted&&(clock>=1750||reduced.matches)){const view=performanceCameraForRoom();animatePerformanceCamera(view,1800);p.cameraStarted=true;}
+ if(!returning&&!p.cameraStarted&&(clock>=1750||reduced.matches)){const view=performanceCamera();animatePerformanceCamera(view,1800);p.cameraStarted=true;}
  const pickupMark=new T.Vector3(p.celloPosition.x+.63,0,p.celloPosition.z+.05);
  const pickupYaw=Math.atan2(p.celloPosition.x-pickupMark.x,p.celloPosition.z-pickupMark.z),facing=p.fromHeading+Math.atan2(Math.sin(pickupYaw-p.fromHeading),Math.cos(pickupYaw-p.fromHeading))*phase.face;
  heading=facing+Math.atan2(Math.sin(PERFORMANCE_YAW-facing),Math.cos(PERFORMANCE_YAW-facing))*carry;
@@ -1579,7 +1543,7 @@ area.addEventListener('pointerup',e=>{if(!tap||tap.id!==e.pointerId)return;const
 // still wins; exact wardrobe/vanity/cello mesh hits were handled above.
 const hitIntent=forgivingRoomHit(raycaster.ray,blockers[0]);if(hitIntent){approachStation(hitIntent);return;}
 if(blockers[0]&&blockers[0].point.y>.11)return;const hit=new T.Vector3();if(!raycaster.ray.intersectPlane(floorPlane,hit)||Math.abs(hit.x)>3.05||hit.z< -2.35||hit.z>2.35)return;pendingStation=null;destination={x:Math.max(-2.2,Math.min(2.2,hit.x)),z:Math.max(-.8,Math.min(1.9,hit.z))};area.focus({preventScroll:true});});
-function resize(){const w=area.clientWidth,h=area.clientHeight;renderer.setSize(w,h);const phone=w<600,size=Math.max(3.75,(phone?3.6:3.9)*h/w),lift=phone?size*.13:0;camera.left=-size*w/h;camera.right=size*w/h;camera.top=size-lift;camera.bottom=-size-lift;camera.updateProjectionMatrix();if(celloPerformance?.cameraStarted&&celloPerformance.phase!=='returning'){const view=performanceCameraForRoom();animatePerformanceCamera(view,350);}if(watchingCat){const view=catCameraTarget();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(previewMode&&previewMode!=='records'&&previewMode!=='performance'&&roomSnapshot){const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom,false,target.quaternion);}}new ResizeObserver(resize).observe(area);resize();controls();const reduced=matchMedia('(prefers-reduced-motion: reduce)');let last=0,lastDraw=0;
+function resize(){const w=area.clientWidth,h=area.clientHeight;renderer.setSize(w,h);const phone=w<600,size=Math.max(3.75,(phone?3.6:3.9)*h/w),lift=phone?size*.13:0;camera.left=-size*w/h;camera.right=size*w/h;camera.top=size-lift;camera.bottom=-size-lift;camera.updateProjectionMatrix();if(celloPerformance?.cameraStarted&&celloPerformance.phase!=='returning'){const view=performanceCamera();animatePerformanceCamera(view,350);}if(watchingCat){const view=catCameraTarget();animateRoomCamera(view.position,view.zoom,false,view.quaternion,350);}if(previewMode&&previewMode!=='records'&&previewMode!=='performance'&&roomSnapshot){const target=previewCameraTarget();animateRoomCamera(target.position,target.zoom);}}new ResizeObserver(resize).observe(area);resize();controls();const reduced=matchMedia('(prefers-reduced-motion: reduce)');let last=0,lastDraw=0;
 // A real doorway arrival: the saved outfit walks inward while the view opens.
 // Only the consumed town arrival parameter opts in; direct visits never replay.
 let doorArrival=null;
