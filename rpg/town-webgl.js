@@ -149,12 +149,12 @@ function landscapePigment(T,kind){
    [[500,375],[497,418],[500,459],[497,510],[498,550]],
    [[638,294],[638,269],[638,255],[651,246],[703,246],[714,254],[714,285],[720,301],[772,305],[791,318],[790,353]]
   ];
-  function chip(x,z,rx,rz,tint,alpha){
-   const spin=roll()*tau;
+  function chip(x,z,rx,rz,tint,alpha,random=roll){
+   const spin=random()*tau;
    ctx.save();ctx.translate(x,z);ctx.rotate(spin);
    ctx.globalAlpha=alpha;ctx.fillStyle=tint;ctx.beginPath();
    for(let i=0;i<6;i++){
-    const a=tau*i/6,rr=.64+roll()*.36,u=Math.cos(a)*rx*rr,v=Math.sin(a)*rz*rr;
+    const a=tau*i/6,rr=.64+random()*.36,u=Math.cos(a)*rx*rr,v=Math.sin(a)*rz*rr;
     i?ctx.lineTo(u,v):ctx.moveTo(u,v);
    }
    ctx.closePath();ctx.fill();
@@ -163,6 +163,51 @@ function landscapePigment(T,kind){
     ctx.moveTo(-rx*.55,-rz*.24);ctx.quadraticCurveTo(-rx*.18,-rz*.65,rx*.46,-rz*.41);ctx.stroke();
    }
    ctx.restore();
+  }
+  // Traffic is visible at the scale of the road, rather than as isolated
+  // decorations. Long worn tracks fan at both turns and break on stony sections.
+  const trackRng=pigmentRng(662401);
+  const tracks=[
+   [[192,326],[245,321],[312,321],[369,325],[414,321],[455,320],[519,319],[580,322],[634,319],[679,317],[724,321],[770,322]],
+   [[191,348],[234,350],[304,349],[359,346],[401,347],[437,347],[488,351],[550,353],[603,350],[664,350],[715,354],[767,347]],
+   [[449,548],[450,507],[447,471],[447,433],[444,396],[450,365],[474,341],[511,329]],
+   [[477,550],[476,509],[480,465],[478,430],[474,401],[484,371],[511,354],[551,349]],
+   [[653,332],[667,320],[677,307],[679,289],[677,268],[678,251]],
+   [[679,346],[691,331],[699,313],[697,294],[698,275],[695,255]]
+  ];
+  for(let k=0;k<tracks.length;k++){
+   const samples=tracks[k];
+   let distance=0;
+   for(let j=1;j<samples.length;j++){
+    const [x,z]=samples[j-1],[xx,zz]=samples[j],dx=xx-x,dz=zz-z,len=Math.hypot(dx,dz),angle=Math.atan2(dz,dx);
+    const nx=-dz/len,nz=dx/len;
+    for(let at=0;at<len;at+=2.7){
+     const q=distance+at,t=at/len;
+     const wear=.35+.65*(.5+.5*Math.sin(q*.047+k*2.13))*(.5+.5*Math.cos(q*.109-k*.47));
+     const wander=Math.sin(q*.15+k*1.27)*.86+Math.cos(q*.061-k)*.93;
+     const u=x+dx*t+nx*wander,v=z+dz*t+nz*wander;
+     const edge=1.62+wear*3;
+     const broken=.24+.76*Math.pow(.5+.5*Math.sin(q*.019+k*.81+Math.sin(q*.063)*.59),.82);
+     glaze(u,v,5.7+trackRng()*2.2,edge,angle,'#9e805b',(.13+wear*.20)*broken);
+     glaze(u+nx*edge*.67,v+nz*edge*.67,4+trackRng()*3,1.38+trackRng()*1.18,angle,'#f4e4bc',(.13+wear*.20)*broken);
+     if(wear>.56&&trackRng()>.39)
+      chip(u+nx*(trackRng()-.5)*edge*1.59,v+nz*(trackRng()-.5)*edge*1.59,.28+trackRng()*.86,.16+trackRng()*.47,stones[k],.28+wear*.17,trackRng);
+    }
+    distance+=len;
+   }
+  }
+  // Short washouts cut diagonally towards the verge. Finer deposited
+  // material collects on one side, leaving the other as a narrow dark edge.
+  for(const [x,z,dx,dz] of [[277,310,18,13],[390,359,22,-10],[517,311,16,14],[740,363,-23,-15],
+    [434,436,12,20],[493,481,-12,-18],[647,275,14,22],[705,254,-7,20]]){
+   const len=Math.hypot(dx,dz),nx=-dz/len,nz=dx/len,angle=Math.atan2(dz,dx);
+   for(let j=0;j<9;j++){
+    const t=j/8,wind=Math.sin(t*8+2)*1.07,fade=Math.sin(Math.PI*(.05+.9*t));
+    const u=x+dx*t+nx*wind,v=z+dz*t+nz*wind;
+    glaze(u,v,4.1,1.2+fade*1.22,angle,'#907858',.42*fade);
+    glaze(u+nx*1.9,v+nz*1.9,3.8,1.1,angle,'#ead4a6',.41*fade);
+    if(j>3)chip(u+nx*(1.2+trackRng()*3),v+nz*(1.2+trackRng()*3),.41+trackRng()*1.2,.26+trackRng()*.62,stones[j%6],.37+trackRng()*.22,trackRng);
+   }
   }
   for(const verge of verges)for(let j=1;j<verge.length;j++){
    const [x,z]=verge[j-1],[xx,zz]=verge[j],dx=xx-x,dz=zz-z,d=Math.hypot(dx,dz),nx=-dz/d,nz=dx/d;
